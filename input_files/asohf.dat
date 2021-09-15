@@ -1,0 +1,32 @@
+*************PARAMETERS FOR ASOHF*************
+Files: first, last, every ------------------->
+850,850,50
+Cells per direction (NX,NY,NZ)--------------->
+256,256,256
+DM particles -------------------------------->
+16777216
+Hubble constant (h), omega matter ----------->
+0.678,0.31
+Initial redshift, box size (Mpc) ------------>
+100.0, 147.5
+Parallel(=1),serial(=0)/ Number of processors-->
+1,8
+Number of levels to read --------------------->
+7
+PARCHLIM(=0 no limit patches/level,>0 limit)->
+1
+LIM=max num patches/level(needs PARCHLIM>0)-->
+1000
+Variable: 1(gas), 2(dm), 0(gas+dm)----------->
+2
+Merger_tree:1(no),2(con %),3(main line)------>
+1
+Max num of bins for profiles (NSHELL)-------->
+50
+Max.reach around halos (BOUND,Mpc),BORDES---->
+8.0, 1
+FLAG_SA,FLAG_MASCLET,FLAG_GAS----------------->
+0,1,0 
+FLAG_WDM (=1 write DM particles, =0 no)------->
+0
+
