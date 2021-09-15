@@ -2,3 +2,4 @@ run.sh
 compila.sh
 output_files/*
 !output_files/.gitkeep
+simu_masclet
