@@ -13,5 +13,5 @@ The routines in this programme are distributed in the following files:
 - ``haloes_particles.f``: routines for halo treatment using DM/stellar particles
 - ``merger_tree.f``: build the merger tree of the halo catalogue between each pair of code outputs (reduced or complete)
 - ``nr.f``: includes several routines found in 'Numerical Recipes in Fortran90', Press, Teukoslky et al.
-- ``reader.f``: read the input data (may need to be adapted to read data from other simulation codes
+- ``reader.f``: read the input data (may need to be adapted to read data from other simulation codes)
 - ``nomfile.f``: generates the filenames for I/O
