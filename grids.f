@@ -2219,3 +2219,70 @@ CX       END IF
 
       RETURN
       END
+
+************************************************************* 
+       SUBROUTINE MALLA(NX,NY,NZ,LADO)
+*************************************************************
+
+       IMPLICIT NONE
+       INTEGER NX,I,NY,J,NZ,K
+
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       REAL*4 A,B,C,LADO
+
+       REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
+       COMMON /GRID/   RADX,RADY,RADZ
+
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
+*      GENERAL INITIAL CONDITIONS
+
+*      GRID LIMITS
+       A=-LADO/2.0
+       B=LADO/2.0
+
+
+*      GRID
+
+*      X-AXIS
+       C=(B-A)/(NX-1)
+       RADX(1)=A
+       DO I=2,NX
+        RADX(I)=RADX(1)+(I-1)*C
+       END DO
+
+*      FICTICIUS CELLS
+       RADX(0)=RADX(1)-C
+       RADX(NX+1)=RADX(NX)+C
+
+*      Y-AXIS
+       C=(B-A)/(NY-1)
+       RADY(1)=A
+       DO J=2,NY
+        RADY(J)=RADY(1)+(J-1)*C
+       END DO
+
+*     FICTICIUS CELLS
+       RADY(0)=RADY(1)-C
+       RADY(NY+1)=RADY(NY)+C
+
+*      Z-AXIS
+       C=(B-A)/(NZ-1)
+       RADZ(1)=A
+       DO K=2,NZ
+        RADZ(K)=RADZ(1)+(K-1)*C
+       END DO
+
+*      FICTICIUS CELLS
+       RADZ(0)=RADZ(1)-C
+       RADZ(NZ+1)=RADZ(NZ)+C
+
+
+       DX=RADX(2)-RADX(1)
+       DY=RADY(2)-RADY(1)
+       DZ=RADZ(2)-RADZ(1)
+
+
+       RETURN
+       END
