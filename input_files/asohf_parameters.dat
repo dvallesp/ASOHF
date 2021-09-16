@@ -12,15 +12,15 @@
 
 *      Level 0 grid ----------------------------------------------- 
        INTEGER NMAX,NMAY,NMAZ                                           
-       PARAMETER (NMAX=256,NMAY=256,NMAZ=256) 
+       PARAMETER (NMAX=128,NMAY=128,NMAZ=128) 
 
 *      Level 0 particles ------------------------------------------
        INTEGER NDMXYZ
-       PARAMETER (NDMXYZ=256*256*256)
+       PARAMETER (NDMXYZ=128*128*128)
 
 *      Refinements ------------------------------------------------          
        INTEGER NPALEV,NLEVELS
-       PARAMETER (NPALEV=7000,NLEVELS=7)
+       PARAMETER (NPALEV=2000,NLEVELS=9)
 
 *      Maximum patch extension ------------------------------------
        INTEGER NAMRX,NAMRY,NAMRZ
@@ -28,11 +28,11 @@
 
 *      DM particles in refinements --------------------------------
        INTEGER PARTI
-       PARAMETER (PARTI=127000000)
+       PARAMETER (PARTI=23000000)
        
 *      Total number of DM particles (level 0 + AMR) ---------------
        INTEGER PARTIRED
-       PARAMETER (PARTIRED=143777216)
+       PARAMETER (PARTIRED=25097152)
 
 *      If PLOT>1 o FLAG_WDM=1, then >>PARTIRED; if not, 1 ----------
        INTEGER PARTIRED_PLOT
@@ -49,7 +49,7 @@ c       PARAMETER (PARTIRED_PLOT=60000000)
             
 *      Maximum number of tentative halos---------------------------
        INTEGER MAXNCLUS
-       PARAMETER (MAXNCLUS=500000)    
+       PARAMETER (MAXNCLUS=300000)    
        
 *      Maximum number of final halos------------------------------- 
        INTEGER NMAXNCLUS
@@ -61,7 +61,7 @@ c       PARAMETER (PARTIRED_PLOT=60000000)
 
 *      Maximum number of overlaps per halo with other halos---------
        INTEGER NMAXSOLAP
-       PARAMETER (NMAXSOLAP=120000)
+       PARAMETER (NMAXSOLAP=10000)
        
 *      Maximum number of parent halos per halo at a given z -------
        INTEGER NMAXDAD                                      
