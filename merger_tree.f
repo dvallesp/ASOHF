@@ -2,6 +2,10 @@
        SUBROUTINE MERGER(NFILE,NMASA,NNCLUS,DMPITER,
      &                   DMPCLUS,REALCLUS)
 *****************************************************************
+*      Computes the complete merger tree (used if PLOT=2),
+*      i.e., finds all haloes at the previous output which share
+*      particles with a given halo at the following output.
+*****************************************************************
 
        USE MTREE
        IMPLICIT NONE
@@ -126,6 +130,10 @@
 ******************************************************************
        SUBROUTINE REDUCED_MERGER(NNCLUS,REALCLUS,IPLIR,IPLIP,
      &                           NCLUSRX,NCLUSRY,NCLUSRZ)
+*****************************************************************
+*      Computes the reduced merger tree (used if PLOT=3),
+*      i.e., finds the main 'parent' halo of each halo, at its
+*      previous iteration
 *****************************************************************
 
        USE MTREE

@@ -5,6 +5,9 @@
      &                       NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
      &                       REALCLUS,NSOLAP,SOLAPA,NHALLEV)
 ********************************************************************
+*      Accounts for the overlaps between haloes found within the
+*      grid (prior to refining with particles)
+********************************************************************
 
 
        IMPLICIT NONE

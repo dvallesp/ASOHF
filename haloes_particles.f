@@ -2,6 +2,9 @@
        SUBROUTINE REORDENAR(KONTA,NCLUSRX,NCLUSRY,NCLUSRZ,
      &                      RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
 **********************************************************************
+*      Sorts the particles with increasing distance to the center of
+*      the halo
+**********************************************************************
 
        IMPLICIT NONE
 
@@ -89,6 +92,9 @@ c       INTEGER CONTADM(PARTI)
        SUBROUTINE CENTROMASAS_PART(N,CONTADM,LIP,
      &            U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &            CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA)
+***********************************************************
+*      Computes the center of mass of the particles
+*      within the halo
 ***********************************************************
 
        IMPLICIT NONE
@@ -194,6 +200,9 @@ c       INTEGER LIP(PARTI),CONTADM(PARTI)
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           NR,NMASA,NCLUSRX,NCLUSRY,NCLUSRZ,
      &           LIP,LIR,KONTA,CONTADM,VX,VY,VZ)
+***********************************************************
+*      Finds and discards the unbound particles (those
+*      with speed larger than the scape velocity)
 ***********************************************************
 
        IMPLICIT NONE

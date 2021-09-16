@@ -5,6 +5,8 @@
      &                   PATCHRZ,PARE,U2DM,U3DM,U4DM,MASAP,MAP,
      &                   RXPA,RYPA,RZPA,ZETA,T,LADO0,FLAG_MASCLET,PLOT)
 ************************************************************************
+*      Builds the grid from a set of particles
+************************************************************************
 *      OJO EN ESTA SRUTINA CON: 1) BOR E INCRE
 
        IMPLICIT NONE
@@ -1599,6 +1601,9 @@ CX       END IF
         SUBROUTINE VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
      &             PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,CONTA2,
      &             VECINO, NVECI)
+************************************************************************
+*       Finds the overlaps between patches in a given level of the
+*       grid hierarchy
 ************************************************************************
 
 !!!!! Esta rutina ha sido modificada (26/06/2019) para usar variables

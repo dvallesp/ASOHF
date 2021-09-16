@@ -4,6 +4,11 @@
      &           PATCHRX,PATCHRY,PATCHRZ,MAP,
      &           U2DM,U3DM, U4DM,MASAP,NPART,RXPA,RYPA,RZPA)
 *********************************************************************
+*      Reads MASCLET data: grids, gas density (clus files) and
+*      DM particles information.
+*      Must be checked depending on the version/flavour of MASCLET
+*      the simulation has been run with
+*********************************************************************
 
        IMPLICIT NONE
 
