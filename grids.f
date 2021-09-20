@@ -1606,13 +1606,6 @@ CX       END IF
 *       grid hierarchy
 ************************************************************************
 
-!!!!! Esta rutina ha sido modificada (26/06/2019) para usar variables
-!!!!! enteras en lugar de reales en la comprobación de qué parches
-!!!!! solapan con otros.
-
-!!!!! En este codigo CONTA2 es SOLAP. Y lo que era MARCA ya no se usa.
-!!!!! Ademas, paso VECINO y NVECI en el argumento de la rutina
-
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
@@ -1629,18 +1622,15 @@ CX       END IF
        REAL*4  PATCHRZ(NPALEV)
        INTEGER PARE(NPALEV)
 
-       INTEGER CR1,CR2,CR3,CR4,CR5,CR6
        INTEGER IR,I,J,IX,JY,KZ,II,JJ,KK
-       INTEGER N1,N2,N3,L1,L2,L3, NL
+       INTEGER N1,N2,N3,L1,L2,L3,NL
        INTEGER NN1,NN2,NN3,LL1,LL2,LL3
        INTEGER KZ2,JY2,IX2,I2
-       INTEGER NV,A2,B2,C2,K,LOW1, LOW2
+       INTEGER NV,A2,B2,C2,K,LOW1,LOW2
 
        INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
 
-       REAL*4 A1,B1,C1,RIV1,RIV2,RIV3
-       INTEGER CONTROL
        INTEGER CORNX1,CORNXX1,CORNX2,CORNXX2
        INTEGER CORNY1,CORNYY1,CORNY2,CORNYY2
        INTEGER CORNZ1,CORNZZ1,CORNZ2,CORNZZ2
@@ -1673,9 +1663,7 @@ CX       END IF
        LOW2=SUM(NPATCH(0:IR))
 
 *      identify neighbouring patches
-! parallelize
        DO I=LOW1,LOW2
-
          I2=I-LOW1+1
 
          NVECI(I2)=0
@@ -1739,6 +1727,7 @@ CX       END IF
      &    'ERROR: gvecino second dimension too large',
      &     MAXVAL(NVECI(1:NPATCH(IR)))
 
+*      Identify overlapping cells
        DO I=LOW1,LOW2
 
          L1=PATCHX(I)
