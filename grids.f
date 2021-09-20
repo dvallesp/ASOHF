@@ -1599,8 +1599,8 @@ CX       END IF
 
 ************************************************************************
         SUBROUTINE VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
-     &             PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,CONTA2,
-     &             VECINO, NVECI)
+     &             PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,SOLAP,
+     &             VECINO,NVECI)
 ************************************************************************
 *       Finds the overlaps between patches in a given level of the
 *       grid hierarchy
@@ -1634,13 +1634,10 @@ CX       END IF
        INTEGER N1,N2,N3,L1,L2,L3, NL
        INTEGER NN1,NN2,NN3,LL1,LL2,LL3
        INTEGER KZ2,JY2,IX2,I2
-       !INTEGER, ALLOCATABLE::VECINO(:,:)
-       !INTEGER, ALLOCATABLE::NVECI(:)
        INTEGER NV,A2,B2,C2,K,LOW1, LOW2
-       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
 
-       INTEGER CONTA2(NAMRX,NAMRY,NAMRZ,NPALEV)
-       INTEGER MARCA(NAMRX,NAMRY,NAMRZ,NPALEV)
+       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
+       INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        REAL*4 A1,B1,C1,RIV1,RIV2,RIV3
        INTEGER CONTROL
@@ -1657,37 +1654,27 @@ CX       END IF
        REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
        COMMON /GRID/ RADX,RADY,RADZ
 
-       INTEGER IG1,IG2,JG1,JG2,KG1,KG2,IG3,JG3,KG3
+       INTEGER IG1,IG2,JG1,JG2,KG1,KG2,IG3,JG3,KG3,IG4,JG4,KG4
        REAL*4 RXFIX,RYFIX,RZFIX
        INTEGER NPALEV2
 
-       !INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
-
        NPALEV2=MAX(100,INT(NPALEV/10))
-       !ALLOCATE(VECINO(NPALEV2,NPATCH(IR)))
-       !ALLOCATE(NVECI(NPATCH(IR)))
-
 
        DXPA=DX/(2.0**IR)
        DYPA=DY/(2.0**IR)
        DZPA=DZ/(2.0**IR)
 
-*      built auxiliar grid for comparison
+*      auxiliar grid for comparison
        RXFIX=RADX(1) - DX*0.5 + 0.5*DXPA
        RYFIX=RADY(1) - DY*0.5 + 0.5*DYPA
        RZFIX=RADZ(1) - DZ*0.5 + 0.5*DZPA
 
-       !VECINO=0
-       !NVECI=0
-*!$OMP PARALLEL DO SHARED(IR,NPATCH,PARE,PATCHX,PATCHY,PATCHZ,
-*!$OMP+    PATCHNX,PATCHNY,PATCHNZ,VECINO,NVECI),
-*!$OMP+  PRIVATE(I,L1,L2,L3,N1,N2,N3,CR1,CR2,CR3,NV,J,LL1,
-*!$OMP+         LL2,LL3,NN1,NN2,NN3,CR4,CR5,CR6,A1,A2,B1,B2,
-*!$OMP+         C1,C2)
-       !DO I=1,NPATCH(IR)
-        LOW1=SUM(NPATCH(0:IR-1))+1
-        LOW2=SUM(NPATCH(0:IR))
-        DO I=LOW1,LOW2
+       LOW1=SUM(NPATCH(0:IR-1))+1
+       LOW2=SUM(NPATCH(0:IR))
+
+*      identify neighbouring patches
+! parallelize
+       DO I=LOW1,LOW2
 
          I2=I-LOW1+1
 
@@ -1702,347 +1689,55 @@ CX       END IF
          N2=PATCHNY(I)
          N3=PATCHNZ(I)
 
-         CONTA2(:,:,:,I)=1
+         SOLAP(:,:,:,I)=1
 
          NV=0
 
          RX1=PATCHRX(I)-0.5*DXPA
          RY1=PATCHRY(I)-0.5*DYPA
          RZ1=PATCHRZ(I)-0.5*DZPA
-         RX2=PATCHRX(I)-0.5*DXPA+(N1-1)*DXPA
-         RY2=PATCHRY(I)-0.5*DYPA+(N2-1)*DYPA
-         RZ2=PATCHRZ(I)-0.5*DZPA+(N3-1)*DZPA
+         IG1=INT(((RX1-RXFIX)/DXPA)+0.5) + 1
+         JG1=INT(((RY1-RYFIX)/DYPA)+0.5) + 1
+         KG1=INT(((RZ1-RZFIX)/DZPA)+0.5) + 1
 
-!         DO J=1,NPATCH(IR)
-!        DO J=SUM(NPATCH(0:IR-1))+1,SUM(NPATCH(0:IR))
+         IG2=IG1 + N1 - 1
+         JG2=JG1 + N2 - 1
+         KG2=KG1 + N3 - 1
+
          DO J=LOW1,LOW2
-         IF (J.NE.I) THEN
-          LL1=PATCHX(J)
-          LL2=PATCHY(J)
-          LL3=PATCHZ(J)
-          NN1=PATCHNX(J)
-          NN2=PATCHNY(J)
-          NN3=PATCHNZ(J)
+          IF (J.NE.I) THEN
 
-          RXX1=PATCHRX(J)-0.5*DXPA
-          RYY1=PATCHRY(J)-0.5*DYPA
-          RZZ1=PATCHRZ(J)-0.5*DZPA
-          RXX2=PATCHRX(J)-0.5*DXPA+(NN1-1)*DXPA
-          RYY2=PATCHRY(J)-0.5*DYPA+(NN2-1)*DYPA
-          RZZ2=PATCHRZ(J)-0.5*DZPA+(NN3-1)*DZPA
+           NN1=PATCHNX(J)
+           NN2=PATCHNY(J)
+           NN3=PATCHNZ(J)
 
-          CONTROL=0
+           RXX1=PATCHRX(J)-0.5*DXPA
+           RYY1=PATCHRY(J)-0.5*DYPA
+           RZZ1=PATCHRZ(J)-0.5*DZPA
 
-*         hay que mirar que alguno de los 8 vertices este dentro
-*         vertice LL1,LL2,LL3
-          RIV1=RXX1
-          RIV2=RYY1
-          RIV3=RZZ1
+           IG3=INT(((RXX1-RXFIX)/DXPA)+0.5) + 1
+           JG3=INT(((RYY1-RYFIX)/DYPA)+0.5) + 1
+           KG3=INT(((RZZ1-RZFIX)/DZPA)+0.5) + 1
 
-          IG1=INT(((RX1-RXFIX)/DXPA)+0.5) + 1
-          JG1=INT(((RY1-RYFIX)/DYPA)+0.5) + 1
-          KG1=INT(((RZ1-RZFIX)/DZPA)+0.5) + 1
+           IG4=IG3 + NN1 - 1
+           JG4=JG3 + NN2 - 1
+           KG4=KG3 + NN3 - 1
 
-          IG2=IG1 + N1 - 1
-          JG2=JG1 + N2 - 1
-          KG2=KG1 + N3 - 1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
+           IF (IG1.LE.IG4.AND.IG3.LE.IG2.AND.
+     &         JG1.LE.JG4.AND.JG3.LE.JG2.AND.
+     &         KG1.LE.KG4.AND.KG3.LE.KG2) THEN
             NV=NV+1
             VECINO(NV,I2)=J
-            CONTROL=1
            END IF
 
-*         vertice LL1,LL2,CR6
-          RIV1=RXX1
-          RIV2=RYY1
-          RIV3=RZZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-*         vertice LL1,CR5,LL3
-          RIV1=RXX1
-          RIV2=RYY2
-          RIV3=RZZ1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-*         vertice LL1,CR5,CR6
-          RIV1=RXX1
-          RIV2=RYY2
-          RIV3=RZZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-*         vertice CR4,LL2,LL3
-          RIV1=RXX2
-          RIV2=RYY1
-          RIV3=RZZ1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-           END IF
-
-*         vertice CR4,LL2,CR6
-          RIV1=RXX2
-          RIV2=RYY1
-          RIV3=RZZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-           END IF
-
-*         vertice CR4,CR5,LL3
-          RIV1=RXX2
-          RIV2=RYY2
-          RIV3=RZZ1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-*         vertice CR4,CR5,CR6
-          RIV1=RXX2
-          RIV2=RYY2
-          RIV3=RZZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-
-*        caso ----ll1 ---l1 -----cr1 -------cr4
-          RIV1=RX1
-          RIV2=RY1
-          RIV3=RZ1
-
-
-          IG1=INT(((RXX1-RXFIX)/DXPA)+0.5) + 1
-          JG1=INT(((RYY1-RYFIX)/DYPA)+0.5) + 1
-          KG1=INT(((RZZ1-RZFIX)/DZPA)+0.5) + 1
-
-          IG2=IG1 + NN1 - 1
-          JG2=JG1 + NN2 - 1
-          KG2=KG1 + NN3 - 1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-          RIV1=RX1
-          RIV2=RY1
-          RIV3=RZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-          RIV1=RX1
-          RIV2=RY2
-          RIV3=RZ1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-          RIV1=RX1
-          RIV2=RY2
-          RIV3=RZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-          RIV1=RX2
-          RIV2=RY1
-          RIV3=RZ1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-          RIV1=RX2
-          RIV2=RY1
-          RIV3=RZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-
-          RIV1=RX2
-          RIV2=RY2
-          RIV3=RZ1
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-          RIV1=RX2
-          RIV2=RY2
-          RIV3=RZ2
-
-          IG3=INT(((RIV1-RXFIX)/DXPA)+0.5) + 1
-          JG3=INT(((RIV2-RYFIX)/DYPA)+0.5) + 1
-          KG3=INT(((RIV3-RZFIX)/DZPA)+0.5) + 1
-
-          IF (CONTROL.EQ.0.AND.IG3.GE.IG1.AND.IG3.LE.IG2.AND.
-     &        JG3.GE.JG1.AND.JG3.LE.JG2.AND.
-     &        KG3.GE.KG1.AND.KG3.LE.KG2) THEN
-            NV=NV+1
-            VECINO(NV,I2)=J
-            CONTROL=1
-          END IF
-
-
-*          END IF
           END IF
          END DO
          NVECI(I2)=NV
-**         write(*,*) ir,i,nv
        END DO
-
-
-*       DO I=1,NPATCH(IR)
-*         WRITE(*,*) IR,I,NVECI(I)
-*         DO J=1,NVECI(I)
-*           WRITE(*,*) '        ','VECINOS DE',I,'  ',VECINO(J,I)
-*         END DO
-*       END DO
-
-*      if there is dark matter, the location of neighbours cells can
-*      be reused in VEINSDM
-
-**       NGVECI(:)=NVECI(:)
-
 
        IF (MAXVAL(NVECI(1:NPATCH(IR))).GT.NPALEV2) WRITE(*,*)
      &    'ERROR: gvecino second dimension too large',
      &     MAXVAL(NVECI(1:NPATCH(IR)))
-
 
        DO I=LOW1,LOW2
 
@@ -2064,141 +1759,100 @@ CX       END IF
          I2=I-LOW1+1
 
          DO K=1,NVECI(I2)
-         J=VECINO(K,I2)
+          J=VECINO(K,I2)
 
-         LL1=PATCHX(J)
-         LL2=PATCHY(J)
-         LL3=PATCHZ(J)
+          LL1=PATCHX(J)
+          LL2=PATCHY(J)
+          LL3=PATCHZ(J)
 
-         NN1=PATCHNX(J)
-         NN2=PATCHNY(J)
-         NN3=PATCHNZ(J)
+          NN1=PATCHNX(J)
+          NN2=PATCHNY(J)
+          NN3=PATCHNZ(J)
 
-         RXX1=PATCHRX(J)-0.5*DXPA
-         RYY1=PATCHRY(J)-0.5*DYPA
-         RZZ1=PATCHRZ(J)-0.5*DZPA
-         RXX2=PATCHRX(J)-0.5*DXPA+(NN1-1)*DXPA
-         RYY2=PATCHRY(J)-0.5*DYPA+(NN2-1)*DYPA
-         RZZ2=PATCHRZ(J)-0.5*DZPA+(NN3-1)*DZPA
+          RXX1=PATCHRX(J)-0.5*DXPA
+          RYY1=PATCHRY(J)-0.5*DYPA
+          RZZ1=PATCHRZ(J)-0.5*DZPA
+          RXX2=PATCHRX(J)-0.5*DXPA+(NN1-1)*DXPA
+          RYY2=PATCHRY(J)-0.5*DYPA+(NN2-1)*DYPA
+          RZZ2=PATCHRZ(J)-0.5*DZPA+(NN3-1)*DZPA
 
+*         X
+          IF (RXX1.GE.RX1.AND.RXX2.LE.RX2) THEN
+             CORNX1=INT(((RXX1-RX1)/DXPA)+0.5) + 1
+             CORNX2=INT(((RXX2-RX1)/DXPA)+0.5) + 1
+             CORNXX1=1
+             CORNXX2=NN1
+          END IF
+          IF (RXX1.GE.RX1.AND.RXX2.GT.RX2) THEN
+             CORNX1=INT(((RXX1-RX1)/DXPA)+0.5) + 1
+             CORNX2=N1
+             CORNXX1=1
+             CORNXX2=INT(((RX2-RXX1)/DXPA)+0.5) +1
+          END IF
+          IF (RXX2.LE.RX2.AND.RXX1.LT.RX1) THEN
+             CORNX1=1
+             CORNX2=INT(((RXX2-RX1)/DXPA)+0.5) + 1
+             CORNXX1=INT(((RX1-RXX1)/DXPA)+0.5) + 1
+             CORNXX2=NN1
+          END IF
+          IF (RXX1.LT.RX1.AND.RXX2.GT.RX2) THEN
+             CORNX1=1
+             CORNX2=N1
+             CORNXX1=INT(((RX1-RXX1)/DXPA)+0.5) + 1
+             CORNXX2=INT(((RX2-RXX1)/DXPA)+0.5) + 1
+          END IF
 
-         CORNX1=0
-         CORNX2=0
-         CORNXX1=0
-         CORNXX2=0
-         CORNY1=0
-         CORNY2=0
-         CORNYY1=0
-         CORNYY2=0
-         CORNZ1=0
-         CORNZ2=0
-         CORNZZ1=0
-         CORNZZ2=0
+*         Y
+          IF (RYY1.GE.RY1.AND.RYY2.LE.RY2) THEN
+             CORNY1=INT(((RYY1-RY1)/DYPA)+0.5) + 1
+             CORNY2=INT(((RYY2-RY1)/DYPA)+0.5) + 1
+             CORNYY1=1
+             CORNYY2=NN2
+          END IF
+          IF (RYY1.GE.RY1.AND.RYY2.GT.RY2) THEN
+             CORNY1=INT(((RYY1-RY1)/DYPA)+0.5) + 1
+             CORNY2=N2
+             CORNYY1=1
+             CORNYY2=INT(((RY2-RYY1)/DYPA)+0.5) +1
+          END IF
+          IF (RYY2.LE.RY2.AND.RYY1.LT.RY1) THEN
+             CORNY1=1
+             CORNY2=INT(((RYY2-RY1)/DYPA)+0.5) + 1
+             CORNYY1=INT(((RY1-RYY1)/DYPA)+0.5) + 1
+             CORNYY2=NN2
+          END IF
+          IF (RYY1.LT.RY1.AND.RYY2.GT.RY2) THEN
+             CORNY1=1
+             CORNY2=N2
+             CORNYY1=INT(((RY1-RYY1)/DYPA)+0.5) + 1
+             CORNYY2=INT(((RY2-RYY1)/DYPA)+0.5) + 1
+          END IF
 
-
-*        X
-         IF (RXX1.GE.RX1.AND.RXX2.LE.RX2) THEN
-            CORNX1=INT(((RXX1-RX1)/DXPA)+0.5) + 1
-            CORNX2=INT(((RXX2-RX1)/DXPA)+0.5) + 1
-            CORNXX1=1
-            CORNXX2=NN1
-         END IF
-         IF (RXX1.GE.RX1.AND.RXX2.GT.RX2) THEN
-            CORNX1=INT(((RXX1-RX1)/DXPA)+0.5) + 1
-            CORNX2=N1
-            CORNXX1=1
-            CORNXX2=INT(((RX2-RXX1)/DXPA)+0.5) +1
-         END IF
-         IF (RXX2.LE.RX2.AND.RXX1.LT.RX1) THEN
-            CORNX1=1
-            CORNX2=INT(((RXX2-RX1)/DXPA)+0.5) + 1
-            CORNXX1=INT(((RX1-RXX1)/DXPA)+0.5) + 1
-            CORNXX2=NN1
-         END IF
-         IF (RXX1.LT.RX1.AND.RXX2.GT.RX2) THEN
-            CORNX1=1
-            CORNX2=N1
-            CORNXX1=INT(((RX1-RXX1)/DXPA)+0.5) + 1
-            CORNXX2=INT(((RX2-RXX1)/DXPA)+0.5) + 1
-         END IF
-
-*        Y
-         IF (RYY1.GE.RY1.AND.RYY2.LE.RY2) THEN
-            CORNY1=INT(((RYY1-RY1)/DYPA)+0.5) + 1
-            CORNY2=INT(((RYY2-RY1)/DYPA)+0.5) + 1
-            CORNYY1=1
-            CORNYY2=NN2
-         END IF
-         IF (RYY1.GE.RY1.AND.RYY2.GT.RY2) THEN
-            CORNY1=INT(((RYY1-RY1)/DYPA)+0.5) + 1
-            CORNY2=N2
-            CORNYY1=1
-            CORNYY2=INT(((RY2-RYY1)/DYPA)+0.5) +1
-         END IF
-         IF (RYY2.LE.RY2.AND.RYY1.LT.RY1) THEN
-            CORNY1=1
-            CORNY2=INT(((RYY2-RY1)/DYPA)+0.5) + 1
-            CORNYY1=INT(((RY1-RYY1)/DYPA)+0.5) + 1
-            CORNYY2=NN2
-         END IF
-         IF (RYY1.LT.RY1.AND.RYY2.GT.RY2) THEN
-            CORNY1=1
-            CORNY2=N2
-            CORNYY1=INT(((RY1-RYY1)/DYPA)+0.5) + 1
-            CORNYY2=INT(((RY2-RYY1)/DYPA)+0.5) + 1
-         END IF
-
-*        Z
-         IF (RZZ1.GE.RZ1.AND.RZZ2.LE.RZ2) THEN
-            CORNZ1=INT(((RZZ1-RZ1)/DZPA)+0.5) + 1
-            CORNZ2=INT(((RZZ2-RZ1)/DZPA)+0.5) + 1
-            CORNZZ1=1
-            CORNZZ2=NN3
-         END IF
-         IF (RZZ1.GE.RZ1.AND.RZZ2.GT.RZ2) THEN
-            CORNZ1=INT(((RZZ1-RZ1)/DZPA)+0.5) + 1
-            CORNZ2=N3
-            CORNZZ1=1
-            CORNZZ2=INT(((RZ2-RZZ1)/DZPA)+0.5) +1
-         END IF
-         IF (RZZ2.LE.RZ2.AND.RZZ1.LT.RZ1) THEN
-            CORNZ1=1
-            CORNZ2=INT(((RZZ2-RZ1)/DZPA)+0.5) + 1
-            CORNZZ1=INT(((RZ1-RZZ1)/DZPA)+0.5) + 1
-            CORNZZ2=NN3
-         END IF
-         IF (RZZ1.LT.RZ1.AND.RZZ2.GT.RZ2) THEN
-            CORNZ1=1
-            CORNZ2=N3
-            CORNZZ1=INT(((RZ1-RZZ1)/DZPA)+0.5) + 1
-            CORNZZ2=INT(((RZ2-RZZ1)/DZPA)+0.5) + 1
-         END IF
-
-
-*         MARCA(CORNXX1:CORNXX2,CORNYY1:CORNYY2,CORNZZ1:CORNZZ2,J)=1
-*         SOLAP(CORNXX1:CORNXX2,CORNYY1:CORNYY2,CORNZZ1:CORNZZ2,
-*     &         IR,J)=1
-*         SOLAPP(CORNXX1:CORNXX2,CORNYY1:CORNYY2,CORNZZ1:CORNZZ2,
-*      &         IR,J)=I
-
-
-
-***        celdas madre del nivel inferior
-*           DO KK=CORNZZ1,CORNZZ2
-*           DO JJ=CORNYY1,CORNYY2
-*           DO II=CORNXX1,CORNXX2
-*              IX=II-CORNXX1+CORNX1
-*              JY=JJ-CORNYY1+CORNY1
-*              KZ=KK-CORNZZ1+CORNZ1
-**              IF (MARCA(IX,JY,KZ,I).EQ.0) THEN
-*              IF (SOLAP(IX,JY,KZ,I).EQ.1) THEN
-**               MARCA(II,JJ,KK,J)=1
-****             the cell ii,jj,kk,ir,j overlaps ix,jy,kz,ir,i
-*               SOLAP(II,JJ,KK,J)=0
-*            END IF
-*           END DO
-*           END DO
-*           END DO
+*         Z
+          IF (RZZ1.GE.RZ1.AND.RZZ2.LE.RZ2) THEN
+             CORNZ1=INT(((RZZ1-RZ1)/DZPA)+0.5) + 1
+             CORNZ2=INT(((RZZ2-RZ1)/DZPA)+0.5) + 1
+             CORNZZ1=1
+             CORNZZ2=NN3
+          END IF
+          IF (RZZ1.GE.RZ1.AND.RZZ2.GT.RZ2) THEN
+             CORNZ1=INT(((RZZ1-RZ1)/DZPA)+0.5) + 1
+             CORNZ2=N3
+             CORNZZ1=1
+             CORNZZ2=INT(((RZ2-RZZ1)/DZPA)+0.5) +1
+          END IF
+          IF (RZZ2.LE.RZ2.AND.RZZ1.LT.RZ1) THEN
+             CORNZ1=1
+             CORNZ2=INT(((RZZ2-RZ1)/DZPA)+0.5) + 1
+             CORNZZ1=INT(((RZ1-RZZ1)/DZPA)+0.5) + 1
+             CORNZZ2=NN3
+          END IF
+          IF (RZZ1.LT.RZ1.AND.RZZ2.GT.RZ2) THEN
+             CORNZ1=1
+             CORNZ2=N3
+             CORNZZ1=INT(((RZ1-RZZ1)/DZPA)+0.5) + 1
+             CORNZZ2=INT(((RZ2-RZZ1)/DZPA)+0.5) + 1
+          END IF
 
 ***        celdas madre del nivel inferior
            DO KK=CORNZZ1,CORNZZ2
@@ -2207,20 +1861,18 @@ CX       END IF
               IX=II-CORNXX1+CORNX1
               JY=JJ-CORNYY1+CORNY1
               KZ=KK-CORNZZ1+CORNZ1
-*              CONTA2(IX,JY,KZ,I)=CONTA2(IX,JY,KZ,I)+1
-              IF (CONTA2(IX,JY,KZ,I).EQ.1) CONTA2(II,JJ,KK,J)=0
+              IF (SOLAP(IX,JY,KZ,I).EQ.1) SOLAP(II,JJ,KK,J)=0
            END DO
            END DO
            END DO
 
        END DO
        END DO
-
 
       RETURN
       END
 
-************************************************************* 
+*************************************************************
        SUBROUTINE MALLA(NX,NY,NZ,LADO)
 *************************************************************
 
