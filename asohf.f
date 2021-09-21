@@ -445,219 +445,204 @@
         REALCLUS(:,I)=0    !de momento no hay halos
         NLEVHAL(:,I)=0
         EIGENVAL(:,:,I)=0.0
-        END DO
+       END DO
 
-        IF (PLOT.GT.1) THEN   !MERGER TREE
+       IF (PLOT.GT.1) THEN   !MERGER TREE
 
-         ALLOCATE (DMLIP(MAXITER,PARTIRED_PLOT))
-         ALLOCATE (DMLIR(MAXITER,PARTIRED_PLOT))
-         ALLOCATE (NEW_MASAP(MAXITER,PARTIRED_PLOT))
-         ALLOCATE (NHOST(MAXITER,0:ININL,PARTIRED))
-         ALLOCATE (DAD(MAXITER,NMAXDAD,NMAXCLUS_PLOT))
-         ALLOCATE (NDAD(MAXITER,NMAXNCLUS))
-         ALLOCATE (HHOST(MAXITER,NMAXHOST,0:ININL,PARTIRED))
+        ALLOCATE (DMLIP(MAXITER,PARTIRED_PLOT))
+        ALLOCATE (DMLIR(MAXITER,PARTIRED_PLOT))
+        ALLOCATE (NEW_MASAP(MAXITER,PARTIRED_PLOT))
+        ALLOCATE (NHOST(MAXITER,0:ININL,PARTIRED))
+        ALLOCATE (DAD(MAXITER,NMAXDAD,NMAXCLUS_PLOT))
+        ALLOCATE (NDAD(MAXITER,NMAXNCLUS))
+        ALLOCATE (HHOST(MAXITER,NMAXHOST,0:ININL,PARTIRED))
 
-       NBASPART_PLOT=PARTIRED_PLOT
+        NBASPART_PLOT=PARTIRED_PLOT
 !$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DMLIP,DMLIR,
 !$OMP+             NEW_MASAP),PRIVATE(I)
-       DO I=1,NBASPART_PLOT
+        DO I=1,NBASPART_PLOT
          DMLIP(:,I)=0
          DMLIR(:,I)=0
          NEW_MASAP(:,I)=0.0
-       END DO
+        END DO
 
-       NBASPART_PLOT=PARTIRED
+        NBASPART_PLOT=PARTIRED
 !$OMP  PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
 !$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-        NHOST(:,:,I)=0
-        HHOST(:,:,:,I)=0
-       END DO
+        DO I=1,NBASPART_PLOT
+         NHOST(:,:,I)=0
+         HHOST(:,:,:,I)=0
+        END DO
 
-       NBASPART_PLOT=NMAXCLUS_PLOT
+        NBASPART_PLOT=NMAXCLUS_PLOT
 !$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
 !$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-           NDAD(:,I)=0
-           DAD(:,:,I)=0
-       END DO
+        DO I=1,NBASPART_PLOT
+         NDAD(:,I)=0
+         DAD(:,:,I)=0
+        END DO
 
-       IF (PLOT.EQ.2) THEN
-        ALLOCATE(RATIO(MAXITER,NMAXDAD,NMAXCLUS_PLOT))
-        NBASPART_PLOT=NMAXCLUS_PLOT
+        IF (PLOT.EQ.2) THEN
+         ALLOCATE(RATIO(MAXITER,NMAXDAD,NMAXCLUS_PLOT))
+         NBASPART_PLOT=NMAXCLUS_PLOT
 !$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
 !$OMP+            PRIVATE(I)
          DO I=1,NBASPART_PLOT
-            RATIO(:,:,I)=0.0
+          RATIO(:,:,I)=0.0
          END DO
-       END IF
-
-
+        END IF  !PLOT=2
        END IF  !PLOT>1
-
 
        CONTAITER=0
        MARK(1:NFILE2)=0
 
        INERTIA=0.0
 
-
-*///////////////////////////////////////////
-       DO IFI2=1, NFILE2
+*///////// MAIN LOOP (ITERATIONS) /////////
+*//////////////////////////////////////////
+       DO IFI2=1, NFILE2                 !/
+*//////////////////////////////////////////
 *//////////////////////////////////////////
 
-       CONTAITER=CONTAITER+1
-       ITER=FIRST+EVERY*(IFI2-1)
+        CONTAITER=CONTAITER+1
+        ITER=FIRST+EVERY*(IFI2-1)
 
-       IFI=CONTAITER
+        IFI=CONTAITER
 
-       IF (MARK(IFI2).EQ.0) THEN
+        IF (MARK(IFI2).EQ.0) THEN
 
-       MARK(IFI2)=1
+        MARK(IFI2)=1
 
-       WRITE(*,*)'STARTING ITER', ITER, IFI2, IFI
+        WRITE(*,*)'STARTING ITER', ITER, IFI2, IFI
 
-       PATCHNX=0
-       PATCHNY=0
-       PATCHNZ=0
-       PATCHX=0
-       PATCHY=0
-       PATCHZ=0
-       PATCHRX=0.0
-       PATCHRY=0.0
-       PATCHRZ=0.0
+        PATCHNX=0
+        PATCHNY=0
+        PATCHNZ=0
+        PATCHX=0
+        PATCHY=0
+        PATCHZ=0
+        PATCHRX=0.0
+        PATCHRY=0.0
+        PATCHRZ=0.0
 
-       NPATCH=0
-       PARE=0
-
+        NPATCH=0
+        PARE=0
 
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,U1G,UBAS1),PRIVATE(I,J,K)
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-       U1(I,J,K)=-1.0        !valores minimos
-       U1G(I,J,K)=-1.0
-       UBAS1(I,J,K)=0.0
-      END DO
-      END DO
-      END DO
+        DO K=1,NZ
+        DO J=1,NY
+        DO I=1,NX
+         U1(I,J,K)=-1.0        !valores minimos
+         U1G(I,J,K)=-1.0
+         UBAS1(I,J,K)=0.0
+        END DO
+        END DO
+        END DO
 
 **********
 *     cambio especial para paralelizar!!
 **********
-      N1=NAMRX                !dimension max de todos los parches
-      NPBAS=NPALEV            !numero total maximo de parches
-      PABAS=PARTIRED
-      NLEVBAS=NLEVELS         !numero maximo de niveles
-      NMAXNCLUSBAS=MAXNCLUS   !num max de candidatos a halo
+        N1=NAMRX                !dimension max de todos los parches
+        NPBAS=NPALEV            !numero total maximo de parches
+        PABAS=PARTIRED
+        NLEVBAS=NLEVELS         !numero maximo de niveles
+        NMAXNCLUSBAS=MAXNCLUS   !num max de candidatos a halo
 **********
 
 
 !$OMP PARALLEL DO SHARED(NPBAS,N1,U11,U11G),
 !$OMP+        PRIVATE(IX,JY,KZ,I)
-      DO I=1,NPBAS
-        DO KZ=1,N1
-        DO JY=1,N1
-        DO IX=1,N1
-         U11(IX,JY,KZ,I)=-1.0
-         U11G(IX,JY,KZ,I)=-1.0
+        DO I=1,NPBAS
+         DO KZ=1,N1
+         DO JY=1,N1
+         DO IX=1,N1
+          U11(IX,JY,KZ,I)=-1.0
+          U11G(IX,JY,KZ,I)=-1.0
+         END DO
+         END DO
+         END DO
         END DO
-        END DO
-        END DO
-       END DO
 
-
-cc!$OMP PARALLEL DO SHARED(NHALLEV,NPART,NLEVBAS),
-cc!$OMP+        PRIVATE(IR)
-c       DO IR=0,NLEVBAS
         NHALLEV=0
         NPART=0
-c       END DO
-
-
 
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,MASA,RADIO,
 !$OMP+                   CLUSRX,CLUSRY,CLUSRZ,LEVHAL,NSOLAP),
 !$OMP+            PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-        CLUSRX(I)=0.0
-        CLUSRY(I)=0.0
-        CLUSRZ(I)=0.0
-        MASA(I)=0.0
-        RADIO(I)=0.0
-        LEVHAL(I)=0
-        NSOLAP(I)=0
-       END DO
+        DO I=1,NMAXNCLUSBAS
+         CLUSRX(I)=0.0
+         CLUSRY(I)=0.0
+         CLUSRZ(I)=0.0
+         MASA(I)=0.0
+         RADIO(I)=0.0
+         LEVHAL(I)=0
+         NSOLAP(I)=0
+        END DO
 
+        NCLUS=0
+        CMX=0.0
+        CMY=0.0
+        CMZ=0.0
+        MASA2=0.0
+        ROTE=0.0
+        RETE=0.0
 
-       NCLUS=0
-       CMX=0.0
-       CMY=0.0
-       CMZ=0.0
-       MASA2=0.0
-       ROTE=0.0
-       RETE=0.0
-
-       SUBHALOS=0
-       SOLAPA=0
-
+        SUBHALOS=0
+        SOLAPA=0
 
 !$OMP PARALLEL DO SHARED(PABAS,U2DM,U3DM,U4DM,RXPA,RYPA,RZPA,
 !$OMP+                   MASAP,ORIPA1,ORIPA2,LIP,LIR,CONTADM),
 !$OMP+            PRIVATE(I)
-       DO I=1,PABAS
-        U2DM(I)=0.0
-        U3DM(I)=0.0
-        U4DM(I)=0.0
-        RXPA(I)=0.0
-        RYPA(I)=0.0
-        RZPA(I)=0.0
-        MASAP(I)=0.0
-        ORIPA1(I)=0
-        ORIPA2(I)=0
+        DO I=1,PABAS
+         U2DM(I)=0.0
+         U3DM(I)=0.0
+         U4DM(I)=0.0
+         RXPA(I)=0.0
+         RYPA(I)=0.0
+         RZPA(I)=0.0
+         MASAP(I)=0.0
+         ORIPA1(I)=0
+         ORIPA2(I)=0
 
-        LIP(I)=0         !si PARTI=PARTIRED!!!!!
-        LIR(I)=0         !si PARTI=PARTIRED!!!!!
-        CONTADM(I)=0     !si PARTI=PARTIRED!!!!!
-       END DO
-
+         LIP(I)=0         !si PARTI=PARTIRED!!!!!
+         LIR(I)=0         !si PARTI=PARTIRED!!!!!
+         CONTADM(I)=0     !si PARTI=PARTIRED!!!!!
+        END DO
 
 ***************************************************
-*     READING INITIAL DATA
+*     READING INPUT DATA
 ***************************************************
 
        IF (FLAG_SA.EQ.1) THEN
+*       Reading MASCLETs files directly
+        CALL LEER(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
+     &            PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
+     &            PATCHRX,PATCHRY,PATCHRZ,MAP,U2DM,U3DM,U4DM,MASAP,
+     &            NPART,RXPA,RYPA,RZPA)
 
-*      Reading MASCLETs files directly
-       CALL LEER(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
-     &           PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-     &           PATCHRX,PATCHRY,PATCHRZ,MAP,
-     &           U2DM,U3DM,U4DM,MASAP,NPART,RXPA,RYPA,RZPA)
+        ROTE=RODO*(1.0+ZETA)**3
+        RETE=RE0/(1.0+ZETA)
 
-
-       ROTE=RODO*(1.0+ZETA)**3
-       RETE=RE0/(1.0+ZETA)
-
-       ZETAS(IFI)=ZETA
-       TIEMPO(IFI)=T
+        ZETAS(IFI)=ZETA
+        TIEMPO(IFI)=T
 
        ELSE
-
-*      Reading external list of particles
-       COTA=5.0           !OJO! hay que poner a mano el valor de las COTAS!
-       WRITE(*,*)'COTA=', COTA
-
+*      Reading external list of particles (either Masclet particles
+*      or a general list of particles, depending on FLAG_MASCLET)
        WRITE(*,*)'***********************'
        WRITE(*,*)'***** MESHRENOEF ******'
        WRITE(*,*)'***********************'
 
-       WRITE(*,*)'Building the grid...', ITER, IFI2, IFI
+       COTA=5.0           !OJO! hay que poner a mano el valor de las COTAS!
+       WRITE(*,*)'COTA=', COTA
+
+       WRITE(*,*)'==== Building the grid...', ITER, IFI2, IFI
        CALL MESHRENOEF(ITER,NX,NY,NZ,NL,COTA,NPATCH,
      &             NPART,PATCHNX,PATCHNY,PATCHNZ,
      &             PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
      &             PATCHRZ,PARE,U2DM,U3DM,U4DM,MASAP,MAP,
      &             RXPA,RYPA,RZPA,ZETA,T,LADO0,FLAG_MASCLET,PLOT)
-       WRITE(*,*)'END building the grid...', ITER, IFI2, IFI
+       WRITE(*,*)'==== END building the grid...', ITER, IFI2, IFI
 
        ROTE=RODO*(1.0+ZETA)**3
        RETE=RE0/(1.0+ZETA)
