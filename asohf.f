@@ -212,17 +212,17 @@
 
 *      ---STAND-ALONE HALO FINDER---
        INTEGER FLAG_SA,FLAG_GAS,FLAG_MASCLET,FLAG_WDM
-       INTEGER N_GAS,N_DM
+       INTEGER N_GAS,N_DM,N_PARTICLES
        REAL*4 COTA(NCOTAS,0:NLEVELS)
 
 *      ---UNBINDING---
        REAL*4 REF_MIN, REF_MAX
        INTEGER SALIDA,FAC
-       REAL*4 DISTA(0:PARTI), DISTA2(0:PARTI)
-       INTEGER QUIEN(PARTI), QUIEN2(PARTI)
-       INTEGER INDICE(PARTI)
+       REAL*4 DISTA(0:PARTIRED), DISTA2(0:PARTIRED)
+       INTEGER QUIEN(PARTIRED), QUIEN2(PARTIRED)
+       INTEGER INDICE(PARTIRED)
 
-       REAL*4 DENSITOT(0:PARTI/10),RADIAL(0:PARTI/10)
+       REAL*4 DENSITOT(0:PARTIRED/10),RADIAL(0:PARTIRED/10)
        REAL*4 DENSA,DENSB,DENSC,NORMA
 
        REAL*4 KK_REAL,KK_REAL_2
@@ -277,7 +277,7 @@
        READ(1,*)
        READ(1,*) NX,NY,NZ
        READ(1,*)
-       READ(1,*) NDXYZ
+       READ(1,*) N_GAS,N_DM
        READ(1,*)
        READ(1,*) ACHE,OMEGA0
        READ(1,*)
@@ -305,6 +305,7 @@
 
        CLOSE(1)
 
+       N_PARTICLES=N_GAS+N_DM
        H2=ACHE
        MPAPOLEV(1:100)=LIM   !max. num. of patches per level, 100 levels max.
 
@@ -614,24 +615,60 @@
 ***************************************************
 
        IF (FLAG_SA.EQ.1) THEN
-*       Reading MASCLETs files directly
-        CALL LEER(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
+*       Reading MASCLET files directly
+        CALL READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
      &            PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &            PATCHRX,PATCHRY,PATCHRZ,MAP,U2DM,U3DM,U4DM,MASAP,
-     &            NPART,RXPA,RYPA,RZPA)
+     &            NPART,RXPA,RYPA,RZPA,N_DM)
 
+        ! Background cosmology variables
         ROTE=RODO*(1.0+ZETA)**3
         RETE=RE0/(1.0+ZETA)
-
         ZETAS(IFI)=ZETA
         TIEMPO(IFI)=T
 
        ELSE
-*      Reading external list of particles (either Masclet particles
-*      or a general list of particles, depending on FLAG_MASCLET)
+*       Reading external list of particles (either Masclet particles
+*       or a general list of particles, depending on FLAG_MASCLET)
+        IF (FLAG_MASCLET.EQ.1) THEN
+         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
+     &                               U2DM,U3DM,U4DM,MASAP,RXPA,
+     &                               RYPA,RZPA,N_DM)
+        ELSE
+         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
+     &                               U2DM,U3DM,U4DM,MASAP,RXPA,
+     &                               RYPA,RZPA,LADO0,N_GAS,N_DM,
+     &                               N_PARTICLES)
+        END IF
+
+!      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE
+       !NPART=0
+       !NPART=N_DM
+
+        ! Background cosmology variables
+        ROTE=RODO*(1.0+ZETA)**3
+        RETE=RE0/(1.0+ZETA)
+        ZETAS(IFI)=ZETA
+        TIEMPO(IFI)=T
+
        WRITE(*,*)'***********************'
        WRITE(*,*)'***** MESHRENOEF ******'
        WRITE(*,*)'***********************'
+
+C       write(*,*) n_gas,n_dm,n_particles
+C       write(*,*) minval(rxpa(1:n_particles)),
+C     &            maxval(rxpa(1:n_particles))
+C       write(*,*) minval(rypa(1:n_particles)),
+C     &            maxval(rypa(1:n_particles))
+C       write(*,*) minval(rzpa(1:n_particles)),
+C     &            maxval(rzpa(1:n_particles))
+C       write(*,*) minval(u2dm(1:n_particles)),
+C     &            maxval(u2dm(1:n_particles))
+C       write(*,*) minval(u3dm(1:n_particles)),
+C     &            maxval(u3dm(1:n_particles))
+C       write(*,*) minval(u4dm(1:n_particles)),
+C     &            maxval(u4dm(1:n_particles))
+C      STOP
 
        COTA=5.0           !OJO! hay que poner a mano el valor de las COTAS!
        WRITE(*,*)'COTA=', COTA

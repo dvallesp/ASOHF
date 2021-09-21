@@ -234,24 +234,6 @@
 
        CLOSE(5)
 
-
-
-************************************
-*      SEPARO LAS PARTI EN ESPECIES
-************************************
-       NDM_ESP(1)=NDMXYZ        !!!only DM particles
-CX        NDM_ESP(1)=NPARTICULAS
-
-       DO I=1, N_ESP
-        WRITE(*,*) 'Particles of especie ', I,'= ',NDM_ESP(I)
-       END DO
-
-       IF (N_DM.NE.SUM(NDM_ESP(1:N_ESP))) THEN
-        WRITE(*,*) 'WARNING: ESPECIES!'
-        STOP
-       END IF
-***********************
-
 *DM
        WRITE(*,*) '///DM///'
        WRITE(*,*) MAXVAL(RXPA(1:N_DM)),

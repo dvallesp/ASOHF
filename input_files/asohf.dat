@@ -3,18 +3,18 @@ Files: first, last, every ------------------->
 4000,4000,50
 Cells per direction (NX,NY,NZ)--------------->
 128,128,128
-DM particles -------------------------------->
-2097152
+GAS,DM particles (all levels)----------------->
+0,21943314
 Hubble constant (h), omega matter ----------->
 0.678,0.31
 Initial redshift, box size (Mpc) ------------>
 100.0, 40.0
 Parallel(=1),serial(=0)/ Number of processors-->
-0,1
+1,8
 Number of levels to read --------------------->
 9
 PARCHLIM(=0 no limit patches/level,>0 limit)->
-1
+0
 LIM=max num patches/level(needs PARCHLIM>0)-->
 1000
 Variable: 1(gas), 2(dm), 0(gas+dm)----------->
@@ -29,4 +29,3 @@ FLAG_SA,FLAG_MASCLET,FLAG_GAS----------------->
 0,1,0
 FLAG_WDM (=1 write DM particles, =0 no)------->
 0
-
