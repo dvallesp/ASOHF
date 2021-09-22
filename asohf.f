@@ -631,7 +631,7 @@
 *       Reading external list of particles (either Masclet particles
 *       or a general list of particles, depending on FLAG_MASCLET)
         IF (FLAG_MASCLET.EQ.1) THEN
-         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
+         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,MAP,
      &                               U2DM,U3DM,U4DM,MASAP,RXPA,
      &                               RYPA,RZPA,N_DM)
         ELSE
@@ -644,6 +644,9 @@
 !      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE
        !NPART=0
        !NPART=N_DM
+       ! for now, we will leave it like this for this to work temporarily
+        NPART=0
+        NPART(0)=N_PARTICLES
 
         ! Background cosmology variables
         ROTE=RODO*(1.0+ZETA)**3
@@ -651,9 +654,9 @@
         ZETAS(IFI)=ZETA
         TIEMPO(IFI)=T
 
-       WRITE(*,*)'***********************'
-       WRITE(*,*)'***** MESHRENOEF ******'
-       WRITE(*,*)'***********************'
+        WRITE(*,*)'***********************'
+        WRITE(*,*)'***** MESHRENOEF ******'
+        WRITE(*,*)'***********************'
 
 C       write(*,*) n_gas,n_dm,n_particles
 C       write(*,*) minval(rxpa(1:n_particles)),
@@ -670,22 +673,13 @@ C       write(*,*) minval(u4dm(1:n_particles)),
 C     &            maxval(u4dm(1:n_particles))
 C      STOP
 
-       COTA=5.0           !OJO! hay que poner a mano el valor de las COTAS!
-       WRITE(*,*)'COTA=', COTA
-
-       WRITE(*,*)'==== Building the grid...', ITER, IFI2, IFI
-       CALL MESHRENOEF(ITER,NX,NY,NZ,NL,COTA,NPATCH,
-     &             NPART,PATCHNX,PATCHNY,PATCHNZ,
-     &             PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
-     &             PATCHRZ,PARE,U2DM,U3DM,U4DM,MASAP,MAP,
-     &             RXPA,RYPA,RZPA,ZETA,T,LADO0,FLAG_MASCLET,PLOT)
-       WRITE(*,*)'==== END building the grid...', ITER, IFI2, IFI
-
-       ROTE=RODO*(1.0+ZETA)**3
-       RETE=RE0/(1.0+ZETA)
-
-       ZETAS(IFI)=ZETA
-       TIEMPO(IFI)=T
+        WRITE(*,*)'==== Building the grid...', ITER, NL
+        CALL CREATE_MESH(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
+     &                   PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
+     &                   PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+     &                   N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+        WRITE(*,*)'==== END building the grid...', ITER, NL
+        STOP
 
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,RETE,ROTE),PRIVATE(I,J,K)
       DO K=1,NZ

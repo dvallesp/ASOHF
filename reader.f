@@ -255,7 +255,7 @@ c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
        END
 
 *********************************************************************
-       SUBROUTINE READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
+       SUBROUTINE READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,MAP,
      &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,N_DM)
 *********************************************************************
 *      Reads MASCLET data: grids and DM particles information.
