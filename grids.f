@@ -632,7 +632,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
        PLEV(I)=0
       END DO
 
-      DO IR=9,1,-1
+      DO IR=NL_MESH,1,-1
        LOW1=SUM(NPATCH(0:IR-1))+1
        LOW2=SUM(NPATCH(0:IR))
        DXPA=DX/2.0**IR
@@ -665,12 +665,12 @@ C        WRITE(*,*) LVAL(I,IPARE)
        END DO
       END DO
 
-      DO IR=0,9
+      DO IR=0,NL_MESH
        WRITE(*,*) 'Particles at level',IR,
      &             COUNT(PLEV(1:N_PARTICLES).EQ.IR)
       END DO
 
-      DO IR=9,1,-1
+      DO IR=NL_MESH,1,-1
        NBAS=COUNT(PLEV(1:N_PARTICLES).GE.IR)
        ALLOCATE(RXPA2(NBAS),RYPA2(NBAS),RZPA2(NBAS),MASAP2(NBAS))
 
@@ -817,7 +817,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
        end do
        WRITE(*,*) 'At level',IR,bas,
      &                          maxval(u11(:,:,:,low1:low2))
-      END DO !ir=9,1,-1
+      END DO !ir=NL_MESH,1,-1
 
       ! NOW, BASE GRID.
       XL=-LADO0/2.0
@@ -1220,6 +1220,160 @@ C        WRITE(*,*) LVAL(I,IPARE)
 
       RETURN
       END
+
+***********************************************************************
+      SUBROUTINE COMPUTE_CR0AMR(NL,NX,NY,NZ,NPATCH,PARE,PATCHNX,PATCHNY,
+     &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                     PATCHRY,PATCHRZ,CR0AMR,CR0AMR1,LADO0)
+***********************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NL,NX,NY,NZ
+       INTEGER NPATCH(0:NLEVELS)
+       INTEGER PARE(NPALEV)
+       INTEGER PATCHNX(NPALEV)
+       INTEGER PATCHNY(NPALEV)
+       INTEGER PATCHNZ(NPALEV)
+       INTEGER PATCHX(NPALEV)
+       INTEGER PATCHY(NPALEV)
+       INTEGER PATCHZ(NPALEV)
+       REAL*4  PATCHRX(NPALEV)
+       REAL*4  PATCHRY(NPALEV)
+       REAL*4  PATCHRZ(NPALEV)
+       INTEGER CR0AMR(NMAX,NMAY,NMAZ)
+       INTEGER CR0AMR1(NAMRX,NAMRY,NAMRZ,NPALEV)
+       REAL*4 LADO0
+
+       INTEGER IX,JY,KZ,IR,LOW1,LOW2,I,L1,L2,L3,CR1,CR2,CR3,MARCA,II
+       INTEGER LOW3,LOW4
+       REAL DXPA,DYPA,DZPA,DX,DY,DZ,XX,XX1,XX2,YY,YY1,YY2,ZZ,ZZ1,ZZ2
+       REAL BAS1,BAS2,BAS3
+
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,CR0AMR),PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX
+        CR0AMR(IX,JY,KZ)=1
+       END DO
+       END DO
+       END DO
+
+       DO IR=1,NL
+        LOW1=SUM(NPATCH(0:IR-1))+1
+        LOW2=SUM(NPATCH(0:IR))
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,CR0AMR1),PRIVATE(I),DEFAULT(NONE)
+        DO I=LOW1,LOW2
+         CR0AMR1(:,:,:,i)=1
+        END DO
+       END DO
+
+       IR=1
+!$OMP PARALLEL DO SHARED(IR,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
+!$OMP+                   PATCHX,PATCHY,PATCHZ),
+!$OMP+            PRIVATE(I,L1,L2,L3,IX,JY,KZ,CR1,CR2,CR3),
+!$OMP+            REDUCTION(MIN:CR0AMR),DEFAULT(NONE)
+       DO I=1,NPATCH(IR)
+        L1=PATCHX(I)
+        L2=PATCHY(I)
+        L3=PATCHZ(I)
+        DO KZ=1,PATCHNZ(I),2
+        DO JY=1,PATCHNY(I),2
+        DO IX=1,PATCHNX(I),2
+*        celdas madre del nivel inferior
+         CR1=L1-1+INT((IX+1)/2)
+         CR2=L2-1+INT((JY+1)/2)
+         CR3=L3-1+INT((KZ+1)/2)
+         CR0AMR(CR1,CR2,CR3)=0
+        END DO
+        END DO
+        END DO
+       END DO
+
+       DO IR=2,NL
+        LOW1=SUM(NPATCH(0:IR-1))+1
+        LOW2=SUM(NPATCH(0:IR))
+!$OMP  PARALLEL DO SHARED(IR,PATCHX,PATCHY,PATCHZ,PARE,
+!$OMP+         PATCHNX,PATCHNY,PATCHNZ,LOW1,LOW2,CR0AMR1),
+!$OMP+         PRIVATE(I,L1,L2,L3,IX,JY,KZ,CR1,CR2,CR3),DEFAULT(NONE)
+        DO I=LOW1,LOW2
+         L1=PATCHX(I)
+         L2=PATCHY(I)
+         L3=PATCHZ(I)
+         DO KZ=1,PATCHNZ(I)
+         DO JY=1,PATCHNY(I)
+         DO IX=1,PATCHNX(I)
+*        celdas madre del nivel inferior
+          CR1=L1-1+INT((IX+1)/2)
+          CR2=L2-1+INT((JY+1)/2)
+          CR3=L3-1+INT((KZ+1)/2)
+          CR0AMR1(CR1,CR2,CR3,PARE(I))=0
+         END DO
+         END DO
+         END DO
+        END DO
+       END DO
+
+       DX=LADO0/NX
+       DY=LADO0/NY
+       DZ=LADO0/NZ
+       DO IR=1,NL-1
+        DXPA=DX/(2.**IR)
+        DYPA=DY/(2.**IR)
+        DZPA=DZ/(2.**IR)
+        LOW1=SUM(NPATCH(0:IR-1))+1
+        LOW2=SUM(NPATCH(0:IR))
+!$OMP PARALLEL DO SHARED(IR,NL,DXPA,DYPA,DZPA,DX,DY,DZ,LOW1,LOW2,
+!$OMP+            NPATCH,PATCHNZ,PATCHNY,PATCHNX,CR0AMR1,
+!$OMP+            PATCHRX,PATCHRY,PATCHRZ,PARE),
+!$OMP+      PRIVATE(I,KZ,JY,IX,XX,YY,ZZ,LOW3,LOW4,II,
+!$OMP+            XX1,YY1,ZZ1,XX2,YY2,ZZ2,BAS1,BAS2,BAS3,MARCA),
+!$OMP+      DEFAULT(NONE)
+        DO I=LOW1,LOW2
+         DO KZ=1,PATCHNZ(I)
+         DO JY=1,PATCHNY(I)
+         DO IX=1,PATCHNX(I)
+          IF (CR0AMR1(IX,JY,KZ,I).EQ.1) THEN
+*         celdas madre del nivel inferior
+           XX=PATCHRX(I)-0.5*DXPA+(IX-1)*DXPA
+           YY=PATCHRY(I)-0.5*DYPA+(JY-1)*DYPA
+           ZZ=PATCHRZ(I)-0.5*DZPA+(KZ-1)*DZPA
+           MARCA=0
+
+*      FILLS
+           LOW3=SUM(NPATCH(0:IR))+1
+           LOW4=SUM(NPATCH(0:IR+1))
+           DO II=LOW3,LOW4
+            IF (PARE(II).NE.I) THEN
+             XX1=PATCHRX(II)-0.5*(DXPA*0.5)
+             YY1=PATCHRY(II)-0.5*(DYPA*0.5)
+             ZZ1=PATCHRZ(II)-0.5*(DZPA*0.5)
+             XX2=XX1+(PATCHNX(II)-1)*DXPA*0.5
+             YY2=YY1+(PATCHNY(II)-1)*DYPA*0.5
+             ZZ2=ZZ1+(PATCHNZ(II)-1)*DZPA*0.5
+
+             BAS1=(XX-XX1)*(XX2-XX)
+             BAS2=(YY-YY1)*(YY2-YY)
+             BAS3=(ZZ-ZZ1)*(ZZ2-ZZ)
+             IF (BAS1.GE.0.0.AND.BAS2.GE.0.0.
+     &           AND.BAS3.GE.0.0) THEN
+              CR0AMR1(IX,JY,KZ,I)=0   !quiere decir que esta refinada esta celda
+              MARCA=1
+             END IF
+            END IF
+            IF (MARCA.EQ.1) EXIT
+           END DO
+          END IF
+         END DO
+         END DO
+         END DO
+        END DO
+       END DO
+
+      END
+
 
 ************************************************************************
        SUBROUTINE MESHRENOEF_OLD(ITER,NX,NY,NZ,NL,COTA,NPATCH,

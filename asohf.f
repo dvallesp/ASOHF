@@ -259,6 +259,8 @@
        REAL*4, ALLOCATABLE:: MASAP_PARAL(:,:)
        INTEGER NN, IP, NH, IP2
 
+       INTEGER TEMP0(NMAX,NMAY,NMAZ)
+       INTEGER TEMP1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
 **************************************************************
 *      OPENING FILES
@@ -718,6 +720,26 @@
      &           PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
      &           CONTA2,VECINO,NVECI)
        END DO
+
+c       CALL COMPUTE_CR0AMR(NL,NX,NY,NZ,NPATCH,PARE,PATCHNX,PATCHNY,
+c     &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+c     &                     PATCHRY,PATCHRZ,TEMP0,TEMP1,LADO0)
+c
+c       OPEN(99,FILE='output_files/density',STATUS='UNKNOWN',
+c     &      FORM='UNFORMATTED')
+c         write(99) (((u1(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
+c         write(99) (((temp0(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
+c         do i=1,sum(npatch(0:nl))
+c          n1=patchnx(i)
+c          n2=patchny(i)
+c          n3=patchnz(i)
+c          write(99) (((u11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+c          write(99) (((temp1(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+c          write(99) (((conta2(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+c         end do
+c       CLOSE(99)
+c
+c       stop
 
 
        DO IR=1,NL
