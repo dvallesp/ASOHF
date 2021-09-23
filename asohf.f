@@ -658,95 +658,17 @@
         WRITE(*,*)'***** MESHRENOEF ******'
         WRITE(*,*)'***********************'
 
-C       write(*,*) n_gas,n_dm,n_particles
-C       write(*,*) minval(rxpa(1:n_particles)),
-C     &            maxval(rxpa(1:n_particles))
-C       write(*,*) minval(rypa(1:n_particles)),
-C     &            maxval(rypa(1:n_particles))
-C       write(*,*) minval(rzpa(1:n_particles)),
-C     &            maxval(rzpa(1:n_particles))
-C       write(*,*) minval(u2dm(1:n_particles)),
-C     &            maxval(u2dm(1:n_particles))
-C       write(*,*) minval(u3dm(1:n_particles)),
-C     &            maxval(u3dm(1:n_particles))
-C       write(*,*) minval(u4dm(1:n_particles)),
-C     &            maxval(u4dm(1:n_particles))
-C      STOP
-
         WRITE(*,*)'==== Building the grid...', ITER, NL
         CALL CREATE_MESH(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &                   PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
      &                   PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
      &                   N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
         WRITE(*,*)'==== END building the grid...', ITER, NL
-        STOP
 
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,RETE,ROTE),PRIVATE(I,J,K)
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-       U1(I,J,K)=U1(I,J,K)/(RETE*RETE*RETE)
-       U1(I,J,K)=(U1(I,J,K)/ROTE)-1.0
-      END DO
-      END DO
-      END DO
-
-       DO IR=1,NL
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-!$OMP PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                   U11,RETE,ROTE,LOW1,LOW2),
-!$OMP+            PRIVATE(IX,JY,KZ,N1,N2,N3,I)
-        DO I=LOW1,LOW2
-         N1=PATCHNX(I)
-         N2=PATCHNY(I)
-         N3=PATCHNZ(I)
-         DO KZ=1,N3
-         DO JY=1,N2
-         DO IX=1,N1
-          U11(IX,JY,KZ,I)=U11(IX,JY,KZ,I)/(RETE*RETE*RETE)
-          U11(IX,JY,KZ,I)=(U11(IX,JY,KZ,I)/ROTE)-1.0
-         END DO
-         END DO
-         END DO
-        END DO
-       END DO
-
-
-       IF (FLAG_GAS.EQ.1) THEN
-
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1G,RETE,ROTE),PRIVATE(I,J,K)
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-       U1G(I,J,K)=U1G(I,J,K)/(RETE*RETE*RETE)
-       U1G(I,J,K)=(U1G(I,J,K)/ROTE)-1.0
-      END DO
-      END DO
-      END DO
-
-       DO IR=1,NL
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-!$OMP PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                   U11G,RETE,ROTE,LOW1,LOW2),
-!$OMP+            PRIVATE(IX,JY,KZ,N1,N2,N3,I)
-       DO I=LOW1,LOW2
-        N1=PATCHNX(I)
-        N2=PATCHNY(I)
-        N3=PATCHNZ(I)
-        DO KZ=1,N3
-        DO JY=1,N2
-        DO IX=1,N1
-         U11G(IX,JY,KZ,I)=U11G(IX,JY,KZ,I)/(RETE*RETE*RETE)
-         U11G(IX,JY,KZ,I)=(U11G(IX,JY,KZ,I)/ROTE)-1.0
-        END DO
-        END DO
-        END DO
-       END DO
-       END DO
-
-       END IF
+        CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,
+     &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
+     &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
+     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
 
        WRITE(*,*)'***************************'
        WRITE(*,*)'***** END MESHRENOEF ******'
@@ -783,126 +705,6 @@ C      STOP
      &                          CONTRASTEC*ROTE,CONTRASTEC/RODO
        WRITE(*,*)'CONTRASTEC_200=',200.0*ROTE*OMEGA0,200.0/OMEGAZ
        WRITE(*,*) '************************************************'
-
-
-****************************************************************
-*      Joining all the densities in U1 and U11
-****************************************************************
-       WRITE(*,*) 'U1_000', MAXVAL(U1(1:NX,1:NY,1:NZ)),
-     &                      MINVAL(U1(1:NX,1:NY,1:NZ))
-       WRITE(*,*) 'U1G_000',MAXVAL(U1G(1:NX,1:NY,1:NZ)),
-     &                      MINVAL(U1G(1:NX,1:NY,1:NZ))
-
-*      --Only GAS--
-       IF (VAR.EQ.1.AND.FLAG_GAS.EQ.1) THEN
-
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,U1G),PRIVATE(I,J,K)
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-       U1(I,J,K)=U1G(I,J,K)+1.0
-      END DO
-      END DO
-      END DO
-
-       DO IR=1,NL
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-!$OMP PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                   U11,U11G,LOW1,LOW2),
-!$OMP+            PRIVATE(IX,JY,KZ,N1,N2,N3,I)
-       DO I=LOW1,LOW1
-        N1=PATCHNX(I)
-        N2=PATCHNY(I)
-        N3=PATCHNZ(I)
-        DO KZ=1,N3
-        DO JY=1,N2
-        DO IX=1,N1
-         U11(IX,JY,KZ,I)=U11G(IX,JY,KZ,I)+1.0
-        END DO
-        END DO
-        END DO
-       END DO
-       END DO
-
-
-       END IF   !ONLY_GAS
-
-*      --Only DM--
-       IF (VAR.EQ.2) THEN
-
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1),PRIVATE(I,J,K)
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-       U1(I,J,K)=U1(I,J,K)+1.0
-      END DO
-      END DO
-      END DO
-
-      DO IR=1,NL
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-!$OMP PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                   U11,LOW1,LOW2),
-!$OMP+            PRIVATE(IX,JY,KZ,N1,N2,N3,I)
-       DO I=LOW1, LOW2
-        N1=PATCHNX(I)
-        N2=PATCHNY(I)
-        N3=PATCHNZ(I)
-        DO KZ=1,N3
-        DO JY=1,N2
-        DO IX=1,N1
-         U11(IX,JY,KZ,I)=U11(IX,JY,KZ,I)+1.0
-        END DO
-        END DO
-        END DO
-       END DO
-       END DO
-
-
-       END IF    !ONLY_DM
-
-*      --GAS+DM--
-       IF (VAR.EQ.0) THEN
-
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,U1G),PRIVATE(I,J,K)
-      DO K=1,NZ
-      DO J=1,NY
-      DO I=1,NX
-       U1(I,J,K)=U1(I,J,K)+U1G(I,J,K)+1.0
-      END DO
-      END DO
-      END DO
-
-
-      DO IR=1,NL
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-!$OMP PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                   U11,U11G,LOW1,LOW2),
-!$OMP+            PRIVATE(IX,JY,KZ,N1,N2,N3,I)
-       DO I=LOW1,LOW2
-        N1=PATCHNX(I)
-        N2=PATCHNY(I)
-        N3=PATCHNZ(I)
-        DO KZ=1,N3
-        DO JY=1,N2
-        DO IX=1,N1
-         U11(IX,JY,KZ,I)=U11(IX,JY,KZ,I)+U11G(IX,JY,KZ,I)+1.0
-        END DO
-        END DO
-        END DO
-       END DO
-       END DO
-
-       END IF  !GAS_&_DM
-
-
-       WRITE(*,*) 'U1_0',MAXVAL(U1(1:NX,1:NY,1:NZ)),
-     &                   MINVAL(U1(1:NX,1:NY,1:NZ))
-*************************************************************
-
 
 **************************************************************
 *      Cleaning overlaps of patches

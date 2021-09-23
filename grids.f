@@ -576,6 +576,347 @@ C        WRITE(*,*) LVAL(I,IPARE)
       END
 
 ************************************************************************
+      SUBROUTINE INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_MESH,NPATCH,PARE,
+     &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
+     &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
+     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+************************************************************************
+*     Creats a mesh hierarchy for the given particle distribution
+************************************************************************
+
+      IMPLICIT NONE
+
+      INCLUDE 'input_files/asohf_parameters.dat'
+
+*     function parameters
+      INTEGER ITER,NX,NY,NZ,NL_MESH,N_PARTICLES,N_DM,N_GAS
+      INTEGER NPATCH(0:NLEVELS),PARE(NPALEV)
+      INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
+      INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
+      REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
+      REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
+     &       MASAP(PARTIRED)
+      REAL LADO0,T,ZETA
+
+*     COMMON VARIABLES
+      REAL DX,DY,DZ
+      COMMON /ESPACIADO/ DX,DY,DZ
+
+      REAL  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
+      COMMON /GRID/  RADX,RADY,RADZ
+
+      REAL*4 RETE,HTE,ROTE
+      COMMON /BACK/ RETE,HTE,ROTE
+
+      REAL*4 U1(NMAX,NMAY,NMAZ)
+      REAL*4 U1G(NMAX,NMAY,NMAZ)
+      REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
+      REAL*4 U11G(NAMRX,NAMRY,NAMRZ,NPALEV)
+      COMMON /VARIA/ U1,U11,U1G,U11G
+
+*     LOCAL VARIABLES
+      INTEGER PLEV(PARTIRED) ! This variable has now a different content:
+      ! Now it will store the maximum mesh level of a particle.
+      REAL XL,YL,ZL,DXPA,DYPA,DZPA,XR,YR,ZR,XP,YP,ZP,BAS,DENBAS
+      INTEGER I,IX,JY,KZ,II,JJ,KK,N1,N2,N3,I1,I2,J1,J2,K1,K2,IR,IPATCH
+      INTEGER BUF,LOW1,LOW2,NBAS
+      REAL,ALLOCATABLE::RXPA2(:),RYPA2(:),RZPA2(:),MASAP2(:)
+      REAL MINIRADX(-2:NAMRX+3),MINIRADY(-2:NAMRY+3),
+     &     MINIRADZ(-2:NAMRZ+3)
+      REAL VX(-1:1),VY(-1:1),VZ(-1:1)
+
+      BUF=1 ! (1 cell extra buffer (TSC))
+
+!$OMP PARALLEL DO SHARED(N_PARTICLES,PLEV), PRIVATE(I), DEFAULT(NONE)
+      DO I=1,N_PARTICLES
+       PLEV(I)=0
+      END DO
+
+      DO IR=9,1,-1
+       LOW1=SUM(NPATCH(0:IR-1))+1
+       LOW2=SUM(NPATCH(0:IR))
+       DXPA=DX/2.0**IR
+       DYPA=DY/2.0**IR
+       DZPA=DZ/2.0**IR
+!$OMP PARALLEL DO SHARED(N_PARTICLES,PLEV,LOW1,LOW2,BUF,DXPA,DYPA,DZPA,
+!$OMP+                   PATCHRX,PATCHRY,PATCHRZ,PATCHNX,PATCHNY,
+!$OMP+                   PATCHNZ,RXPA,RYPA,RZPA,IR),
+!$OMP+            PRIVATE(I,IPATCH,XL,YL,ZL,XR,YR,ZR),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_PARTICLES
+        IF (PLEV(I).EQ.0) THEN
+         loop_patches: DO IPATCH=LOW1,LOW2
+          XL=PATCHRX(IPATCH)-(1+BUF)*DXPA
+          YL=PATCHRY(IPATCH)-(1+BUF)*DYPA
+          ZL=PATCHRZ(IPATCH)-(1+BUF)*DZPA
+          XR=XL+(PATCHNX(IPATCH)+2)*DXPA
+          YR=YL+(PATCHNY(IPATCH)+2)*DYPA
+          ZR=ZL+(PATCHNZ(IPATCH)+2)*DZPA
+          IF (XL.LT.RXPA(I).AND.RXPA(I).LT.XR) THEN
+           IF (YL.LT.RYPA(I).AND.RYPA(I).LT.YR) THEN
+            IF (ZL.LT.RZPA(I).AND.RZPA(I).LT.ZR) THEN
+             PLEV(I)=IR
+             EXIT loop_patches
+            END IF
+           END IF
+          END IF
+         END DO loop_patches
+        END IF
+       END DO
+      END DO
+
+      DO IR=0,9
+       WRITE(*,*) 'Particles at level',IR,
+     &             COUNT(PLEV(1:N_PARTICLES).EQ.IR)
+      END DO
+
+      DO IR=9,1,-1
+       NBAS=COUNT(PLEV(1:N_PARTICLES).GE.IR)
+       ALLOCATE(RXPA2(NBAS),RYPA2(NBAS),RZPA2(NBAS),MASAP2(NBAS))
+
+       II=0
+       DO I=1,N_PARTICLES
+        IF (PLEV(I).GE.IR) THEN
+         II=II+1
+         RXPA2(II)=RXPA(I)
+         RYPA2(II)=RYPA(I)
+         RZPA2(II)=RZPA(I)
+         MASAP2(II)=MASAP(I)
+        END IF
+       END DO
+
+       LOW1=SUM(NPATCH(0:IR-1))+1
+       LOW2=SUM(NPATCH(0:IR))
+       DXPA=DX/2.0**IR
+       DYPA=DY/2.0**IR
+       DZPA=DZ/2.0**IR
+       DENBAS=DXPA*DYPA*DZPA*ROTE*RETE**3
+
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHNX,PATCHNY,PATCHNZ,U11),
+!$OMP+            PRIVATE(IPATCH,N1,N2,N3,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO IPATCH=LOW1,LOW2
+        N1=PATCHNX(IPATCH)
+        N2=PATCHNY(IPATCH)
+        N3=PATCHNZ(IPATCH)
+        DO IX=1,N1
+        DO JY=1,N2
+        DO KZ=1,N3
+         U11(IX,JY,KZ,IPATCH)=0.0
+        END DO
+        END DO
+        END DO
+       END DO
+
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHRX,PATCHRY,PATCHRZ,BUF,DXPA,
+!$OMP+                   DYPA,DZPA,PATCHNX,PATCHNY,PATCHNZ,NBAS,
+!$OMP+                   RXPA2,RYPA2,RZPA2,MASAP2,U11,IR),
+!$OMP+            PRIVATE(IPATCH,XL,YL,ZL,XR,YR,ZR,N1,N2,N3,II,JJ,KK,
+!$OMP+                    MINIRADX,MINIRADY,MINIRADZ,I,XP,YP,ZP,IX,
+!$OMP+                    JY,KZ,BAS,VX,VY,VZ,I1,J1,K1),
+!$OMP+            DEFAULT(NONE)
+       DO IPATCH=LOW1,LOW2
+        XL=PATCHRX(IPATCH)-(1+BUF)*DXPA
+        YL=PATCHRY(IPATCH)-(1+BUF)*DYPA
+        ZL=PATCHRZ(IPATCH)-(1+BUF)*DZPA
+        N1=PATCHNX(IPATCH)
+        N2=PATCHNY(IPATCH)
+        N3=PATCHNZ(IPATCH)
+        XR=XL+(N1+2*BUF)*DXPA
+        YR=YL+(N2+2*BUF)*DYPA
+        ZR=ZL+(N3+2*BUF)*DZPA
+
+        DO II=-2,N1+3
+         MINIRADX(II)=PATCHRX(IPATCH)+(FLOAT(II)-1.5)*DXPA
+        END DO
+        DO JJ=-2,N2+3
+         MINIRADY(JJ)=PATCHRY(IPATCH)+(FLOAT(JJ)-1.5)*DYPA
+        END DO
+        DO KK=-2,N3+3
+         MINIRADZ(KK)=PATCHRZ(IPATCH)+(FLOAT(KK)-1.5)*DZPA
+        END DO
+
+        DO I=1,NBAS
+         XP=RXPA2(I)
+         YP=RYPA2(I)
+         ZP=RZPA2(I)
+         IF (XL.LT.XP.AND.XP.LT.XR) THEN
+          IF (YL.LT.YP.AND.YP.LT.YR) THEN
+           IF (ZL.LT.ZP.AND.ZP.LT.ZR) THEN
+            IX=INT((XP-XL)/DXPA)+1-BUF ! -BUF to account for the buffer
+            JY=INT((YP-YL)/DYPA)+1-BUF
+            KZ=INT((ZP-ZL)/DZPA)+1-BUF
+
+            BAS=ABS(XP-MINIRADX(IX-1))/DXPA
+            VX(-1)=0.5*(1.5-BAS)**2
+            BAS=ABS(XP-MINIRADX(IX))/DXPA
+            VX(0)=0.75-BAS**2
+            BAS=ABS(XP-MINIRADX(IX+1))/DXPA
+            VX(1)=0.5*(1.5-BAS)**2
+
+            BAS=ABS(YP-MINIRADY(JY-1))/DYPA
+            VY(-1)=0.5*(1.5-BAS)**2
+            BAS=ABS(YP-MINIRADY(JY))/DYPA
+            VY(0)=0.75-BAS**2
+            BAS=ABS(YP-MINIRADY(JY+1))/DYPA
+            VY(1)=0.5*(1.5-BAS)**2
+
+            BAS=ABS(ZP-MINIRADZ(KZ-1))/DZPA
+            VZ(-1)=0.5*(1.5-BAS)**2
+            BAS=ABS(ZP-MINIRADZ(KZ))/DZPA
+            VZ(0)=0.75-BAS**2
+            BAS=ABS(ZP-MINIRADZ(KZ+1))/DZPA
+            VZ(1)=0.5*(1.5-BAS)**2
+
+            DO KK=-1,1
+            DO JJ=-1,1
+            DO II=-1,1
+             I1=IX+II
+             J1=JY+JJ
+             K1=KZ+KK
+             IF (I1.GT.0.AND.I1.LE.N1.AND.
+     &           J1.GT.0.AND.J1.LE.N2.AND.
+     &           K1.GT.0.AND.K1.LE.N3) THEN
+              U11(I1,J1,K1,IPATCH)=U11(I1,J1,K1,IPATCH)
+     &                             +MASAP2(I)*VX(II)*VY(JJ)*VZ(KK)
+             END IF
+            END DO
+            END DO
+            END DO
+
+           END IF
+          END IF
+         END IF
+        END DO
+       END DO
+
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHNX,PATCHNY,PATCHNZ,DENBAS,U11),
+!$OMP+            PRIVATE(IPATCH,N1,N2,N3,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO IPATCH=LOW1,LOW2
+        N1=PATCHNX(IPATCH)
+        N2=PATCHNY(IPATCH)
+        N3=PATCHNZ(IPATCH)
+        DO IX=1,N1
+        DO JY=1,N2
+        DO KZ=1,N3
+         U11(IX,JY,KZ,IPATCH)=U11(IX,JY,KZ,IPATCH)/DENBAS
+        END DO
+        END DO
+        END DO
+       END DO
+
+       DEALLOCATE(RXPA2,RYPA2,RZPA2,MASAP2)
+
+       bas=1000.0
+       do i=low1,low2
+        n1=patchnx(i)
+        n2=patchny(i)
+        n3=patchnz(i)
+        bas=min(bas,minval(u11(1:n1,1:n2,1:n3,i)))
+       end do
+       WRITE(*,*) 'At level',IR,bas,
+     &                          maxval(u11(:,:,:,low1:low2))
+      END DO !ir=9,1,-1
+
+      ! NOW, BASE GRID.
+      XL=-LADO0/2.0
+      YL=-LADO0/2.0
+      ZL=-LADO0/2.0
+
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1), PRIVATE(IX,JY,KZ), DEFAULT(NONE)
+      DO KZ=1,NZ
+      DO JY=1,NY
+      DO IX=1,NX
+       U1(IX,JY,KZ)=0.0
+      END DO
+      END DO
+      END DO
+
+!$OMP PARALLEL DO SHARED(N_PARTICLES,RXPA,RYPA,RZPA,DX,DY,DZ,XL,YL,ZL,
+!$OMP+                   RADX,RADY,RADZ,NX,NY,NZ,U1,MASAP),
+!$OMP+            PRIVATE(I,XP,YP,ZP,IX,JY,KZ,BAS,VX,VY,VZ,II,JJ,KK,
+!$OMP+                    I1,J1,K1),
+!$OMP+            DEFAULT(NONE)
+      DO I=1,N_PARTICLES
+       XP=RXPA(I)
+       YP=RYPA(I)
+       ZP=RZPA(I)
+
+       IX=INT((XP-XL)/DX)+1
+       JY=INT((YP-YL)/DY)+1
+       KZ=INT((ZP-ZL)/DZ)+1
+       IF (IX.LT.1) IX=1
+       IF (IX.GT.NX) IX=NX
+       IF (JY.LT.1) JY=1
+       IF (JY.GT.NY) JY=NY
+       IF (KZ.LT.1) KZ=1
+       IF (KZ.GT.NZ) KZ=NZ
+
+       BAS=ABS(XP-RADX(IX-1))/DX
+       VX(-1)=0.5*(1.5-BAS)**2
+       BAS=ABS(XP-RADX(IX))/DX
+       VX(0)=0.75-BAS**2
+       BAS=ABS(XP-RADX(IX+1))/DX
+       VX(1)=0.5*(1.5-BAS)**2
+
+       BAS=ABS(YP-RADY(JY-1))/DY
+       VY(-1)=0.5*(1.5-BAS)**2
+       BAS=ABS(YP-RADY(JY))/DY
+       VY(0)=0.75-BAS**2
+       BAS=ABS(YP-RADY(JY+1))/DY
+       VY(1)=0.5*(1.5-BAS)**2
+
+       BAS=ABS(ZP-RADZ(KZ-1))/DZ
+       VZ(-1)=0.5*(1.5-BAS)**2
+       BAS=ABS(ZP-RADZ(KZ))/DZ
+       VZ(0)=0.75-BAS**2
+       BAS=ABS(ZP-RADZ(KZ+1))/DZ
+       VZ(1)=0.5*(1.5-BAS)**2
+
+       DO KK=-1,1
+       DO JJ=-1,1
+       DO II=-1,1
+        I1=IX+II
+        J1=JY+JJ
+        K1=KZ+KK
+        IF (I1.EQ.NX+1) I1=1
+        IF (I1.EQ.0) I1=NX
+        IF (J1.EQ.NY+1) J1=1
+        IF (J1.EQ.0) J1=NY
+        IF (K1.EQ.NZ+1) K1=1
+        IF (K1.EQ.0) K1=NZ
+        if (MASAP(I)*VX(II)*VY(JJ)*VZ(KK).lt.0) then
+         write(*,*) '-------'
+         write(*,*) xp,yp,zp
+         write(*,*) ix,jy,kz
+         write(*,*) ii,jj,kk
+         write(*,*) vx(ii),vy(jj),vz(kk)
+        end if
+        U1(I1,J1,K1)= U1(I1,J1,K1) + MASAP(I)*VX(II)*VY(JJ)*VZ(KK)
+       END DO
+       END DO
+       END DO
+
+      END DO
+
+      DENBAS=DX*DY*DZ*ROTE*RETE**3
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,DENBAS,U1), PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+      DO IX=1,NX
+      DO JY=1,NY
+      DO KZ=1,NZ
+       U1(IX,JY,KZ)=U1(IX,JY,KZ)/DENBAS
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'At level',0,minval(u1(:,:,:)),maxval(u1(:,:,:))
+
+      RETURN
+      END
+
+************************************************************************
       SUBROUTINE VEINSGRID_REDUCED(IR,NPATCH,PARE,
      &      PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &      PATCHRY,PATCHRZ,CR01,CONTA11,LOW1,LOW2)

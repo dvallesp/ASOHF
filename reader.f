@@ -363,7 +363,7 @@ C        READ(32) (ORIPA1(I),I=1,NDXYZ)   !OJO! las nuevas versioens de MASCLET 
      &                      MINVAL(ORIPA1(1:NDXYZ))
        WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:NDXYZ)),
      &                      MINVAL(ORIPA2(1:NDXYZ))
-       WRITE(*,*) 'NPART(0)=',IR, NPART(IR),CONTA
+       WRITE(*,*) 'NPART(0)=',IR, NPART(0),CONTA
 
        DO IR=1,NL
         LOW1=SUM(NPATCH(0:IR-1))+1
