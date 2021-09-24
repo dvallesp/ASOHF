@@ -1,4 +1,29 @@
 ********************************************************************
+       SUBROUTINE BRYAN_NORMAN_98(CONTRASTEC,OMEGAZ,OMEGA0,ZETA)
+****************************************************************
+*      VIRIAL CONTRAST (in terms of the BACKGROUND MATTER density)
+*      (Bryan & Norman ApJ, 1998)
+*      Delta_vir,c = 18*pi^2 + 82 x - 39 x^2; x=Omega_m(z)-1
+****************************************************************
+        IMPLICIT NONE
+
+        REAL CONTRASTEC,OMEGAZ ! intent:out
+        REAL OMEGA0,ZETA ! intent in
+        REAL CONTRASTEX,PI,OMEGALAMBDA0,BAS
+
+        PI=DACOS(-1.D0)
+        OMEGALAMBDA0=1.0-OMEGA0
+        BAS=OMEGA0*(1+ZETA)**3
+        OMEGAZ=BAS/(BAS+OMEGALAMBDA0)
+        CONTRASTEX=OMEGAZ - 1.0
+        CONTRASTEC= 18.0*PI**2 + 82.0*CONTRASTEX - 39.0*CONTRASTEX**2
+        CONTRASTEC=CONTRASTEC/OMEGAZ
+
+        RETURN
+
+       END
+
+********************************************************************
        SUBROUTINE OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
      &                       NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
      &                       PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,

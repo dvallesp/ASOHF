@@ -679,22 +679,12 @@
        END IF
 
 ****************************************************************
-*      VIRIAL CONTRAST
+*      VIRIAL CONTRAST ! gets CONTRASTEC and OMEGAZ
 *      (Bryan & Norman ApJ, 1998)
+*      Delta_vir,c = 18*pi^2 + 82 x - 39 x^2; x=Omega_m(z)-1
 ****************************************************************
-       CONTRASTEX=0.0
-       CONTRASTEC=0.0
-       OMEGAZ=0.0
-       CONTRASTEX=OMEGA0*(1.0+ZETA)**3
-       CONTRASTEX=CONTRASTEX/(CONTRASTEX+1.0-OMEGA0)
-       OMEGAZ=CONTRASTEX
-       CONTRASTEX=CONTRASTEX-1.0
-       CONTRASTEC=18.0*PI*PI+82.0*CONTRASTEX-39.0*CONTRASTEX*CONTRASTEX
-       CONTRASTEC=CONTRASTEC/OMEGAZ       !!!este es el correcto
-*****       CONTRASTEC=CONTRASTEC/OMEGA0    !!!!prueba!!!
-*
-*       CONTRASTEC=CONTRASTEC*1000.0
-*
+       CALL BRYAN_NORMAN_98(CONTRASTEC,OMEGAZ,OMEGA0,ZETA)
+
        WRITE(*,*) '************************************************'
        WRITE(*,*) '             "COSMOLOGICAL" PARAMETERS            '
        WRITE(*,*) '************************************************'
@@ -702,10 +692,7 @@
        WRITE(*,*) 'ROTE=', ROTE
        WRITE(*,*) 'RODO,RE0,OMEGA0,OMEGAZ=', RODO,RE0,OMEGA0,OMEGAZ
        WRITE(*,*) 'Z=', ZETA
-       WRITE(*,*) 'CONTRASTEC_OK=', CONTRASTEC*OMEGA0/OMEGAZ
-       WRITE(*,*) 'CONTRASTEC=',CONTRASTEC,CONTRASTEC*OMEGA0,
-     &                          CONTRASTEC*ROTE,CONTRASTEC/RODO
-       WRITE(*,*)'CONTRASTEC_200=',200.0*ROTE*OMEGA0,200.0/OMEGAZ
+       WRITE(*,*) 'CONTRASTEC=',CONTRASTEC
        WRITE(*,*) '************************************************'
 
 **************************************************************
@@ -714,18 +701,19 @@
 *            we work within each level independentely
 **************************************************************
 
-       CONTA2=1   !AHORA HACE DE SOLAP (informacion solapada)
+       ! CONTA2: overlaps at level IR; (=1, keep), (=0, overlapped)
        DO IR=1,NL
-       CALL VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
-     &           PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
-     &           CONTA2,VECINO,NVECI)
+        CALL VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
+     &                 PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
+     &                 CONTA2,VECINO,NVECI)
        END DO
 
+******* Compute CR0AMR *********************************************
 c       CALL COMPUTE_CR0AMR(NL,NX,NY,NZ,NPATCH,PARE,PATCHNX,PATCHNY,
 c     &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
 c     &                     PATCHRY,PATCHRZ,TEMP0,TEMP1,LADO0)
 c
-c       OPEN(99,FILE='output_files/density',STATUS='UNKNOWN',
+c       OPEN(99,FILE='output_files/density_asohf',STATUS='UNKNOWN',
 c     &      FORM='UNFORMATTED')
 c         write(99) (((u1(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
 c         write(99) (((temp0(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
@@ -738,9 +726,7 @@ c          write(99) (((temp1(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
 c          write(99) (((conta2(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
 c         end do
 c       CLOSE(99)
-c
-c       stop
-
+*********************************************************************
 
        DO IR=1,NL
        LOW1=SUM(NPATCH(0:IR-1))+1
