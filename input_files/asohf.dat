@@ -11,8 +11,8 @@ Initial redshift, box size (Mpc) ------------>
 100.0, 40.0
 Parallel(=1),serial(=0)/ Number of processors-->
 1,8
-Number of levels to read --------------------->
-9
+Levels for the mesh (stand-alone) ------------>
+4
 PARCHLIM(=0 no limit patches/level,>0 limit)->
 0
 LIM=max num patches/level(needs PARCHLIM>0)-->

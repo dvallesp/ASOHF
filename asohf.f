@@ -728,34 +728,8 @@ c         end do
 c       CLOSE(99)
 *********************************************************************
 
-       DO IR=1,NL
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-
-!$OMP  PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                   U11,CONTA2,LOW1,LOW2),
-!$OMP+            PRIVATE(N1,N2,N3,I,IX,JY,KZ)
-       DO I=LOW1,LOW2
-       N1=0
-       N2=0
-       N3=0
-       N1=PATCHNX(I)
-       N2=PATCHNY(I)
-       N3=PATCHNZ(I)
-
-        DO KZ=1,N3
-        DO JY=1,N2
-        DO IX=1,N1
-        !Limpiamos U11 de solapes:
-       U11(IX,JY,KZ,I)=U11(IX,JY,KZ,I)*CONTA2(IX,JY,KZ,I)
-
-       END DO
-       END DO
-       END DO
-
-       END DO
-       END DO
-****************************************************************
+       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA2,
+     &                     U11)
 
 
 **********************************************************************
