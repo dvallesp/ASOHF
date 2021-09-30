@@ -862,7 +862,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
      &                          PATCHRY,PATCHRZ,NCLUS,MASA,RADIO,
      &                          CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                          NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,
-     &                          RODO)
+     &                          RODO,SOLAP,VECINO,NVECI)
 ********************************************************************
 *      Pipeline for tentative halo finding over the grid
 ********************************************************************
@@ -883,6 +883,8 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER REALCLUS(MAXITER,MAXNCLUS),LEVHAL(MAXNCLUS)
        INTEGER NHALLEV(0:NLEVELS)
        REAL BOUND,CONTRASTEC,RODO
+       INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
+       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
 
 *      GLOBAL VARIABLES
        REAL*4 DX,DY,DZ
@@ -1162,7 +1164,7 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
          DO IX=1,N1
          DO JY=1,N2
          DO KZ=1,N3
-          CONTA1(IX,JY,KZ,I)=0
+          CONTA1(IX,JY,KZ,I)=1
           II=L1+INT((IX-1)/2)
           JJ=L2+INT((JY-1)/2)
           KK=L3+INT((KZ-1)/2)
@@ -1208,10 +1210,19 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
          END DO
         END DO
 
-*       CONTA1=0 --> outside any halo
-*       CONTA1=1 --> inside a halo at this same level
+*       CONTA1=1 --> outside any halo
+*       CONTA1=0 --> inside a halo at this same level
 *       CONTA1=-1 --> outside haloes at this same level, but inside an IR-1 halo
 *       CONTA1=-2 --> outside haloes at this same level, but center of a IR-1 halo
+
+        ! clean conta1 from overlaps
+        CALL CLEAN_OVERLAPS_INT(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
+     &                          SOLAP,CONTA1)
+
+        WRITE(*,*) COUNT(CONTA1.EQ.-2)
+
+        ! then proceed with the halo finding as written in the asohf.f now, but with the new modifications
+        ! especially, cycling not only around the vecinos, but also around the pares....
 
 
 

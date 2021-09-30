@@ -3357,7 +3357,6 @@ CX       END IF
          DO JY=1,N2
          DO IX=1,N1
           FIELD(IX,JY,KZ,I)=FIELD(IX,JY,KZ,I)*SOLAP(IX,JY,KZ,I)
-
          END DO
          END DO
          END DO
@@ -3365,6 +3364,51 @@ CX       END IF
         END DO
        END DO
 
+       RETURN
+       END
+
+*************************************************************
+       SUBROUTINE CLEAN_OVERLAPS_INT(NL,NPATCH,PATCHNX,PATCHNY,
+     &                               PATCHNZ,SOLAP,FIELD)
+*************************************************************
+*      Sets to 0 the values in FIELD which are overlapped
+*      by other AMR cells (and not the master)
+*************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NL
+       INTEGER NPATCH(0:NL)
+       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
+       INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
+       INTEGER FIELD(NAMRX,NAMRY,NAMRZ,NPALEV)
+
+       INTEGER IR,LOW1,LOW2,N1,N2,N3,IX,JY,KZ,I
+
+       DO IR=1,NL
+        LOW1=SUM(NPATCH(0:IR-1))+1
+        LOW2=SUM(NPATCH(0:IR))
+
+!$OMP PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,FIELD,SOLAP,LOW1,
+!$OMP+                   LOW2),
+!$OMP+            PRIVATE(N1,N2,N3,I,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+        DO I=LOW1,LOW2
+         N1=PATCHNX(I)
+         N2=PATCHNY(I)
+         N3=PATCHNZ(I)
+
+         DO KZ=1,N3
+         DO JY=1,N2
+         DO IX=1,N1
+          FIELD(IX,JY,KZ,I)=FIELD(IX,JY,KZ,I)*SOLAP(IX,JY,KZ,I)
+         END DO
+         END DO
+         END DO
+
+        END DO
+       END DO
 
        RETURN
        END

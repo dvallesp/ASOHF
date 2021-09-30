@@ -117,7 +117,8 @@
        REAL*4 MASAP(PARTIRED)
        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
 
-       INTEGER CONTA2(NAMRX,NAMRY,NAMRZ,NPALEV)
+       INTEGER CONTA2(NAMRX,NAMRY,NAMRZ,NPALEV) !this will be deleted
+       INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        INTEGER ORIPA1(PARTIRED),ORIPA2(PARTIRED)
        COMMON /PUNTEROS/ ORIPA1, ORIPA2
@@ -711,7 +712,7 @@
        DO IR=1,NL
         CALL VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
      &                 PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
-     &                 CONTA2,VECINO,NVECI)
+     &                 SOLAP,VECINO,NVECI)
        END DO
 
 ******* Compute CR0AMR *********************************************
@@ -734,7 +735,7 @@ c         end do
 c       CLOSE(99)
 *********************************************************************
 
-       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA2,
+       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,SOLAP,
      &                     U11)
 
 **********************************************************************
@@ -754,7 +755,8 @@ c       CLOSE(99)
      &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &                    PATCHRY,PATCHRZ,NCLUS,MASA,RADIO,
      &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
-     &                    NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,RODO)
+     &                    NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,RODO,
+     &                    SOLAP,VECINO,NVECI)
 
        STOP
 
