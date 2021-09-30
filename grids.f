@@ -29,6 +29,10 @@
       REAL  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
       COMMON /GRID/  RADX,RADY,RADZ
 
+      REAL*4  RX(0:NAMRX+1,NPALEV),RY(0:NAMRX+1,NPALEV),
+     &        RZ(0:NAMRX+1,NPALEV)
+      COMMON /GRIDAMR/ RX,RY,RZ
+
 *     LOCAL VARIABLES
       INTEGER PLEV(PARTIRED)
       INTEGER,ALLOCATABLE::CR0(:,:,:)
@@ -571,6 +575,36 @@ C        WRITE(*,*) LVAL(I,IPARE)
        END DO
       END DO
       CLOSE(33)
+
+*     Build the AMR mesh
+      DO IR=1,NL_MESH
+       DXPA=DX/2.0**IR
+       DYPA=DY/2.0**IR
+       DZPA=DZ/2.0**IR
+       LOW1=SUM(NPATCH(0:IR-1))+1
+       LOW2=SUM(NPATCH(0:IR))
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHNX,PATCHNY,PATCHNZ,PATCHRX,
+!$OMP+                   PATCHRY,PATCHRZ,DXPA,DYPA,DZPA,RX,RY,RZ),
+!$OMP+            PRIVATE(I,N1,N2,N3,XL,YL,ZL,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO I=LOW1,LOW2
+        N1=PATCHNX(I)
+        N2=PATCHNY(I)
+        N3=PATCHNZ(I)
+        XL=PATCHRX(I)-0.5*DXPA
+        YL=PATCHRY(I)-0.5*DYPA
+        ZL=PATCHRZ(I)-0.5*DZPA
+        DO IX=0,N1+1
+         RX(IX,I)=XL+(IX-1)*DXPA
+        END DO
+        DO JY=0,N2+1
+         RY(JY,I)=YL+(JY-1)*DYPA
+        END DO
+        DO KZ=0,N3+1
+         RZ(KZ,I)=ZL+(KZ-1)*DZPA
+        END DO
+       END DO
+      END DO
 
       RETURN
       END
