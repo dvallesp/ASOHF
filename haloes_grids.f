@@ -855,3 +855,338 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 
        RETURN
        END
+
+********************************************************************
+       SUBROUTINE HALOFIND_GRID(IFI,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
+     &                          PATCHNZ,PATCHRX,PATCHRY,PATCHRZ,NCLUS,
+     &                          MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
+     &                          REALCLUS,LEVHAL,NSOLAP,SOLAPA,NHALLEV,
+     &                          BOUND,CONTRASTEC,RODO)
+********************************************************************
+*      Pipeline for tentative halo finding over the grid
+********************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+*      I/O DATA
+       INTEGER IFI,NL,NX,NY,NZ
+       INTEGER NPATCH(0:NLEVELS)
+       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
+       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
+       INTEGER NCLUS
+       REAL MASA(MAXNCLUS),RADIO(MAXNCLUS)
+       REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+       INTEGER SOLAPA(MAXNCLUS,NMAXSOLAP),NSOLAP(MAXNCLUS)
+       INTEGER REALCLUS(MAXITER,MAXNCLUS),LEVHAL(MAXNCLUS)
+       INTEGER NHALLEV(0:NLEVELS)
+       REAL BOUND,CONTRASTEC,RODO
+
+*      GLOBAL VARIABLES
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
+
+       REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
+       COMMON /GRID/ RADX,RADY,RADZ
+
+       REAL*4 RETE,HTE,ROTE
+       COMMON /BACK/ RETE,HTE,ROTE
+
+       REAL*4 U1(NMAX,NMAY,NMAZ)
+       REAL*4 U1G(NMAX,NMAY,NMAZ)
+       REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
+       REAL*4 U11G(NAMRX,NAMRY,NAMRZ,NPALEV)
+       COMMON /VARIA/ U1,U11,U1G,U11G
+
+       REAL*4 ACHE,T0,RE0
+       COMMON /DOS/ ACHE,T0,RE0
+
+*      LOCAL VARIABLES
+       INTEGER CONTA(NMAX,NMAY,NMAZ)
+       INTEGER CONTA2(NAMRX,NAMRY,NAMRZ,NPALEV)
+       REAL UBAS1(NMAX,NMAY,NMAZ)
+
+       INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,IPATCH,ICEN(3),NV_GOOD
+       INTEGER L1,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
+       REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
+       REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
+       REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
+       REAL*4, ALLOCATABLE::DDD(:)
+       INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:)
+
+**************************************************************
+*      NIVEL BASE!!
+**************************************************************
+
+       PI=DACOS(-1.D0)
+
+       IR=0
+       REF=0.2*DX !THIS WILL BE GOTTEN RID OF
+       ESP=0.2*DX
+       ESP_LOG=1.05
+       NSHELL=50 !THIS WILL BE GOTTEN RID OF
+       WRITE(*,*) 'RESOLUTION (IR,DX)=',IR,DX
+
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,CONTA,UBAS1,U1),
+!$OMP+            PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX
+        CONTA(IX,JY,KZ)=0
+        UBAS1(IX,JY,KZ)=U1(IX,JY,KZ)
+       END DO
+       END DO
+       END DO
+
+       KK_ENTERO=0
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,UBAS1,CONTRASTEC),
+!$OMP+            PRIVATE(IX,JY,KZ),
+!$OMP+            REDUCTION(+:KK_ENTERO),
+!$OMP+            DEFAULT(NONE)
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX
+        IF (UBAS1(IX,JY,KZ).GE.CONTRASTEC) KK_ENTERO=KK_ENTERO+1
+       END DO
+       END DO
+       END DO
+       WRITE(*,*)'ESTIMATION_0:',IR,KK_ENTERO
+*      Ordenamos todas las celdas de los vecinos
+       ALLOCATE(DDD(KK_ENTERO))
+       ALLOCATE(DDDX(KK_ENTERO))
+       ALLOCATE(DDDY(KK_ENTERO))
+       ALLOCATE(DDDZ(KK_ENTERO))
+
+!$OMP PARALLEL DO SHARED(DDD,DDDX,DDDY,DDDZ,KK_ENTERO),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+       DO I=1,KK_ENTERO
+        DDD(I)=0.0
+        DDDX(I)=0
+        DDDY(I)=0
+        DDDZ(I)=0
+       END DO
+
+       II=0
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX
+        BAS=UBAS1(IX,JY,KZ)
+        IF (BAS.GE.CONTRASTEC) THEN
+         II=II+1
+         DDD(II)=BAS
+         DDDX(II)=IX
+         DDDY(II)=JY
+         DDDZ(II)=KZ
+        END IF
+       END DO
+       END DO
+       END DO
+
+       IF (II.NE.KK_ENTERO) THEN
+         WRITE(*,*) 'WARNING: bad allocation of DDD', II, KK_ENTERO
+         STOP
+       END IF
+
+       CALL SORT_CELLS(KK_ENTERO,DDD,DDDX,DDDY,DDDZ)
+
+       NV_GOOD=KK_ENTERO
+       KK_ENTERO=0
+
+*      Go through all the center candidates
+       DO L1=1,NV_GOOD
+        ICEN(1)=DDDX(L1)
+        ICEN(2)=DDDY(L1)
+        ICEN(3)=DDDZ(L1)
+
+        KK_ENTERO=CONTA(ICEN(1),ICEN(2),ICEN(3))
+        IF(KK_ENTERO.EQ.0) THEN ! this means this peak is not inside a halo yet
+         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
+         NCLUS=NCLUS+1
+         REALCLUS(IFI,NCLUS)=-1
+         LEVHAL(NCLUS)=IR
+         NHALLEV(IR)=NHALLEV(IR)+1
+
+         IF(NCLUS.GT.MAXNCLUS) THEN
+          WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
+          STOP
+         END IF
+
+         CLUSRX(NCLUS)=RADX(ICEN(1))
+         CLUSRY(NCLUS)=RADY(ICEN(2))
+         CLUSRZ(NCLUS)=RADZ(ICEN(3))
+
+*        tentative reach of the halo ---> build a mini box around it
+*        (by excess, set as a parameter in asohf.dat)
+         BASX=CLUSRX(NCLUS)-BOUND
+         NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
+         IF (NX1.LT.1) NX1=1
+
+         BASX=CLUSRX(NCLUS)+BOUND
+         NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
+         IF (NX2.GT.NX) NX2=NX
+
+         BASY=CLUSRY(NCLUS)-BOUND
+         NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
+         IF (NY1.LT.1) NY1=1
+
+         BASY=CLUSRY(NCLUS)+BOUND
+         NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
+         IF (NY2.GT.NY) NY2=NY
+
+         BASZ=CLUSRZ(NCLUS)-BOUND
+         NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+         IF (NZ1.LT.1) NZ1=1
+
+         BASZ=CLUSRZ(NCLUS)+BOUND
+         NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+         IF (NZ2.GT.NZ) NZ2=NZ
+
+*        Now, we extend the cluster radially from its center
+         BASX=0.0
+         BASY=0.0
+         BASZ=0.0
+         BASDELTA=0.0
+
+         BASMASS_SHELL=0.0
+         BASMASS=0.0   !TOTAL MASS OF THE CLUSTER
+         DELTA=0.0    !TOTAL CONTRAST OF THE CLUSTER
+         BASVOL=0.0     !TOTAL VOLUME OF THE CLUSTER (sphere)
+
+         R_INT=0.0
+         R_EXT=0.5*DX
+
+*        increase the radius until density falls below the virial value
+         DELTA=10.0*CONTRASTEC*ROTE ! this is to ensure we enter the loop
+         ITER_GROW=0
+         DO WHILE(DELTA.GT.CONTRASTEC*ROTE)
+          ITER_GROW=ITER_GROW+1
+
+          IF (ITER_GROW.GT.1) THEN
+           IF (R_EXT.LE.BOUND) THEN
+            R_INT=R_EXT
+            R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
+           ELSE
+            WRITE(*,*) 'WARNING: growing not converged', r_int, r_ext,
+     &                                                   bound
+            STOP
+           END IF
+          END IF
+
+          VOLCELL=DX*DY*DZ
+          BASMASS_SHELL=0.0
+          II=0
+          DO K=NZ1,NZ2
+          DO J=NY1,NY2
+          DO I=NX1,NX2
+           AA=SQRT((RADX(I)-CLUSRX(NCLUS))**2 +
+     &             (RADY(J)-CLUSRY(NCLUS))**2 +
+     &             (RADZ(K)-CLUSRZ(NCLUS))**2)
+
+           IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
+            CONTA(I,J,K)=1 ! do not try to find an additional halo here (at this level)
+
+            BASVOL=BASVOL+VOLCELL
+
+            BAS=U1(I,J,K)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
+            BASMASS_SHELL=BASMASS_SHELL+BAS
+
+            BASX=BASX+RADX(I)*BAS
+            BASY=BASY+RADY(J)*BAS
+            BASZ=BASZ+RADZ(K)*BAS
+            BASDELTA=BASDELTA+BAS
+
+            II=II+1
+           END IF
+
+          END DO
+          END DO
+          END DO
+
+          BASMASS=BASMASS+BASMASS_SHELL*RODO*RE0**3
+          DELTA=BASMASS/(BASVOL*RETE**3)
+          WRITE(*,*) DELTA/ROTE, II
+         END DO   ! do while (DELTA)
+
+         RADIO(NCLUS)=R_EXT
+         MASA(NCLUS)=BASMASS
+
+         CLUSRX(NCLUS)=BASX/BASDELTA
+         CLUSRY(NCLUS)=BASY/BASDELTA
+         CLUSRZ(NCLUS)=BASZ/BASDELTA
+
+         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
+
+        END IF ! KK_ENTERO.EQ.0
+       END DO ! I=1,NV_GOOD
+
+       DEALLOCATE(DDD,DDDX,DDDY,DDDZ)
+
+****************************************************
+*      CORRECION DE SOLAPES:
+*      VAMOS A VER QUE CUMULOS SOLAPAN EN IR
+****************************************************
+
+       write(*,*) IFI,IR,NL,REF,ESP,BOUND,CONTRASTEC,
+     &                 NSHELL,RODO,NPATCH,NX,NY,NZ,
+     &                 NCLUS,
+     &                 NHALLEV
+       CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
+     &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
+     &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
+     &                 NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
+     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
+
+****************************************************
+*      FIN CORRECION DE SOLAPES EN IR
+****************************************************
+
+       WRITE(*,*)' FIN NIVEL BASE', 0
+
+
+
+       RETURN
+       END
+
+********************************************************************
+       SUBROUTINE SORT_CELLS(KK_ENTERO,DDD,DDDX,DDDY,DDDZ)
+********************************************************************
+*      Sorts cells decreasingly in density (DDD)
+********************************************************************
+
+       IMPLICIT NONE
+
+       INTEGER KK_ENTERO
+       REAL DDD(KK_ENTERO)
+       INTEGER DDDX(KK_ENTERO),DDDY(KK_ENTERO),DDDZ(KK_ENTERO)
+
+       REAL DDD2(KK_ENTERO)
+       INTEGER DDDX2(KK_ENTERO),DDDY2(KK_ENTERO),DDDZ2(KK_ENTERO)
+       INTEGER INDICE2(KK_ENTERO)
+       INTEGER I
+
+!$OMP PARALLEL DO SHARED(KK_ENTERO,DDD,DDDX,DDDY,DDDZ,DDD2,DDDX2,
+!$OMP+                   DDDY2,DDDZ2),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+       DO I=1,KK_ENTERO
+        DDD2(I)=1.0/DDD(I)
+        DDDX2(I)=DDDX(I)
+        DDDY2(I)=DDDY(I)
+        DDDZ2(I)=DDDZ(I)
+       END DO
+
+       CALL INDEXX(KK_ENTERO,DDD2,INDICE2)
+
+!$OMP PARALLEL DO SHARED(KK_ENTERO,DDD,DDDX,DDDY,DDDZ,DDD2,DDDX2,
+!$OMP+                   DDDY2,DDDZ2,INDICE2),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+       DO I=1,KK_ENTERO
+        DDD(I)=1.0/DDD2(INDICE2(I))
+        DDDX(I)=DDDX2(INDICE2(I))
+        DDDY(I)=DDDY2(INDICE2(I))
+        DDDZ(I)=DDDZ2(INDICE2(I))
+       END DO
+
+       RETURN
+       END
