@@ -660,12 +660,14 @@
         WRITE(*,*)'***** MESHRENOEF ******'
         WRITE(*,*)'***********************'
 
-        WRITE(*,*)'==== Building the grid...', ITER, NL
-        CALL CREATE_MESH(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
-     &                   PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
-     &                   PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
-     &                   N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
-        WRITE(*,*)'==== END building the grid...', ITER, NL
+        IF (NL.GT.0) THEN
+         WRITE(*,*)'==== Building the grid...', ITER, NL
+         CALL CREATE_MESH(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
+     &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
+     &                    PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+     &                    N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+         WRITE(*,*)'==== END building the grid...', ITER, NL
+        END IF
 
         CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
@@ -745,10 +747,10 @@ c       CLOSE(99)
 **********************************************************
 
        CALL HALOFIND_GRID(IFI,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
-     &                          PATCHNZ,PATCHRX,PATCHRY,PATCHRZ,NCLUS,
-     &                          MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
-     &                          REALCLUS,LEVHAL,NSOLAP,SOLAPA,NHALLEV,
-     &                          BOUND,CONTRASTEC,RODO)
+     &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                    PATCHRY,PATCHRZ,NCLUS,MASA,RADIO,
+     &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
+     &                    NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,RODO)
 
        STOP
 

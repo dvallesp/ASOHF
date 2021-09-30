@@ -858,10 +858,11 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 
 ********************************************************************
        SUBROUTINE HALOFIND_GRID(IFI,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
-     &                          PATCHNZ,PATCHRX,PATCHRY,PATCHRZ,NCLUS,
-     &                          MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
-     &                          REALCLUS,LEVHAL,NSOLAP,SOLAPA,NHALLEV,
-     &                          BOUND,CONTRASTEC,RODO)
+     &                          PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                          PATCHRY,PATCHRZ,NCLUS,MASA,RADIO,
+     &                          CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
+     &                          NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,
+     &                          RODO)
 ********************************************************************
 *      Pipeline for tentative halo finding over the grid
 ********************************************************************
@@ -873,6 +874,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER IFI,NL,NX,NY,NZ
        INTEGER NPATCH(0:NLEVELS)
        INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
+       INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
        REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
        INTEGER NCLUS
        REAL MASA(MAXNCLUS),RADIO(MAXNCLUS)
@@ -903,14 +905,16 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 
 *      LOCAL VARIABLES
        INTEGER CONTA(NMAX,NMAY,NMAZ)
-       INTEGER CONTA2(NAMRX,NAMRY,NAMRZ,NPALEV)
+       INTEGER CONTA1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL UBAS1(NMAX,NMAY,NMAZ)
 
-       INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,IPATCH,ICEN(3),NV_GOOD
-       INTEGER L1,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
+       INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
+       INTEGER L1,L2,L3,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
+       INTEGER N1,N2,N3
        REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
        REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
+       REAL X1,X2,Y1,Y2,Z1,Z2
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:)
 
@@ -1001,7 +1005,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 
         KK_ENTERO=CONTA(ICEN(1),ICEN(2),ICEN(3))
         IF(KK_ENTERO.EQ.0) THEN ! this means this peak is not inside a halo yet
-         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
+c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
          NCLUS=NCLUS+1
          REALCLUS(IFI,NCLUS)=-1
          LEVHAL(NCLUS)=IR
@@ -1105,7 +1109,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 
           BASMASS=BASMASS+BASMASS_SHELL*RODO*RE0**3
           DELTA=BASMASS/(BASVOL*RETE**3)
-          WRITE(*,*) DELTA/ROTE, II
+c          WRITE(*,*) DELTA/ROTE, II
          END DO   ! do while (DELTA)
 
          RADIO(NCLUS)=R_EXT
@@ -1115,8 +1119,8 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
          CLUSRY(NCLUS)=BASY/BASDELTA
          CLUSRZ(NCLUS)=BASZ/BASDELTA
 
-         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
-     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
+c         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
 
         END IF ! KK_ENTERO.EQ.0
        END DO ! I=1,NV_GOOD
@@ -1128,10 +1132,6 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 *      VAMOS A VER QUE CUMULOS SOLAPAN EN IR
 ****************************************************
 
-       write(*,*) IFI,IR,NL,REF,ESP,BOUND,CONTRASTEC,
-     &                 NSHELL,RODO,NPATCH,NX,NY,NZ,
-     &                 NCLUS,
-     &                 NHALLEV
        CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
      &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
      &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
@@ -1142,9 +1142,80 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 *      FIN CORRECION DE SOLAPES EN IR
 ****************************************************
 
-       WRITE(*,*)' FIN NIVEL BASE', 0
+       WRITE(*,*) 'End of base level', 0
+       WRITE(*,*) 'Now proceeding with the',NL,'AMR levels'
+
+       IF (NL.GT.0) THEN
+*      Find the l=1 cells covered by l=0 haloes (they will
+*      potentially host substructures)
+!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,
+!$OMP+                   PATCHZ,CONTA1,CONTA),
+!$OMP+            PRIVATE(I,N1,N2,N3,L1,L2,L3,II,JJ,KK),
+!$OMP+            DEFAULT(NONE)
+        DO I=1,NPATCH(1)
+         N1=PATCHNX(I)
+         N2=PATCHNY(I)
+         N3=PATCHNZ(I)
+         L1=PATCHX(I)
+         L2=PATCHY(I)
+         L3=PATCHZ(I)
+         DO IX=1,N1
+         DO JY=1,N2
+         DO KZ=1,N3
+          CONTA1(IX,JY,KZ,I)=0
+          II=L1+INT((IX-1)/2)
+          JJ=L2+INT((JY-1)/2)
+          KK=L3+INT((KZ-1)/2)
+          IF (CONTA(II,JJ,KK).EQ.1) CONTA1(IX,JY,KZ,I)=-1
+         END DO
+         END DO
+         END DO
+        END DO
+
+*       And mark the centers of haloes (to avoid identifying haloes at same levels as substructure)
+!$OMP PARALLEL DO SHARED(NPATCH,DX,DY,DZ,PATCHNX,PATCHNY,PATCHNZ,
+!$OMP+                   PATCHRX,PATCHRY,PATCHRZ,NCLUS,CLUSRX,CLUSRY,
+!$OMP+                   CLUSRZ,CONTA1),
+!$OMP+            PRIVATE(I,N1,N2,N3,X1,X2,Y1,Y2,Z1,Z2,II,BASX,BASY,
+!$OMP+                    BASZ,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+        DO I=1,NPATCH(1)
+         N1=PATCHNX(I)
+         N2=PATCHNY(I)
+         N3=PATCHNZ(I)
+         X1=PATCHRX(I)-DX/2.0
+         Y1=PATCHRY(I)-DY/2.0
+         Z1=PATCHRZ(I)-DZ/2.0
+         X2=X1+N1*DX/2.0
+         Y2=Y1+N2*DY/2.0
+         Z2=Z1+N3*DZ/2.0
+         DO II=1,NCLUS
+          BASX=CLUSRX(II)
+          BASY=CLUSRY(II)
+          BASZ=CLUSRZ(II)
+          BASX=(BASX-X1)*(X2-BASX)
+          BASY=(BASY-Y1)*(Y2-BASY)
+          BASZ=(BASZ-Z1)*(Z2-BASZ)
+          IF (BASX.GT.0.AND.BASY.GT.0.AND.BASZ.GT.0) THEN
+           BASX=CLUSRX(II)-X1
+           BASY=CLUSRY(II)-Y1
+           BASZ=CLUSRZ(II)-Z1
+           IX=INT(BASX/(DX/2.0))+1
+           JY=INT(BASY/(DY/2.0))+1
+           KZ=INT(BASZ/(DZ/2.0))+1
+           CONTA1(IX,JY,KZ,I)=-2
+          END IF
+         END DO
+        END DO
+
+*       CONTA1=0 --> outside any halo
+*       CONTA1=1 --> inside a halo at this same level
+*       CONTA1=-1 --> outside haloes at this same level, but inside an IR-1 halo
+*       CONTA1=-2 --> outside haloes at this same level, but center of a IR-1 halo
 
 
+
+       END IF !(NL.GT.0)
 
        RETURN
        END
