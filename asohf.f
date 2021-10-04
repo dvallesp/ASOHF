@@ -753,7 +753,7 @@ c       CLOSE(99)
 
        CALL HALOFIND_GRID(IFI,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
      &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
-     &                    PATCHRY,PATCHRZ,NCLUS,MASA,RADIO,
+     &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                    NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,RODO,
      &                    SOLAP,VECINO,NVECI)

@@ -859,7 +859,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 ********************************************************************
        SUBROUTINE HALOFIND_GRID(IFI,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
      &                          PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
-     &                          PATCHRY,PATCHRZ,NCLUS,MASA,RADIO,
+     &                          PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                          CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                          NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,
      &                          RODO,SOLAP,VECINO,NVECI)
@@ -876,6 +876,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
        INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
        REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
+       INTEGER PARE(NPALEV)
        INTEGER NCLUS
        REAL MASA(MAXNCLUS),RADIO(MAXNCLUS)
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
@@ -892,6 +893,10 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 
        REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
        COMMON /GRID/ RADX,RADY,RADZ
+
+       REAL*4  RX(0:NAMRX+1,NPALEV),RY(0:NAMRX+1,NPALEV),
+     &         RZ(0:NAMRX+1,NPALEV)
+       COMMON /GRIDAMR/ RX,RY,RZ
 
        REAL*4 RETE,HTE,ROTE
        COMMON /BACK/ RETE,HTE,ROTE
@@ -910,15 +915,21 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER CONTA1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL UBAS1(NMAX,NMAY,NMAZ)
 
+       REAL MAXIMO(NPALEV)
+       INTEGER VID(NLEVELS,NPALEV),NVID(NLEVELS)
+
        INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
        INTEGER L1,L2,L3,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
-       INTEGER N1,N2,N3
+       INTEGER N1,N2,N3,KONTA,LOW1,LOW2,I2,ICEN1(1),ICEN4(4),CEL,I1,J1
+       INTEGER K1,BORAMR
        REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
        REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
-       REAL X1,X2,Y1,Y2,Z1,Z2
+       REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
+       REAL XCEN,YCEN,ZCEN
+
        REAL*4, ALLOCATABLE::DDD(:)
-       INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:)
+       INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
 
 **************************************************************
 *      NIVEL BASE!!
@@ -1205,13 +1216,23 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
            IX=INT(BASX/(DX/2.0))+1
            JY=INT(BASY/(DY/2.0))+1
            KZ=INT(BASZ/(DZ/2.0))+1
-           CONTA1(IX,JY,KZ,I)=-2
+           DO I1=IX-1,IX+1
+           DO J1=JY-1,JY+1
+           DO K1=KZ-1,KZ+1
+            IF (I1.GE.1.AND.I1.LE.N1.AND.
+     &          J1.GE.1.AND.J1.LE.N2.AND.
+     &          K1.GE.1.AND.K1.LE.N3) THEN
+             CONTA1(I1,J1,K1,I)=-2
+            END IF
+           END DO
+           END DO
+           END DO
           END IF
          END DO
         END DO
 
-*       CONTA1=1 --> outside any halo
 *       CONTA1=0 --> inside a halo at this same level
+*       CONTA1=1 --> outside any halo
 *       CONTA1=-1 --> outside haloes at this same level, but inside an IR-1 halo
 *       CONTA1=-2 --> outside haloes at this same level, but center of a IR-1 halo
 
@@ -1219,14 +1240,265 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
         CALL CLEAN_OVERLAPS_INT(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
      &                          SOLAP,CONTA1)
 
-        WRITE(*,*) COUNT(CONTA1.EQ.-2)
-
+        DO IR=1,NL
         ! then proceed with the halo finding as written in the asohf.f now, but with the new modifications
         ! especially, cycling not only around the vecinos, but also around the pares....
+         DXPA=DX/(2.0**IR)
+         DYPA=DY/(2.0**IR)
+         DZPA=DZ/(2.0**IR)
+         WRITE(*,*) 'RESOLUTION (IR,DX)=',IR,DXPA
 
+         LOW1=SUM(NPATCH(0:IR-1))+1
+         LOW2=SUM(NPATCH(0:IR))
 
+         REF=0.2*DXPA !THIS WILL BE GOTTEN RID OF
+         ESP=0.2*DXPA
+         ESP_LOG=1.05
+         BORAMR=1
+         NSHELL=50 !THIS WILL BE GOTTEN RID OF
+
+*        estimation to allocate
+         KK_ENTERO=0
+!$OMP  PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,U11,CONTRASTEC,LOW1,
+!$OMP+                    LOW2,CONTA1,BORAMR),
+!$OMP+             PRIVATE(N1,N2,N3,I,IX,JY,KZ),
+!$OMP+             REDUCTION(+:KK_ENTERO),
+!$OMP+             DEFAULT(NONE)
+         DO I=LOW1,LOW2
+          N1=PATCHNX(I)
+          N2=PATCHNY(I)
+          N3=PATCHNZ(I)
+          DO KZ=1+BORAMR,N3-BORAMR
+          DO JY=1+BORAMR,N2-BORAMR
+          DO IX=1+BORAMR,N1-BORAMR
+           IF (U11(IX,JY,KZ,I).GE.CONTRASTEC.AND.
+     &         CONTA1(IX,JY,KZ,I).NE.0) KK_ENTERO=KK_ENTERO+1
+          END DO
+          END DO
+          END DO
+         END DO
+         WRITE(*,*)'ESTIMATION:', IR,KK_ENTERO,CONTRASTEC
+
+         MAXIMO(1:NPATCH(IR))=0.0
+
+!OMP PARALLEL DO SHARED(NPATCH,IR,LOW1,PATCHNX,PATCHNY,PATCHNZ,CONTA1,
+!$OMP+                  U11,MAXIMO,BORAMR),
+!$OMP+           PRIVATE(I2,I,N1,N2,N3,BASX,IX,JY,KZ),
+!$OMP+           DEFAULT(NONE)
+         DO I2=1,NPATCH(IR)
+          I=LOW1+I2
+
+          N1=PATCHNX(I)
+          N2=PATCHNY(I)
+          N3=PATCHNZ(I)
+
+          BASX=0.0
+          DO KZ=1+BORAMR,N3-BORAMR
+          DO JY=1+BORAMR,N2-BORAMR
+          DO IX=1+BORAMR,N1-BORAMR
+           IF (CONTA1(IX,JY,KZ,I).NE.0) BASX=MAX(BASX,U11(IX,JY,KZ,I))
+          END DO
+          END DO
+          END DO
+          MAXIMO(I2)=BASX
+         END DO
+c         KK_REAL=MAXVAL(MAXIMO(1:NPATCH(IR)))
+
+c         DO WHILE(KK_REAL.GT.CONTRASTEC)
+c          ICEN1=MAXLOC(MAXIMO(1:NPATCH(IR)))    !numero "local" de parche en IR
+c          CEL=LOW1+ICEN1(1)   !numero "absoluto" de parche
+
+C          CALL FIND_NEIGHBOURING_PATCHES(2,NL,99,PARE,VECINO,NVECI,
+C     &                                   NPATCH,VID,NVID)
+
+           !CALL FIND_NEARBY_PATCHES
+
+          !DO j=1,2
+          !WRITE(*,*) 'VECINOS:',NVID(j)
+          !DO I=1,NVID(j)
+          ! WRITE(*,*) VID(j,I)
+          !END DO
+          !END DO
+          !STOP
+
+C          END DO !WHILE (KK_REAL.GT.CONTRASTEC)
+
+         ALLOCATE(DDD(KK_ENTERO))
+         ALLOCATE(DDDX(KK_ENTERO))
+         ALLOCATE(DDDY(KK_ENTERO))
+         ALLOCATE(DDDZ(KK_ENTERO))
+         ALLOCATE(DDDP(KK_ENTERO))
+
+!$OMP PARALLEL DO SHARED(DDD,DDDX,DDDY,DDDZ,DDDP,KK_ENTERO),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+         DO I=1,KK_ENTERO
+          DDD(I)=0.0
+          DDDX(I)=0
+          DDDY(I)=0
+          DDDZ(I)=0
+          DDDP(I)=0
+         END DO
+
+         II=0
+         DO I=LOW1,LOW2
+          N1=PATCHNX(I)
+          N2=PATCHNY(I)
+          N3=PATCHNZ(I)
+          DO KZ=1+BORAMR,N3-BORAMR
+          DO JY=1+BORAMR,N2-BORAMR
+          DO IX=1+BORAMR,N1-BORAMR
+           IF (U11(IX,JY,KZ,I).GE.CONTRASTEC.AND.
+     &         CONTA1(IX,JY,KZ,I).NE.0) THEN
+            II=II+1
+            DDD(II)=U11(IX,JY,KZ,I)
+            DDDX(II)=IX
+            DDDY(II)=JY
+            DDDZ(II)=KZ
+            DDDP(II)=I
+           END IF
+          END DO
+          END DO
+          END DO
+         END DO
+
+         WRITE(*,*) 'CHECK KK_ENTERO,II=',KK_ENTERO,II
+
+         CALL SORT_CELLS_AMR(KK_ENTERO,DDD,DDDX,DDDY,DDDZ,DDDP)
+
+c         DO IX=1,KK_ENTERO
+c          WRITE(*,*) DDD(IX),DDDP(IX),DDDX(IX),DDDY(IX),DDDZ(IX),
+c     &               CONTA1(DDDX(IX),DDDY(IX),DDDZ(IX),DDDP(IX))
+c         END DO
+
+         NV_GOOD=KK_ENTERO
+         KK_ENTERO=0
+
+         ! cycle through the cells, and see how to grow the halo, depending
+         ! on whether it is virialised halo or substructure
+         ! problem: we might need to check whether candidates to substructure
+         ! are bonafide density maxima, since excluding the center cell
+         ! does not ensure the code will not pick a dense cell just next to it.
+*        Go through all the center candidates
+         DO L1=1,NV_GOOD
+          ICEN4(1)=DDDX(L1)
+          ICEN4(2)=DDDY(L1)
+          ICEN4(3)=DDDZ(L1)
+          ICEN4(4)=DDDP(L1)
+          IX=ICEN4(1)
+          JY=ICEN4(2)
+          KZ=ICEN4(3)
+          IPATCH=ICEN4(4)
+          XCEN=RX(IX,IPATCH)
+          YCEN=RY(JY,IPATCH)
+          ZCEN=RZ(KZ,IPATCH)
+
+          KK_ENTERO=CONTA1(IX,JY,KZ,IPATCH)
+          IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo yet
+           WRITE(*,*) XCEN,YCEN,ZCEN,'free halo'  
+          ELSE IF(KK_ENTERO.EQ.-1) THEN ! this mean this peak must be a substructure
+           BASX =U11(IX+1,JY,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
+           BASY =U11(IX,JY+1,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
+           BASZ =U11(IX,JY,KZ+1,IPATCH)-U11(IX,JY,KZ,IPATCH)
+           BASXX=U11(IX,JY,KZ,IPATCH)  -U11(IX-1,JY,KZ,IPATCH)
+           BASYY=U11(IX,JY,KZ,IPATCH)  -U11(IX,JY-1,KZ,IPATCH)
+           BASZZ=U11(IX,JY,KZ,IPATCH)  -U11(IX,JY,KZ-1,IPATCH)
+           IF (BASX.LT.0) THEN
+           IF (BASY.LT.0) THEN
+           IF (BASZ.LT.0) THEN
+           IF (BASXX.GT.0) THEN
+           IF (BASYY.GT.0) THEN
+           IF (BASZZ.GT.0) THEN    
+            WRITE(*,*) XCEN,YCEN,ZCEN,'substructure'  
+           END IF 
+           END IF 
+           END IF 
+           END IF 
+           END IF 
+           END IF 
+          END IF
+         END DO
+
+         DEALLOCATE(DDD,DDDX,DDDY,DDDZ,DDDP)
+         STOP
+        END DO !(IR=1,NL)
 
        END IF !(NL.GT.0)
+
+       RETURN
+       END
+
+********************************************************************
+       SUBROUTINE FIND_NEIGHBOURING_PATCHES(IR,NL,CEL,PARE,VECINO,
+     &                                      NVECI,NPATCH,VID,NVID)
+********************************************************************
+*      Finds recursively all the patches touching a given one,
+*      and does the same with their parents up to level 1
+*      UNUSED NOW / NOT WORKING
+********************************************************************
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER IR,NL,CEL
+       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV),NPATCH(0:NLEVELS)
+       INTEGER PARE(NPALEV),VID(NLEVELS,NPALEV),NVID(NLEVELS)
+
+       INTEGER IRR,FLAG,NV,NV2,NV3,II,JJ,LOW1,LOW2,KK_ENTERO,IPATCH
+       INTEGER CONTAP(NPALEV)
+
+       DO II=1,NL
+        NVID(II)=0
+        DO JJ=1,NPALEV
+         VID(II,JJ)=0
+        END DO
+       END DO
+
+       IPATCH=CEL
+
+       DO IRR=IR,1,-1
+
+        FLAG=0
+
+        NV=1        !first neighbour: the patch itself
+        VID(IRR,NV)=IPATCH
+
+        NV2=0
+        NV3=NV
+
+        LOW1=SUM(NPATCH(0:IRR-1))+1
+        LOW2=SUM(NPATCH(0:IRR))
+        write(*,*) irr,low1,low2
+        CONTAP(LOW1:LOW2)=1    !(1 vale, 0 no)
+        CONTAP(VID(IRR,NV))=0      !asi este no se puede autocontar
+        write(*,*) irr,ipatch,nveci(vid(irr,1))
+        DO WHILE (FLAG.EQ.0)
+         DO II=NV2+1, NV3
+          DO JJ=1, NVECI(VID(IRR,II))
+           KK_ENTERO=0
+           KK_ENTERO=CONTAP(VECINO(JJ,VID(IRR,II)))
+           if (irr.eq.1) write(*,*) ii,jj,VECINO(JJ,VID(IRR,II)),
+     &                              VID(IRR,II),kk_entero
+           IF (KK_ENTERO.EQ.1) THEN
+            NV=NV+1
+            VID(IRR,NV)=VECINO(JJ,VID(IRR,II))
+            CONTAP(VECINO(JJ,VID(IRR,II)))=0
+           END IF
+          END DO
+         END DO
+
+         IF (NV.EQ.NV3) THEN
+          FLAG=1
+         ELSE
+          NV2=NV3
+          NV3=NV
+         END IF
+
+        END DO  ! WHILE (FLAG)
+
+        NVID(IRR)=NV
+
+        IF (IRR.GT.1) IPATCH=PARE(IPATCH)
+
+       END DO !IRR=IR,1,-1
 
        RETURN
        END
@@ -1268,6 +1540,51 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
         DDDX(I)=DDDX2(INDICE2(I))
         DDDY(I)=DDDY2(INDICE2(I))
         DDDZ(I)=DDDZ2(INDICE2(I))
+       END DO
+
+       RETURN
+       END
+
+********************************************************************
+       SUBROUTINE SORT_CELLS_AMR(KK_ENTERO,DDD,DDDX,DDDY,DDDZ,DDDP)
+********************************************************************
+*      Sorts cells decreasingly in density (DDD) (including patch number)
+********************************************************************
+
+       IMPLICIT NONE
+
+       INTEGER KK_ENTERO
+       REAL DDD(KK_ENTERO)
+       INTEGER DDDX(KK_ENTERO),DDDY(KK_ENTERO),DDDZ(KK_ENTERO)
+       INTEGER DDDP(KK_ENTERO)
+
+       REAL DDD2(KK_ENTERO)
+       INTEGER DDDX2(KK_ENTERO),DDDY2(KK_ENTERO),DDDZ2(KK_ENTERO)
+       INTEGER INDICE2(KK_ENTERO),DDDP2(KK_ENTERO)
+       INTEGER I
+
+!$OMP PARALLEL DO SHARED(KK_ENTERO,DDD,DDDX,DDDY,DDDZ,DDD2,DDDX2,
+!$OMP+                   DDDY2,DDDZ2,DDDP,DDDP2),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+       DO I=1,KK_ENTERO
+        DDD2(I)=1.0/DDD(I)
+        DDDX2(I)=DDDX(I)
+        DDDY2(I)=DDDY(I)
+        DDDZ2(I)=DDDZ(I)
+        DDDP2(I)=DDDP(I)
+       END DO
+
+       CALL INDEXX(KK_ENTERO,DDD2,INDICE2)
+
+!$OMP PARALLEL DO SHARED(KK_ENTERO,DDD,DDDX,DDDY,DDDZ,DDD2,DDDX2,
+!$OMP+                   DDDY2,DDDZ2,INDICE2,DDDP,DDDP2),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+       DO I=1,KK_ENTERO
+        DDD(I)=1.0/DDD2(INDICE2(I))
+        DDDX(I)=DDDX2(INDICE2(I))
+        DDDY(I)=DDDY2(INDICE2(I))
+        DDDZ(I)=DDDZ2(INDICE2(I))
+        DDDP(I)=DDDP2(INDICE2(I))
        END DO
 
        RETURN
