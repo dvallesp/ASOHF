@@ -917,6 +917,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
 
        REAL MAXIMO(NPALEV)
        INTEGER VID(NLEVELS,NPALEV),NVID(NLEVELS)
+       INTEGER RELEVANT_PATCHES(NPALEV),NRELEVANT_PATCHES(NLEVELS)
 
        INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
        INTEGER L1,L2,L3,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
@@ -926,7 +927,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
-       REAL XCEN,YCEN,ZCEN
+       REAL XCEN,YCEN,ZCEN,BOUNDIR
 
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
@@ -1256,6 +1257,7 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
          ESP_LOG=1.05
          BORAMR=1
          NSHELL=50 !THIS WILL BE GOTTEN RID OF
+         BOUNDIR=BOUND/2.0**IR
 
 *        estimation to allocate
          KK_ENTERO=0
@@ -1394,7 +1396,11 @@ c         END DO
 
           KK_ENTERO=CONTA1(IX,JY,KZ,IPATCH)
           IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo yet
-           WRITE(*,*) XCEN,YCEN,ZCEN,'free halo'  
+           WRITE(*,*) XCEN,YCEN,ZCEN,'free halo'
+           CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
+     &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR,
+     &                         IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
+           WRITE(*,*) NRELEVANT_PATCHES(1)
           ELSE IF(KK_ENTERO.EQ.-1) THEN ! this mean this peak must be a substructure
            BASX =U11(IX+1,JY,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
            BASY =U11(IX,JY+1,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
@@ -1407,14 +1413,20 @@ c         END DO
            IF (BASZ.LT.0) THEN
            IF (BASXX.GT.0) THEN
            IF (BASYY.GT.0) THEN
-           IF (BASZZ.GT.0) THEN    
-            WRITE(*,*) XCEN,YCEN,ZCEN,'substructure'  
-           END IF 
-           END IF 
-           END IF 
-           END IF 
-           END IF 
-           END IF 
+           IF (BASZZ.GT.0) THEN ! then it's a local maximum
+            WRITE(*,*) XCEN,YCEN,ZCEN,'substructure'
+            CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
+     &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR,
+     &                         IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
+            WRITE(*,*) NRELEVANT_PATCHES(1)
+
+
+           END IF
+           END IF
+           END IF
+           END IF
+           END IF
+           END IF
           END IF
          END DO
 
@@ -1423,6 +1435,80 @@ c         END DO
         END DO !(IR=1,NL)
 
        END IF !(NL.GT.0)
+
+       RETURN
+       END
+
+********************************************************************
+       SUBROUTINE PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,
+     &                           PATCHNX,PATCHNY,PATCHNZ,
+     &                           XCEN,YCEN,ZCEN,REACH,MAXLEVEL,NL,
+     &                           RELEVANT_PATCHES,NRELEVANT_PATCHES)
+********************************************************************
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NPATCH(0:NLEVELS)
+       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
+       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
+       REAL XCEN,YCEN,ZCEN,REACH
+       INTEGER MAXLEVEL,NL
+       INTEGER RELEVANT_PATCHES(NPALEV),NRELEVANT_PATCHES(NLEVELS)
+
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
+
+       REAL X1,X2,X3,X4,Y1,Y2,Y3,Y4,Z1,Z2,Z3,Z4,DXPA,DYPA,DZPA
+       INTEGER I,J,K,IX,JY,KZ,II,JJ,KK,LOW1,LOW2,IR,N1,N2,N3
+
+       DO IR=1,NL
+        NRELEVANT_PATCHES(IR)=0
+        LOW1=SUM(NPATCH(0:IR-1))+1
+        LOW2=SUM(NPATCH(0:IR))
+        DO I=LOW1,LOW2
+         RELEVANT_PATCHES(I)=0
+        END DO
+       END DO
+
+       X1=XCEN-REACH
+       X2=XCEN+REACH
+       Y1=YCEN-REACH
+       Y2=YCEN+REACH
+       Z1=ZCEN-REACH
+       Z2=ZCEN+REACH
+
+       DO IR=1,MAXLEVEL
+        LOW1=SUM(NPATCH(0:IR-1))+1
+        LOW2=SUM(NPATCH(0:IR))
+
+        DXPA=DX/2.0**IR
+        DYPA=DY/2.0**IR
+        DZPA=DZ/2.0**IR
+
+        DO I=LOW1,LOW2
+         N1=PATCHNX(I)
+         N2=PATCHNY(I)
+         N3=PATCHNZ(I)
+
+         X3=PATCHRX(I)-DXPA
+         Y3=PATCHRY(I)-DYPA
+         Z3=PATCHRZ(I)-DZPA
+
+         X4=X3+N1*DXPA
+         Y4=Y3+N2*DYPA
+         Z4=Z3+N3*DZPA
+
+         IF (X1.LE.X4.AND.X3.LE.X2) THEN
+         IF (Y1.LE.Y4.AND.Y3.LE.Y2) THEN
+         IF (Z1.LE.Z4.AND.Z3.LE.Z2) THEN
+          NRELEVANT_PATCHES(IR)=NRELEVANT_PATCHES(IR)+1
+          RELEVANT_PATCHES(NRELEVANT_PATCHES(IR))=I
+         END IF
+         END IF
+         END IF
+        END DO
+       END DO
+
 
        RETURN
        END

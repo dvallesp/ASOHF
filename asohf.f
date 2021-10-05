@@ -685,6 +685,16 @@
 
        END IF
 
+c       DO IR=1,NL
+c       DO I=SUM(NPATCH(0:IR-1))+1,SUM(NPATCH(0:IR))
+c        N1=PATCHNX(I)
+c        N2=PATCHNY(I)
+c        N3=PATCHNZ(I)
+c        WRITE(*,*) IR,I,SUM(U11(1:N1,1:N2,1:N3,I))/(N1*N2*N3),
+c     &             MAXVAL(U11(1:N1,1:N2,1:N3,I))
+c       END DO
+c       END DO
+
 ****************************************************************
 *      VIRIAL CONTRAST ! gets CONTRASTEC and OMEGAZ
 *      (Bryan & Norman ApJ, 1998)
