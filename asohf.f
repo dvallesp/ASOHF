@@ -264,8 +264,8 @@
        REAL*4, ALLOCATABLE:: MASAP_PARAL(:,:)
        INTEGER NN, IP, NH, IP2
 
-       INTEGER TEMP0(NMAX,NMAY,NMAZ)
-       INTEGER TEMP1(NAMRX,NAMRY,NAMRZ,NPALEV)
+       INTEGER CR0AMR(NMAX,NMAY,NMAZ)
+       INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
 
 **************************************************************
 *      OPENING FILES
@@ -726,9 +726,9 @@ c       END DO
        END DO
 
 ******* Compute CR0AMR *********************************************
-c       CALL COMPUTE_CR0AMR(NL,NX,NY,NZ,NPATCH,PARE,PATCHNX,PATCHNY,
-c     &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
-c     &                     PATCHRY,PATCHRZ,TEMP0,TEMP1,LADO0)
+       CALL COMPUTE_CR0AMR(NL,NX,NY,NZ,NPATCH,PARE,PATCHNX,PATCHNY,
+     &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                     PATCHRY,PATCHRZ,CR0AMR,CR0AMR11,LADO0)
 c
 c       OPEN(99,FILE='output_files/density_asohf',STATUS='UNKNOWN',
 c     &      FORM='UNFORMATTED')
@@ -766,7 +766,7 @@ c       CLOSE(99)
      &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                    NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,RODO,
-     &                    SOLAP,VECINO,NVECI)
+     &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11)
 
        STOP
 

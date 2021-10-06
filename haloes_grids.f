@@ -862,7 +862,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
      &                          PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                          CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                          NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,
-     &                          RODO,SOLAP,VECINO,NVECI)
+     &                          RODO,SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11)
 ********************************************************************
 *      Pipeline for tentative halo finding over the grid
 ********************************************************************
@@ -886,6 +886,8 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        REAL BOUND,CONTRASTEC,RODO
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
+       INTEGER CR0AMR(NMAX,NMAY,NMAZ)
+       INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
 
 *      GLOBAL VARIABLES
        REAL*4 DX,DY,DZ
@@ -922,12 +924,12 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
        INTEGER L1,L2,L3,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
        INTEGER N1,N2,N3,KONTA,LOW1,LOW2,I2,ICEN1(1),ICEN4(4),CEL,I1,J1
-       INTEGER K1,BORAMR
+       INTEGER K1,BORAMR,IRR,BASINT
        REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
        REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
-       REAL XCEN,YCEN,ZCEN,BOUNDIR
+       REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4
 
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
@@ -1133,8 +1135,8 @@ c          WRITE(*,*) DELTA/ROTE, II
          CLUSRY(NCLUS)=BASY/BASDELTA
          CLUSRZ(NCLUS)=BASZ/BASDELTA
 
-c         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
-c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
+         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
 
         END IF ! KK_ENTERO.EQ.0
        END DO ! I=1,NV_GOOD
@@ -1146,11 +1148,11 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
 *      VAMOS A VER QUE CUMULOS SOLAPAN EN IR
 ****************************************************
 
-       CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
-     &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
-     &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
-     &                 NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
-     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
+c       CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
+c     &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
+c     &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
+c     &                 NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
+c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
 
 ****************************************************
 *      FIN CORRECION DE SOLAPES EN IR
@@ -1162,29 +1164,92 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
        IF (NL.GT.0) THEN
 *      Find the l=1 cells covered by l=0 haloes (they will
 *      potentially host substructures)
-!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,
-!$OMP+                   PATCHZ,CONTA1,CONTA),
-!$OMP+            PRIVATE(I,N1,N2,N3,L1,L2,L3,II,JJ,KK),
+c!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,
+c!$OMP+                   PATCHZ,CONTA1,CONTA),
+c!$OMP+            PRIVATE(I,N1,N2,N3,L1,L2,L3,II,JJ,KK),
+c!$OMP+            DEFAULT(NONE)
+c        DO I=1,NPATCH(1)
+c         N1=PATCHNX(I)
+c         N2=PATCHNY(I)
+c         N3=PATCHNZ(I)
+c         L1=PATCHX(I)
+c         L2=PATCHY(I)
+c         L3=PATCHZ(I)
+c         DO IX=1,N1
+c         DO JY=1,N2
+c         DO KZ=1,N3
+c          CONTA1(IX,JY,KZ,I)=1
+c          II=L1+INT((IX-1)/2)
+c          JJ=L2+INT((JY-1)/2)
+c          KK=L3+INT((KZ-1)/2)
+c          IF (CONTA(II,JJ,KK).EQ.1) CONTA1(IX,JY,KZ,I)=-1
+c         END DO
+c         END DO
+c         END DO
+c        END DO
+
+!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA1),
+!$OMP+            PRIVATE(I,N1,N2,N3,IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
-        DO I=1,NPATCH(1)
-         N1=PATCHNX(I)
-         N2=PATCHNY(I)
-         N3=PATCHNZ(I)
-         L1=PATCHX(I)
-         L2=PATCHY(I)
-         L3=PATCHZ(I)
-         DO IX=1,N1
-         DO JY=1,N2
-         DO KZ=1,N3
-          CONTA1(IX,JY,KZ,I)=1
-          II=L1+INT((IX-1)/2)
-          JJ=L2+INT((JY-1)/2)
-          KK=L3+INT((KZ-1)/2)
-          IF (CONTA(II,JJ,KK).EQ.1) CONTA1(IX,JY,KZ,I)=-1
+         DO I=1,NPATCH(1)
+          N1=PATCHNX(I)
+          N2=PATCHNY(I)
+          N3=PATCHNZ(I)
+          DO IX=1,N1
+          DO JY=1,N2
+          DO KZ=1,N3
+           CONTA1(IX,JY,KZ,I)=1
+          END DO
+          END DO
+          END DO
          END DO
+
+         WRITE(*,*) NPATCH(1)
+
+!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHRX,PATCHRY,
+!$OMP+                   PATCHRZ,DX,DY,DZ,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+!$OMP+                   RX,RY,RZ,CONTA1,NCLUS),
+!$OMP+            PRIVATE(I,N1,N2,N3,X1,X2,Y1,Y2,Z1,Z2,BASX,BASY,BASZ,
+!$OMP+                    BAS,IX,JY,KZ,AA,X3,Y3,Z3,X4,Y4,Z4),
+!$OMP+            DEFAULT(NONE)
+         DO I=1,NPATCH(1)
+          N1=PATCHNX(I)
+          N2=PATCHNY(I)
+          N3=PATCHNZ(I)
+          X1=PATCHRX(I)-DX/2.0
+          Y1=PATCHRY(I)-DY/2.0
+          Z1=PATCHRZ(I)-DZ/2.0
+          X2=X1+N1*DX/2.0
+          Y2=Y1+N2*DY/2.0
+          Z2=Z1+N3*DZ/2.0
+          DO II=1,NCLUS
+           BASX=CLUSRX(II)
+           BASY=CLUSRY(II)
+           BASZ=CLUSRZ(II)
+           BAS=RADIO(II)
+           X3=BASX-BAS
+           Y3=BASY-BAS
+           Z3=BASZ-BAS
+           X4=BASX+BAS
+           Y4=BASY+BAS
+           Z4=BASZ+BAS
+           IF (X1.LE.X4.AND.X3.LE.X2.AND.
+     &         Y1.LE.Y4.AND.Y3.LE.Y2.AND.
+     &         Z1.LE.Z4.AND.Z3.LE.Z2) THEN
+c           WRITE(*,*) BASX,BASY,BASZ,BAS
+            DO IX=1,N1
+            DO JY=1,N2
+            DO KZ=1,N3
+             AA=SQRT((RX(IX,I)-BASX)**2 +
+     &               (RY(JY,I)-BASY)**2 +
+     &               (RZ(KZ,I)-BASZ)**2)
+             IF (AA.LE.BAS) CONTA1(IX,JY,KZ,I)=-1
+            END DO
+            END DO
+            END DO
+           END IF
+          END DO
          END DO
-         END DO
-        END DO
 
 *       And mark the centers of haloes (to avoid identifying haloes at same levels as substructure)
 !$OMP PARALLEL DO SHARED(NPATCH,DX,DY,DZ,PATCHNX,PATCHNY,PATCHNZ,
@@ -1232,14 +1297,15 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
          END DO
         END DO
 
-*       CONTA1=0 --> inside a halo at this same level
-*       CONTA1=1 --> outside any halo
-*       CONTA1=-1 --> outside haloes at this same level, but inside an IR-1 halo
-*       CONTA1=-2 --> outside haloes at this same level, but center of a IR-1 halo
-
         ! clean conta1 from overlaps
         CALL CLEAN_OVERLAPS_INT(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
      &                          SOLAP,CONTA1)
+
+*       CONTA1=0 --> the cell is overlapping another IR cell, and slave (not to be counted)
+*       CONTA1=1 --> outside any halo
+*       CONTA1=2 --> inside a halo at this same level IR
+*       CONTA1=-1 --> outside haloes at this same level, but inside an IR-1 halo
+*       CONTA1=-2 --> outside haloes at this same level, but center of a IR-1 halo
 
         DO IR=1,NL
         ! then proceed with the halo finding as written in the asohf.f now, but with the new modifications
@@ -1280,50 +1346,6 @@ c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
           END DO
          END DO
          WRITE(*,*)'ESTIMATION:', IR,KK_ENTERO,CONTRASTEC
-
-         MAXIMO(1:NPATCH(IR))=0.0
-
-!OMP PARALLEL DO SHARED(NPATCH,IR,LOW1,PATCHNX,PATCHNY,PATCHNZ,CONTA1,
-!$OMP+                  U11,MAXIMO,BORAMR),
-!$OMP+           PRIVATE(I2,I,N1,N2,N3,BASX,IX,JY,KZ),
-!$OMP+           DEFAULT(NONE)
-         DO I2=1,NPATCH(IR)
-          I=LOW1+I2
-
-          N1=PATCHNX(I)
-          N2=PATCHNY(I)
-          N3=PATCHNZ(I)
-
-          BASX=0.0
-          DO KZ=1+BORAMR,N3-BORAMR
-          DO JY=1+BORAMR,N2-BORAMR
-          DO IX=1+BORAMR,N1-BORAMR
-           IF (CONTA1(IX,JY,KZ,I).NE.0) BASX=MAX(BASX,U11(IX,JY,KZ,I))
-          END DO
-          END DO
-          END DO
-          MAXIMO(I2)=BASX
-         END DO
-c         KK_REAL=MAXVAL(MAXIMO(1:NPATCH(IR)))
-
-c         DO WHILE(KK_REAL.GT.CONTRASTEC)
-c          ICEN1=MAXLOC(MAXIMO(1:NPATCH(IR)))    !numero "local" de parche en IR
-c          CEL=LOW1+ICEN1(1)   !numero "absoluto" de parche
-
-C          CALL FIND_NEIGHBOURING_PATCHES(2,NL,99,PARE,VECINO,NVECI,
-C     &                                   NPATCH,VID,NVID)
-
-           !CALL FIND_NEARBY_PATCHES
-
-          !DO j=1,2
-          !WRITE(*,*) 'VECINOS:',NVID(j)
-          !DO I=1,NVID(j)
-          ! WRITE(*,*) VID(j,I)
-          !END DO
-          !END DO
-          !STOP
-
-C          END DO !WHILE (KK_REAL.GT.CONTRASTEC)
 
          ALLOCATE(DDD(KK_ENTERO))
          ALLOCATE(DDDX(KK_ENTERO))
@@ -1396,11 +1418,224 @@ c         END DO
 
           KK_ENTERO=CONTA1(IX,JY,KZ,IPATCH)
           IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo yet
-           WRITE(*,*) XCEN,YCEN,ZCEN,'free halo'
+c           WRITE(*,*) XCEN,YCEN,ZCEN,'free halo',nclus+1
+c          WRITE(*,*) '-->',IX,JY,KZ,IPATCH
+
+           NCLUS=NCLUS+1
+           REALCLUS(IFI,NCLUS)=-1
+           LEVHAL(NCLUS)=IR
+           NHALLEV(IR)=NHALLEV(IR)+1
+
+           IF(NCLUS.GT.MAXNCLUS) THEN
+            WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
+            STOP
+           END IF
+
+           CLUSRX(NCLUS)=XCEN
+           CLUSRY(NCLUS)=YCEN
+           CLUSRZ(NCLUS)=ZCEN
+
+*          tentative reach of the base grid
+           BASX=CLUSRX(NCLUS)-BOUNDIR
+           NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
+           IF (NX1.LT.1) NX1=1
+
+           BASX=CLUSRX(NCLUS)+BOUNDIR
+           NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
+           IF (NX2.GT.NX) NX2=NX
+
+           BASY=CLUSRY(NCLUS)-BOUNDIR
+           NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
+           IF (NY1.LT.1) NY1=1
+
+           BASY=CLUSRY(NCLUS)+BOUNDIR
+           NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
+           IF (NY2.GT.NY) NY2=NY
+
+           BASZ=CLUSRZ(NCLUS)-BOUNDIR
+           NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+           IF (NZ1.LT.1) NZ1=1
+
+           BASZ=CLUSRZ(NCLUS)+BOUNDIR
+           NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+           IF (NZ2.GT.NZ) NZ2=NZ
+
+*          patches that could contain this halo
            CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
      &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR,
      &                         IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
-           WRITE(*,*) NRELEVANT_PATCHES(1)
+
+c           WRITE(*,*) CLUSRX(NCLUS),NX1,NX2,RADX(NX1),RADX(NX2)
+c           DO I=1,NRELEVANT_PATCHES(1)
+c            WRITE(*,*) I,PATCHRX(RELEVANT_PATCHES(I))-DX/2.0,
+c     &                 PATCHRX(RELEVANT_PATCHES(I))+
+c     &                 (PATCHNX(RELEVANT_PATCHES(I))-1)*DX/2.0
+c           END DO
+
+*          Now, we extend the cluster radially from its center
+           BASX=0.0
+           BASY=0.0
+           BASZ=0.0
+           BASDELTA=0.0
+
+           BASMASS_SHELL=0.0
+           BASMASS=0.0   !TOTAL MASS OF THE CLUSTER
+           DELTA=0.0    !TOTAL CONTRAST OF THE CLUSTER
+           BASVOL=0.0     !TOTAL VOLUME OF THE CLUSTER (sphere)
+
+           R_INT=0.0
+           R_EXT=0.5*DXPA
+
+*          increase the radius until density falls below the virial value
+           DELTA=10.0*CONTRASTEC*ROTE ! this is to ensure we enter the loop
+           ITER_GROW=0
+           II=0
+           JJ=0
+
+           DO WHILE(DELTA.GT.CONTRASTEC*ROTE)
+            ITER_GROW=ITER_GROW+1
+
+            IF (ITER_GROW.GT.1) THEN
+             IF (R_EXT.LE.BOUNDIR) THEN
+              R_INT=R_EXT
+              R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
+             ELSE
+              WRITE(*,*) 'WARNING: growing not converged', r_int, r_ext,
+     &                                                     boundir
+              STOP
+             END IF
+            END IF
+
+            BASMASS_SHELL=0.0
+
+            VOLCELL=DX*DY*DZ
+            DO K=NZ1,NZ2
+            DO J=NY1,NY2
+            DO I=NX1,NX2
+             IF (CR0AMR(I,J,K).EQ.1) THEN
+              AA=SQRT((RADX(I)-CLUSRX(NCLUS))**2 +
+     &                (RADY(J)-CLUSRY(NCLUS))**2 +
+     &                (RADZ(K)-CLUSRZ(NCLUS))**2)
+
+              IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
+               !CONTA(I,J,K)=1 ! do not try to find an additional halo here (at this level)
+               II=II+1
+               BASVOL=BASVOL+VOLCELL
+
+               BAS=U1(I,J,K)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
+               BASMASS_SHELL=BASMASS_SHELL+BAS
+
+               BASX=BASX+RADX(I)*BAS
+               BASY=BASY+RADY(J)*BAS
+               BASZ=BASZ+RADZ(K)*BAS
+               BASDELTA=BASDELTA+BAS
+              END IF
+             END IF
+            END DO
+            END DO
+            END DO
+
+            ! AND NOW LOOP UP TO IR-1, AND THEN ANOTHER LOOP ON IR, OVER RELEVANT_PATCHES
+            DO IRR=1,IR-1
+             DXPA=DX/2.0**IRR
+             DYPA=DY/2.0**IRR
+             DZPA=DZ/2.0**IRR
+             LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
+             LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
+             VOLCELL=DXPA*DYPA*DZPA
+             DO BASINT=LOW1,LOW2
+              IPATCH=RELEVANT_PATCHES(BASINT)
+              N1=PATCHNX(IPATCH)
+              N2=PATCHNY(IPATCH)
+              N3=PATCHNZ(IPATCH)
+              DO KZ=1,N3
+              DO JY=1,N2
+              DO IX=1,N1
+               IF (CR0AMR11(IX,JY,KZ,IPATCH).EQ.1) THEN
+                IF (CONTA1(IX,JY,KZ,IPATCH).NE.0) THEN
+                 ! DO STUFF
+                 AA=SQRT((RX(IX,IPATCH)-CLUSRX(NCLUS))**2 +
+     &                   (RY(JY,IPATCH)-CLUSRY(NCLUS))**2 +
+     &                   (RZ(KZ,IPATCH)-CLUSRZ(NCLUS))**2)
+
+                 IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
+                  II=II+1
+                  BASVOL=BASVOL+VOLCELL
+
+                  BAS=U11(IX,JY,KZ,IPATCH)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
+                  BASMASS_SHELL=BASMASS_SHELL+BAS
+
+                  BASX=BASX+RX(IX,IPATCH)*BAS
+                  BASY=BASY+RY(JY,IPATCH)*BAS
+                  BASZ=BASZ+RZ(KZ,IPATCH)*BAS
+                  BASDELTA=BASDELTA+BAS
+                 END IF
+                END IF
+               END IF
+              END DO
+              END DO
+              END DO
+             END DO
+            END DO
+
+            IRR=IR
+            DXPA=DX/(2.0**IRR)
+            DYPA=DY/(2.0**IRR)
+            DZPA=DZ/(2.0**IRR)
+            LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
+            LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
+            VOLCELL=DXPA*DYPA*DZPA
+            DO BASINT=LOW1,LOW2
+             IPATCH=RELEVANT_PATCHES(BASINT)
+             !if (ir.gt.1) write(*,*) 'ipatch=',ipatch,low1,low2,basint
+             N1=PATCHNX(IPATCH)
+             N2=PATCHNY(IPATCH)
+             N3=PATCHNZ(IPATCH)
+             DO KZ=1,N3
+             DO JY=1,N2
+             DO IX=1,N1
+              IF (CONTA1(IX,JY,KZ,IPATCH).NE.0) THEN
+
+               AA=SQRT((RX(IX,IPATCH)-CLUSRX(NCLUS))**2 +
+     &                 (RY(JY,IPATCH)-CLUSRY(NCLUS))**2 +
+     &                 (RZ(KZ,IPATCH)-CLUSRZ(NCLUS))**2)
+
+               IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
+                JJ=JJ+1
+                CONTA1(IX,JY,KZ,IPATCH)=2
+                BASVOL=BASVOL+VOLCELL
+
+                BAS=U11(IX,JY,KZ,IPATCH)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
+                BASMASS_SHELL=BASMASS_SHELL+BAS
+
+                BASX=BASX+RX(IX,IPATCH)*BAS
+                BASY=BASY+RY(JY,IPATCH)*BAS
+                BASZ=BASZ+RZ(KZ,IPATCH)*BAS
+                BASDELTA=BASDELTA+BAS
+               END IF
+              END IF
+             END DO
+             END DO
+             END DO
+            END DO
+
+            BASMASS=BASMASS+BASMASS_SHELL*RODO*RE0**3
+            DELTA=BASMASS/(BASVOL*RETE**3)
+
+c            write(*,*) iter_grow,r_ext,
+c     &                 clusrx(nclus),clusry(nclus),clusrz(nclus),
+c     &                 delta/rote
+           END DO   ! do while (DELTA)
+
+           RADIO(NCLUS)=R_EXT
+           MASA(NCLUS)=BASMASS
+
+           CLUSRX(NCLUS)=BASX/BASDELTA
+           CLUSRY(NCLUS)=BASY/BASDELTA
+           CLUSRZ(NCLUS)=BASZ/BASDELTA
+
+         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,II,JJ,DELTA/ROTE
           ELSE IF(KK_ENTERO.EQ.-1) THEN ! this mean this peak must be a substructure
            BASX =U11(IX+1,JY,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
            BASY =U11(IX,JY+1,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
@@ -1418,8 +1653,6 @@ c         END DO
             CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
      &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR,
      &                         IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
-            WRITE(*,*) NRELEVANT_PATCHES(1)
-
 
            END IF
            END IF
@@ -1431,7 +1664,129 @@ c         END DO
          END DO
 
          DEALLOCATE(DDD,DDDX,DDDY,DDDZ,DDDP)
-         STOP
+
+         IF (IR.LT.NL) THEN
+          LOW1=SUM(NPATCH(0:IR))+1
+          LOW2=SUM(NPATCH(0:IR+1))
+
+!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA1,LOW1,
+!$OMP+                   LOW2),
+!$OMP+            PRIVATE(I,N1,N2,N3,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+          DO I=LOW1,LOW2
+           N1=PATCHNX(I)
+           N2=PATCHNY(I)
+           N3=PATCHNZ(I)
+           DO IX=1,N1
+           DO JY=1,N2
+           DO KZ=1,N3
+            CONTA1(IX,JY,KZ,I)=1
+           END DO
+           END DO
+           END DO
+          END DO
+
+          DXPA=DX/(2.0**(IR+1))
+          DYPA=DY/(2.0**(IR+1))
+          DZPA=DZ/(2.0**(IR+1))
+
+!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHRX,PATCHRY,
+!$OMP+                   PATCHRZ,DX,DY,DZ,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+!$OMP+                   RX,RY,RZ,CONTA1,NCLUS,IR,LOW1,LOW2,DXPA,DYPA,
+!$OMP+                   DZPA),
+!$OMP+            PRIVATE(I,N1,N2,N3,X1,X2,Y1,Y2,Z1,Z2,BASX,BASY,BASZ,
+!$OMP+                    BAS,IX,JY,KZ,AA,X3,Y3,Z3,X4,Y4,Z4),
+!$OMP+            DEFAULT(NONE)
+          DO I=LOW1,LOW2
+           N1=PATCHNX(I)
+           N2=PATCHNY(I)
+           N3=PATCHNZ(I)
+           X1=PATCHRX(I)-DXPA
+           Y1=PATCHRY(I)-DYPA
+           Z1=PATCHRZ(I)-DZPA
+           X2=X1+N1*DXPA
+           Y2=Y1+N2*DYPA
+           Z2=Z1+N3*DZPA
+           DO II=1,NCLUS
+            BASX=CLUSRX(II)
+            BASY=CLUSRY(II)
+            BASZ=CLUSRZ(II)
+            BAS=RADIO(II)
+            X3=BASX-BAS
+            Y3=BASY-BAS
+            Z3=BASZ-BAS
+            X4=BASX+BAS
+            Y4=BASY+BAS
+            Z4=BASZ+BAS
+            IF (X1.LE.X4.AND.X3.LE.X2.AND.
+     &          Y1.LE.Y4.AND.Y3.LE.Y2.AND.
+     &          Z1.LE.Z4.AND.Z3.LE.Z2) THEN
+c           WRITE(*,*) BASX,BASY,BASZ,BAS
+             DO IX=1,N1
+             DO JY=1,N2
+             DO KZ=1,N3
+              AA=SQRT((RX(IX,I)-BASX)**2 +
+     &                (RY(JY,I)-BASY)**2 +
+     &                (RZ(KZ,I)-BASZ)**2)
+              IF (AA.LE.BAS) CONTA1(IX,JY,KZ,I)=-1
+             END DO
+             END DO
+             END DO
+            END IF
+           END DO
+          END DO
+
+*       And mark the centers of haloes (to avoid identifying haloes at same levels as substructure)
+!$OMP PARALLEL DO SHARED(NPATCH,DX,DY,DZ,PATCHNX,PATCHNY,PATCHNZ,
+!$OMP+                   PATCHRX,PATCHRY,PATCHRZ,NCLUS,CLUSRX,CLUSRY,
+!$OMP+                   CLUSRZ,CONTA1,LOW1,LOW2,DXPA,DYPA,DZPA),
+!$OMP+            PRIVATE(I,N1,N2,N3,X1,X2,Y1,Y2,Z1,Z2,II,BASX,BASY,
+!$OMP+                    BASZ,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+          DO I=LOW1,LOW2
+           N1=PATCHNX(I)
+           N2=PATCHNY(I)
+           N3=PATCHNZ(I)
+           X1=PATCHRX(I)-DXPA
+           Y1=PATCHRY(I)-DYPA
+           Z1=PATCHRZ(I)-DZPA
+           X2=X1+N1*DXPA
+           Y2=Y1+N2*DYPA
+           Z2=Z1+N3*DZPA
+           DO II=1,NCLUS
+            BASX=CLUSRX(II)
+            BASY=CLUSRY(II)
+            BASZ=CLUSRZ(II)
+            BASX=(BASX-X1)*(X2-BASX)
+            BASY=(BASY-Y1)*(Y2-BASY)
+            BASZ=(BASZ-Z1)*(Z2-BASZ)
+            IF (BASX.GT.0.AND.BASY.GT.0.AND.BASZ.GT.0) THEN
+             BASX=CLUSRX(II)-X1
+             BASY=CLUSRY(II)-Y1
+             BASZ=CLUSRZ(II)-Z1
+             IX=INT(BASX/DXPA)+1
+             JY=INT(BASY/DYPA)+1
+             KZ=INT(BASZ/DZPA)+1
+             DO I1=IX-1,IX+1
+             DO J1=JY-1,JY+1
+             DO K1=KZ-1,KZ+1
+              IF (I1.GE.1.AND.I1.LE.N1.AND.
+     &            J1.GE.1.AND.J1.LE.N2.AND.
+     &            K1.GE.1.AND.K1.LE.N3) THEN
+               CONTA1(I1,J1,K1,I)=-2
+              END IF
+             END DO
+             END DO
+             END DO
+            END IF
+           END DO
+          END DO
+
+          ! clean conta1 from overlaps
+          CALL CLEAN_OVERLAPS_INT(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
+     &                            SOLAP,CONTA1)
+
+         END IF
         END DO !(IR=1,NL)
 
        END IF !(NL.GT.0)
@@ -1459,7 +1814,7 @@ c         END DO
        COMMON /ESPACIADO/ DX,DY,DZ
 
        REAL X1,X2,X3,X4,Y1,Y2,Y3,Y4,Z1,Z2,Z3,Z4,DXPA,DYPA,DZPA
-       INTEGER I,J,K,IX,JY,KZ,II,JJ,KK,LOW1,LOW2,IR,N1,N2,N3
+       INTEGER I,J,K,IX,JY,KZ,II,JJ,KK,LOW1,LOW2,IR,N1,N2,N3,LOW3
 
        DO IR=1,NL
         NRELEVANT_PATCHES(IR)=0
@@ -1477,6 +1832,7 @@ c         END DO
        Z1=ZCEN-REACH
        Z2=ZCEN+REACH
 
+       LOW3=0
        DO IR=1,MAXLEVEL
         LOW1=SUM(NPATCH(0:IR-1))+1
         LOW2=SUM(NPATCH(0:IR))
@@ -1502,11 +1858,12 @@ c         END DO
          IF (Y1.LE.Y4.AND.Y3.LE.Y2) THEN
          IF (Z1.LE.Z4.AND.Z3.LE.Z2) THEN
           NRELEVANT_PATCHES(IR)=NRELEVANT_PATCHES(IR)+1
-          RELEVANT_PATCHES(NRELEVANT_PATCHES(IR))=I
+          RELEVANT_PATCHES(LOW3+NRELEVANT_PATCHES(IR))=I
          END IF
          END IF
          END IF
         END DO
+        LOW3=LOW3+NRELEVANT_PATCHES(IR)
        END DO
 
 
