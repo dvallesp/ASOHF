@@ -924,12 +924,13 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
        INTEGER L1,L2,L3,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
        INTEGER N1,N2,N3,KONTA,LOW1,LOW2,I2,ICEN1(1),ICEN4(4),CEL,I1,J1
-       INTEGER K1,BORAMR,IRR,BASINT
+       INTEGER K1,BORAMR,IRR,BASINT,FLAG_ITER
        REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
        REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
        REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4
+       REAL VECDENS(1000),VECRAD(1000),DERIVATIVE(1000),BASVOL_SHELL
 
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
@@ -1164,30 +1165,6 @@ c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
        IF (NL.GT.0) THEN
 *      Find the l=1 cells covered by l=0 haloes (they will
 *      potentially host substructures)
-c!$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,
-c!$OMP+                   PATCHZ,CONTA1,CONTA),
-c!$OMP+            PRIVATE(I,N1,N2,N3,L1,L2,L3,II,JJ,KK),
-c!$OMP+            DEFAULT(NONE)
-c        DO I=1,NPATCH(1)
-c         N1=PATCHNX(I)
-c         N2=PATCHNY(I)
-c         N3=PATCHNZ(I)
-c         L1=PATCHX(I)
-c         L2=PATCHY(I)
-c         L3=PATCHZ(I)
-c         DO IX=1,N1
-c         DO JY=1,N2
-c         DO KZ=1,N3
-c          CONTA1(IX,JY,KZ,I)=1
-c          II=L1+INT((IX-1)/2)
-c          JJ=L2+INT((JY-1)/2)
-c          KK=L3+INT((KZ-1)/2)
-c          IF (CONTA(II,JJ,KK).EQ.1) CONTA1(IX,JY,KZ,I)=-1
-c         END DO
-c         END DO
-c         END DO
-c        END DO
-
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA1),
 !$OMP+            PRIVATE(I,N1,N2,N3,IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
@@ -1418,9 +1395,6 @@ c         END DO
 
           KK_ENTERO=CONTA1(IX,JY,KZ,IPATCH)
           IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo yet
-c           WRITE(*,*) XCEN,YCEN,ZCEN,'free halo',nclus+1
-c          WRITE(*,*) '-->',IX,JY,KZ,IPATCH
-
            NCLUS=NCLUS+1
            REALCLUS(IFI,NCLUS)=-1
            LEVHAL(NCLUS)=IR
@@ -1634,8 +1608,9 @@ c     &                 delta/rote
            CLUSRY(NCLUS)=BASY/BASDELTA
            CLUSRZ(NCLUS)=BASZ/BASDELTA
 
-         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
-     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,II,JJ,DELTA/ROTE
+           WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,II,JJ,DELTA/ROTE,
+     &             NCLUS
           ELSE IF(KK_ENTERO.EQ.-1) THEN ! this mean this peak must be a substructure
            BASX =U11(IX+1,JY,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
            BASY =U11(IX,JY+1,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
@@ -1650,9 +1625,256 @@ c     &                 delta/rote
            IF (BASYY.GT.0) THEN
            IF (BASZZ.GT.0) THEN ! then it's a local maximum
             WRITE(*,*) XCEN,YCEN,ZCEN,'substructure'
+            WRITE(*,*) 'CHECK:',
+     &                 MINVAL(U11(IX-1:IX+1,JY-1:JY+1,KZ-1:KZ+1,IPATCH))
+
+            NCLUS=NCLUS+1
+            REALCLUS(IFI,NCLUS)=-1
+            LEVHAL(NCLUS)=IR
+            NHALLEV(IR)=NHALLEV(IR)+1
+
+            IF(NCLUS.GT.MAXNCLUS) THEN
+             WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
+             STOP
+            END IF
+
+            CLUSRX(NCLUS)=XCEN
+            CLUSRY(NCLUS)=YCEN
+            CLUSRZ(NCLUS)=ZCEN
+
+*           tentative reach of the base grid
+            BASX=CLUSRX(NCLUS)-BOUNDIR
+            NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
+            IF (NX1.LT.1) NX1=1
+
+            BASX=CLUSRX(NCLUS)+BOUNDIR
+            NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
+            IF (NX2.GT.NX) NX2=NX
+
+            BASY=CLUSRY(NCLUS)-BOUNDIR
+            NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
+            IF (NY1.LT.1) NY1=1
+
+            BASY=CLUSRY(NCLUS)+BOUNDIR
+            NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
+            IF (NY2.GT.NY) NY2=NY
+
+            BASZ=CLUSRZ(NCLUS)-BOUNDIR
+            NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+            IF (NZ1.LT.1) NZ1=1
+
+            BASZ=CLUSRZ(NCLUS)+BOUNDIR
+            NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+            IF (NZ2.GT.NZ) NZ2=NZ
+
+*           patches that could contain this halo
             CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
-     &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR,
-     &                         IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
+     &                          PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR,
+     &                          IR,NL,RELEVANT_PATCHES,
+     &                          NRELEVANT_PATCHES)
+
+*           Now, we extend the cluster radially from its center
+            BASX=0.0
+            BASY=0.0
+            BASZ=0.0
+            BASDELTA=0.0
+
+            BASMASS_SHELL=0.0
+            BASMASS=0.0   !TOTAL MASS OF THE CLUSTER
+            DELTA=0.0    !TOTAL CONTRAST OF THE CLUSTER
+            BASVOL=0.0     !TOTAL VOLUME OF THE CLUSTER (sphere)
+
+            R_INT=0.0
+            R_EXT=0.5*DXPA
+
+*           increase the radius until density falls below the virial value
+            DELTA=10.0*CONTRASTEC*ROTE ! this is to ensure we enter the loop
+            ITER_GROW=0
+            FLAG_ITER=1
+            JJ=0
+
+            DO WHILE(DELTA.GT.CONTRASTEC*ROTE.AND.FLAG_ITER.EQ.1)
+             ITER_GROW=ITER_GROW+1
+             II=0
+
+             IF (ITER_GROW.GT.1) THEN
+              IF (R_EXT.LE.BOUNDIR) THEN
+               R_INT=R_EXT
+               R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
+              ELSE
+               WRITE(*,*) 'WARNING: growing not converged', r_int,
+     &                    r_ext,boundir
+               STOP
+              END IF
+             END IF
+
+             BASMASS_SHELL=0.0
+             BASVOL_SHELL=0.0
+
+             VOLCELL=DX*DY*DZ
+             DO K=NZ1,NZ2
+             DO J=NY1,NY2
+             DO I=NX1,NX2
+              IF (CR0AMR(I,J,K).EQ.1) THEN
+               AA=SQRT((RADX(I)-CLUSRX(NCLUS))**2 +
+     &                 (RADY(J)-CLUSRY(NCLUS))**2 +
+     &                 (RADZ(K)-CLUSRZ(NCLUS))**2)
+
+               IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
+                !CONTA(I,J,K)=1 ! do not try to find an additional halo here (at this level)
+                II=II+1
+                BASVOL=BASVOL+VOLCELL
+
+                BAS=U1(I,J,K)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
+                BASMASS_SHELL=BASMASS_SHELL+BAS
+                BASVOL_SHELL=BASVOL_SHELL+VOLCELL
+
+                BASX=BASX+RADX(I)*BAS
+                BASY=BASY+RADY(J)*BAS
+                BASZ=BASZ+RADZ(K)*BAS
+                BASDELTA=BASDELTA+BAS
+               END IF
+              END IF
+             END DO
+             END DO
+             END DO
+
+             ! AND NOW LOOP UP TO IR-1, AND THEN ANOTHER LOOP ON IR, OVER RELEVANT_PATCHES
+             DO IRR=1,IR-1
+              DXPA=DX/2.0**IRR
+              DYPA=DY/2.0**IRR
+              DZPA=DZ/2.0**IRR
+              LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
+              LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
+              VOLCELL=DXPA*DYPA*DZPA
+              DO BASINT=LOW1,LOW2
+               IPATCH=RELEVANT_PATCHES(BASINT)
+               N1=PATCHNX(IPATCH)
+               N2=PATCHNY(IPATCH)
+               N3=PATCHNZ(IPATCH)
+               DO KZ=1,N3
+               DO JY=1,N2
+               DO IX=1,N1
+                IF (CR0AMR11(IX,JY,KZ,IPATCH).EQ.1) THEN
+                 IF (CONTA1(IX,JY,KZ,IPATCH).NE.0) THEN
+                  ! DO STUFF
+                  AA=SQRT((RX(IX,IPATCH)-CLUSRX(NCLUS))**2 +
+     &                    (RY(JY,IPATCH)-CLUSRY(NCLUS))**2 +
+     &                    (RZ(KZ,IPATCH)-CLUSRZ(NCLUS))**2)
+
+                  IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
+                   II=II+1
+                   BASVOL=BASVOL+VOLCELL
+
+                   BAS=U11(IX,JY,KZ,IPATCH)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
+                   BASMASS_SHELL=BASMASS_SHELL+BAS
+                   BASVOL_SHELL=BASVOL_SHELL+VOLCELL
+
+                   BASX=BASX+RX(IX,IPATCH)*BAS
+                   BASY=BASY+RY(JY,IPATCH)*BAS
+                   BASZ=BASZ+RZ(KZ,IPATCH)*BAS
+                   BASDELTA=BASDELTA+BAS
+                  END IF
+                 END IF
+                END IF
+               END DO
+               END DO
+               END DO
+              END DO
+             END DO
+
+             IRR=IR
+             DXPA=DX/(2.0**IRR)
+             DYPA=DY/(2.0**IRR)
+             DZPA=DZ/(2.0**IRR)
+             LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
+             LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
+             VOLCELL=DXPA*DYPA*DZPA
+             DO BASINT=LOW1,LOW2
+              IPATCH=RELEVANT_PATCHES(BASINT)
+              !if (ir.gt.1) write(*,*) 'ipatch=',ipatch,low1,low2,basint
+              N1=PATCHNX(IPATCH)
+              N2=PATCHNY(IPATCH)
+              N3=PATCHNZ(IPATCH)
+              DO KZ=1,N3
+              DO JY=1,N2
+              DO IX=1,N1
+               IF (CONTA1(IX,JY,KZ,IPATCH).NE.0) THEN
+
+                AA=SQRT((RX(IX,IPATCH)-CLUSRX(NCLUS))**2 +
+     &                  (RY(JY,IPATCH)-CLUSRY(NCLUS))**2 +
+     &                  (RZ(KZ,IPATCH)-CLUSRZ(NCLUS))**2)
+
+                IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
+                 II=II+1
+                 CONTA1(IX,JY,KZ,IPATCH)=2
+                 BASVOL=BASVOL+VOLCELL
+
+                 BAS=U11(IX,JY,KZ,IPATCH)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
+                 BASMASS_SHELL=BASMASS_SHELL+BAS
+                 BASVOL_SHELL=BASVOL_SHELL+VOLCELL
+
+                 BASX=BASX+RX(IX,IPATCH)*BAS
+                 BASY=BASY+RY(JY,IPATCH)*BAS
+                 BASZ=BASZ+RZ(KZ,IPATCH)*BAS
+                 BASDELTA=BASDELTA+BAS
+                END IF
+               END IF
+              END DO
+              END DO
+              END DO
+             END DO
+
+             BASMASS=BASMASS+BASMASS_SHELL*RODO*RE0**3
+             DELTA=BASMASS/(BASVOL*RETE**3)
+
+             IF (II.GT.0) THEN
+              JJ=JJ+1
+              VECRAD(JJ)=0.5*(R_INT+R_EXT)
+              VECDENS(JJ)=BASMASS_SHELL*RODO*RE0**3 / (BASVOL*RETE**3)
+              IF (JJ.EQ.1) THEN
+               DERIVATIVE(JJ)=1000.0
+              ELSE
+               BAS=LOG(VECDENS(JJ))-LOG(VECDENS(JJ-1))
+               DERIVATIVE(JJ)=BAS/(LOG(VECRAD(JJ))-LOG(VECRAD(JJ-1)))
+               IF (DERIVATIVE(JJ).GT.DERIVATIVE(JJ-1)) FLAG_ITER=0
+              END IF
+              WRITE(*,*) JJ,DERIVATIVE(JJ),II,DELTA/ROTE
+             END IF
+
+c            write(*,*) iter_grow,r_ext,
+c     &                 clusrx(nclus),clusry(nclus),clusrz(nclus),
+c     &                 delta/rote
+            END DO   ! do while (DELTA.AND.FLAG_ITER)
+
+            RADIO(NCLUS)=R_EXT
+            MASA(NCLUS)=BASMASS
+
+            CLUSRX(NCLUS)=BASX/BASDELTA
+            CLUSRY(NCLUS)=BASY/BASDELTA
+            CLUSRZ(NCLUS)=BASZ/BASDELTA
+
+*           Find its parent
+            LOW1=1
+            LOW2=SUM(NHALLEV(0:IR-1))
+            X1=CLUSRX(NCLUS)
+            Y1=CLUSRY(NCLUS)
+            Z1=CLUSRZ(NCLUS)
+            WRITE(*,*) LOW1,LOW2
+            busca_pare: DO II=LOW1,LOW2
+             X2=CLUSRX(II)
+             Y2=CLUSRY(II)
+             Z2=CLUSRZ(II)
+             BAS=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+             IF (BAS/(1.05*RADIO(II)).LT.1) THEN
+              REALCLUS(IFI,NCLUS)=II
+              EXIT busca_pare
+             END IF
+            END DO busca_pare
+
+            WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,II,JJ,DELTA/ROTE,
+     &             NCLUS,REALCLUS(IFI,NCLUS)
 
            END IF
            END IF
@@ -1660,7 +1882,7 @@ c     &                 delta/rote
            END IF
            END IF
            END IF
-          END IF
+          END IF ! KK_ENTERO.EQ.1 (FREE HALO) OR .EQ.-1 (SUBSTRUCTURE)
          END DO
 
          DEALLOCATE(DDD,DDDX,DDDY,DDDZ,DDDP)
