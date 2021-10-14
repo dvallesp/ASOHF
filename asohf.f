@@ -745,8 +745,8 @@ c         end do
 c       CLOSE(99)
 *********************************************************************
 
-       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,SOLAP,
-     &                     U11)
+c       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,SOLAP,
+c     &                     U11)
 
 **********************************************************************
 ******************************HALO FINDER*****************************
