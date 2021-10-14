@@ -1831,7 +1831,8 @@ c     &                 delta/rote
              IF (II.GT.0) THEN
               JJ=JJ+1
               VECRAD(JJ)=0.5*(R_INT+R_EXT)
-              VECDENS(JJ)=BASMASS_SHELL*RODO*RE0**3 / (BASVOL*RETE**3)
+              VECDENS(JJ)=BASMASS_SHELL*RODO*RE0**3 /
+     &                     (BASVOL_SHELL*RETE**3)
               IF (JJ.EQ.1) THEN
                DERIVATIVE(JJ)=1000.0
               ELSE
