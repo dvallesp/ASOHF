@@ -39,7 +39,7 @@
       INTEGER,ALLOCATABLE::CR01(:,:,:,:)
       INTEGER,ALLOCATABLE::CONTA1(:,:,:)
       INTEGER,ALLOCATABLE::CONTA11(:,:,:,:)
-      REAL MAP,XL,YL,ZL,DXPA,DYPA,DZPA
+      REAL MAP,XL,YL,ZL,DXPA,DYPA,DZPA,BAS,FRAC_REFINABLE
       INTEGER I,IX,JY,KZ,REFINE_THR,REFINE_COUNT,BOR,MIN_PATCHSIZE
       INTEGER INI_EXTENSION,NBIS,IRPA,BORAMR,LOW1,LOW2,IPATCH,IPARE
       INTEGER INMAX(3),INMAX2(2),I1,I2,J1,J2,K1,K2,N1,N2,N3,IR,MARCA
@@ -60,6 +60,7 @@
       BORAMR=0
       INI_EXTENSION=2 !initial extension of a patch around a cell (on each direction)
       MIN_PATCHSIZE=14 !minimum size (child cells) to be accepted
+      FRAC_REFINABLE=0.1
       NPALEV3=(INT(NAMRX/5)**3)+1
       write(*,*) 'NPALEV3=',NPALEV3
 
@@ -166,7 +167,9 @@
        DO WHILE (MARCA.EQ.1) !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         MARCA=0
         IF (N1.LE.NAMRX-2.AND.I1.GT.BOR+1) THEN
-         IF (COUNT(CONTA1(I1-1,J1:J2,K1:K2).GE.REFINE_THR).GT.0) THEN
+         BAS=FLOAT(COUNT(CONTA1(I1-1,J1:J2,K1:K2).GE.REFINE_THR))
+     &       /(N2*N3)
+         IF (BAS.GT.FRAC_REFINABLE) THEN
           I1=I1-1
           N1=2*(I2-I1+1)
           MARCA=1
@@ -174,8 +177,9 @@
         END IF
 
         IF (N1.LE.NAMRX-2.AND.I2.LT.NX-BOR) THEN
-         !IF (IPATCH.EQ.153) WRITE(*,*) IX,JY,KZ,I1,I2,J1,J2,K1,K2
-         IF (COUNT(CONTA1(I2+1,J1:J2,K1:K2).GE.REFINE_THR).GT.0) THEN
+         BAS=FLOAT(COUNT(CONTA1(I2+1,J1:J2,K1:K2).GE.REFINE_THR))
+     &       /(N2*N3)
+         IF (BAS.GT.FRAC_REFINABLE) THEN
           I2=I2+1
           N1=2*(I2-I1+1)
           MARCA=1
@@ -183,7 +187,9 @@
         END IF
 
         IF (N2.LE.NAMRY-2.AND.J1.GT.BOR+1) THEN
-         IF (COUNT(CONTA1(I1:I2,J1-1,K1:K2).GE.REFINE_THR).GT.0) THEN
+         BAS=FLOAT(COUNT(CONTA1(I1:I2,J1-1,K1:K2).GE.REFINE_THR))
+     &       /(N1*N3)
+         IF (BAS.GT.FRAC_REFINABLE) THEN
           J1=J1-1
           N2=2*(J2-J1+1)
           MARCA=1
@@ -191,7 +197,9 @@
         END IF
 
         IF (N2.LE.NAMRY-2.AND.J2.LT.NY-BOR) THEN
-         IF (COUNT(CONTA1(I1:I2,J2+1,K1:K2).GE.REFINE_THR).GT.0) THEN
+         BAS=FLOAT(COUNT(CONTA1(I1:I2,J2+1,K1:K2).GE.REFINE_THR))
+     &       /(N1*N3)
+         IF (BAS.GT.FRAC_REFINABLE) THEN
           J2=J2+1
           N2=2*(J2-J1+1)
           MARCA=1
@@ -199,7 +207,9 @@
         END IF
 
         IF (N3.LE.NAMRZ-2.AND.K1.GT.BOR+1) THEN
-         IF (COUNT(CONTA1(I1:I2,J1:J2,K1-1).GE.REFINE_THR).GT.0) THEN
+         BAS=FLOAT(COUNT(CONTA1(I1:I2,J1:J2,K1-1).GE.REFINE_THR))
+     &       /(N1*N2)
+         IF (BAS.GT.FRAC_REFINABLE) THEN
           K1=K1-1
           N3=2*(K2-K1+1)
           MARCA=1
@@ -207,7 +217,9 @@
         END IF
 
         IF (N3.LE.NAMRZ-2.AND.K2.LT.NZ-BOR) THEN
-         IF (COUNT(CONTA1(I1:I2,J1:J2,K2+1).GE.REFINE_THR).GT.0) THEN
+         BAS=FLOAT(COUNT(CONTA1(I1:I2,J1:J2,K2+1).GE.REFINE_THR))
+     &       /(N1*N2)
+         IF (BAS.GT.FRAC_REFINABLE) THEN
           K2=K2+1
           N3=2*(K2-K1+1)
           MARCA=1
@@ -384,10 +396,10 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
 !$OMP+                   MIN_PATCHSIZE,DXPA,DYPA,DZPA,LPATCHNX,
 !$OMP+                   LPATCHNY,LPATCHNZ,LPATCHX,LPATCHY,LPATCHZ,
 !$OMP+                   LPATCHRX,LPATCHRY,LPATCHRZ,LVAL,PATCHRX,
-!$OMP+                   PATCHRY,PATCHRZ),
+!$OMP+                   PATCHRY,PATCHRZ,FRAC_REFINABLE),
 !$OMP+            PRIVATE(IPARE,REFINE_COUNT,IPATCH,INMAX,IX,JY,KZ,
 !$OMP+                    BASINT,NP1,NP2,NP3,I1,I2,J1,J2,K1,K2,N1,N2,N3,
-!$OMP+                    MARCA,NBIS),
+!$OMP+                    MARCA,NBIS,BAS),
 !$OMP+            DEFAULT(NONE)
        DO IPARE=LOW1,LOW2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         REFINE_COUNT=COUNT(CR01(:,:,:,IPARE).GE.REFINE_THR)
@@ -421,8 +433,9 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
          DO WHILE (MARCA.EQ.1) !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           MARCA=0
           IF (N1.LE.NAMRX-2.AND.I1.GT.BORAMR+1) THEN
-           IF (COUNT(CONTA11(I1-1,J1:J2,K1:K2,IPARE).GE.REFINE_THR)
-     &        .GT.0) THEN
+           BAS=FLOAT(COUNT(CONTA11(I1-1,J1:J2,K1:K2,IPARE).GE.
+     &               REFINE_THR))/(N2*N3)
+           IF (BAS.GT.FRAC_REFINABLE) THEN
             I1=I1-1
             N1=2*(I2-I1+1)
             MARCA=1
@@ -430,8 +443,9 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
           END IF
 
           IF (N1.LE.NAMRX-2.AND.I2.LT.NP1-BORAMR) THEN
-           IF (COUNT(CONTA11(I2+1,J1:J2,K1:K2,IPARE).GE.REFINE_THR)
-     &        .GT.0) THEN
+           BAS=FLOAT(COUNT(CONTA11(I2+1,J1:J2,K1:K2,IPARE).GE.
+     &               REFINE_THR))/(N2*N3)
+           IF (BAS.GT.FRAC_REFINABLE) THEN
             I2=I2+1
             N1=2*(I2-I1+1)
             MARCA=1
@@ -439,8 +453,9 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
           END IF
 
           IF (N2.LE.NAMRY-2.AND.J1.GT.BORAMR+1) THEN
-           IF (COUNT(CONTA11(I1:I2,J1-1,K1:K2,IPARE).GE.REFINE_THR)
-     &        .GT.0) THEN
+           BAS=FLOAT(COUNT(CONTA11(I1:I2,J1-1,K1:K2,IPARE).GE.
+     &               REFINE_THR))/(N1*N3)
+           IF (BAS.GT.FRAC_REFINABLE) THEN
             J1=J1-1
             N2=2*(J2-J1+1)
             MARCA=1
@@ -448,8 +463,9 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
           END IF
 
           IF (N2.LE.NAMRY-2.AND.J2.LT.NP2-BORAMR) THEN
-           IF (COUNT(CONTA11(I1:I2,J2+1,K1:K2,IPARE).GE.REFINE_THR)
-     &        .GT.0) THEN
+           BAS=FLOAT(COUNT(CONTA11(I1:I2,J2+1,K1:K2,IPARE).GE.
+     &               REFINE_THR))/(N1*N3)
+           IF (BAS.GT.FRAC_REFINABLE) THEN
             J2=J2+1
             N2=2*(J2-J1+1)
             MARCA=1
@@ -457,8 +473,9 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
           END IF
 
           IF (N3.LE.NAMRZ-2.AND.K1.GT.BORAMR+1) THEN
-           IF (COUNT(CONTA11(I1:I2,J1:J2,K1-1,IPARE).GE.REFINE_THR)
-     &        .GT.0) THEN
+           BAS=FLOAT(COUNT(CONTA11(I1:I2,J1:J2,K1-1,IPARE).GE.
+     &               REFINE_THR))/(N1*N2)
+           IF (BAS.GT.FRAC_REFINABLE) THEN
             K1=K1-1
             N3=2*(K2-K1+1)
             MARCA=1
@@ -466,8 +483,9 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
           END IF
 
           IF (N3.LE.NAMRZ-2.AND.K2.LT.NP3-BORAMR) THEN
-           IF (COUNT(CONTA11(I1:I2,J1:J2,K2+1,IPARE).GE.REFINE_THR)
-     &        .GT.0) THEN
+           BAS=FLOAT(COUNT(CONTA11(I1:I2,J1:J2,K2+1,IPARE).GE.
+     &               REFINE_THR))/(N1*N2)
+           IF (BAS.GT.FRAC_REFINABLE) THEN
             K2=K2+1
             N3=2*(K2-K1+1)
             MARCA=1
