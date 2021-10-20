@@ -572,6 +572,13 @@ C        WRITE(*,*) LVAL(I,IPARE)
       END DO pare_levels !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 *     END SUBSEQUENT LEVELS OF REFINEMENT
 
+      DO IR=1,NL_MESH
+       IF (NPATCH(IR).EQ.0) THEN
+        NL_MESH=IR-1
+        EXIT
+       END IF
+      END DO
+
 *     WRITING GRID DATA ON A FILE
       CALL NOMFILE6(ITER,FILE6)
       FILERR='./output_files/'//FILE6
@@ -633,7 +640,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
      &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
 ************************************************************************
-*     Creats a mesh hierarchy for the given particle distribution
+*     Interpolates density field (TSC)
 ************************************************************************
 
       IMPLICIT NONE
@@ -701,9 +708,9 @@ C        WRITE(*,*) LVAL(I,IPARE)
           XL=PATCHRX(IPATCH)-(1+BUF)*DXPA
           YL=PATCHRY(IPATCH)-(1+BUF)*DYPA
           ZL=PATCHRZ(IPATCH)-(1+BUF)*DZPA
-          XR=XL+(PATCHNX(IPATCH)+2)*DXPA
-          YR=YL+(PATCHNY(IPATCH)+2)*DYPA
-          ZR=ZL+(PATCHNZ(IPATCH)+2)*DZPA
+          XR=XL+(PATCHNX(IPATCH)+2*BUF)*DXPA
+          YR=YL+(PATCHNY(IPATCH)+2*BUF)*DYPA
+          ZR=ZL+(PATCHNZ(IPATCH)+2*BUF)*DZPA
           IF (XL.LT.RXPA(I).AND.RXPA(I).LT.XR) THEN
            IF (YL.LT.RYPA(I).AND.RYPA(I).LT.YR) THEN
             IF (ZL.LT.RZPA(I).AND.RZPA(I).LT.ZR) THEN
@@ -964,6 +971,378 @@ C        WRITE(*,*) LVAL(I,IPARE)
       END DO
 
       WRITE(*,*) 'At level',0,minval(u1(:,:,:)),maxval(u1(:,:,:))
+
+      RETURN
+      END
+
+
+************************************************************************
+      SUBROUTINE INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
+     &           NL_MESH,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
+     &           PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
+     &           MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+************************************************************************
+*     Interpolates density field (assuring the field will be continuous)
+************************************************************************
+
+      IMPLICIT NONE
+
+      INCLUDE 'input_files/asohf_parameters.dat'
+
+*     function parameters
+      INTEGER ITER,NX,NY,NZ,NL_TSC,NL_MESH,N_PARTICLES,N_DM,N_GAS
+      INTEGER NPATCH(0:NLEVELS),PARE(NPALEV)
+      INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
+      INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
+      REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
+      REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
+     &       MASAP(PARTIRED)
+      REAL LADO0,T,ZETA
+
+*     COMMON VARIABLES
+      REAL DX,DY,DZ
+      COMMON /ESPACIADO/ DX,DY,DZ
+
+      REAL  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
+      COMMON /GRID/  RADX,RADY,RADZ
+
+      REAL*4 RETE,HTE,ROTE
+      COMMON /BACK/ RETE,HTE,ROTE
+
+      REAL*4 U1(NMAX,NMAY,NMAZ)
+      REAL*4 U1G(NMAX,NMAY,NMAZ)
+      REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
+      REAL*4 U11G(NAMRX,NAMRY,NAMRZ,NPALEV)
+      COMMON /VARIA/ U1,U11,U1G,U11G
+
+*     LOCAL VARIABLES
+      INTEGER PLEV(PARTIRED)
+      REAL XL,YL,ZL,DXPA,DYPA,DZPA,XR,YR,ZR,XP,YP,ZP,BAS,DENBAS,PI
+      REAL RRR,MMM,VOLCORRECT
+      INTEGER I,IX,JY,KZ,II,JJ,KK,N1,N2,N3,I1,I2,J1,J2,K1,K2,IR,IPATCH
+      INTEGER BUF,LOW1,LOW2,NBAS,NBAS2,LINT,NBASPART,NMIN_PART,IBASPART
+      INTEGER IXX,JYY,KZZ,L1,L2,L3,LL1,LL2,LL3,MAXBUF
+      INTEGER,ALLOCATABLE::SCRPAINT(:),SCRIX(:),SCRJY(:),SCRKZ(:)
+      INTEGER,ALLOCATABLE::INDICE(:)
+      INTEGER,ALLOCATABLE::SCRINT(:,:,:)
+      REAL,ALLOCATABLE::MASAP2(:),RADPART(:),SCR41(:),SCR42(:)
+      REAL MINIRADX(-2:NAMRX+3),MINIRADY(-2:NAMRY+3),
+     &     MINIRADZ(-2:NAMRZ+3)
+
+      REAL CPUTIME1,CPUTIME2
+      INTEGER WALLTIME1,WALLTIME2,TIME
+
+      BUF=12 ! extra buffer around each patch, to find radius around each cell
+      NMIN_PART=8
+      PI=DACOS(-1.D0)
+      VOLCORRECT=6.0/PI !volume relation from cube to sphere (same side than diameter)
+
+*     Find the (maximum) level a particle belongs to
+*      (this is done to reduce computational burden)
+!$OMP PARALLEL DO SHARED(N_PARTICLES,PLEV), PRIVATE(I), DEFAULT(NONE)
+      DO I=1,N_PARTICLES
+       PLEV(I)=0
+      END DO
+
+      DO IR=NL_MESH,NL_TSC+1,-1
+       LOW1=SUM(NPATCH(0:IR-1))+1
+       LOW2=SUM(NPATCH(0:IR))
+       DXPA=DX/2.0**IR
+       DYPA=DY/2.0**IR
+       DZPA=DZ/2.0**IR
+!$OMP PARALLEL DO SHARED(N_PARTICLES,PLEV,LOW1,LOW2,BUF,DXPA,DYPA,DZPA,
+!$OMP+                   PATCHRX,PATCHRY,PATCHRZ,PATCHNX,PATCHNY,
+!$OMP+                   PATCHNZ,RXPA,RYPA,RZPA,IR),
+!$OMP+            PRIVATE(I,IPATCH,XL,YL,ZL,XR,YR,ZR),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_PARTICLES
+        IF (PLEV(I).EQ.0) THEN
+         loop_patches: DO IPATCH=LOW1,LOW2
+          XL=PATCHRX(IPATCH)-(1+BUF)*DXPA
+          YL=PATCHRY(IPATCH)-(1+BUF)*DYPA
+          ZL=PATCHRZ(IPATCH)-(1+BUF)*DZPA
+          XR=XL+(PATCHNX(IPATCH)+2*BUF)*DXPA
+          YR=YL+(PATCHNY(IPATCH)+2*BUF)*DYPA
+          ZR=ZL+(PATCHNZ(IPATCH)+2*BUF)*DZPA
+          IF (XL.LT.RXPA(I).AND.RXPA(I).LT.XR) THEN
+           IF (YL.LT.RYPA(I).AND.RYPA(I).LT.YR) THEN
+            IF (ZL.LT.RZPA(I).AND.RZPA(I).LT.ZR) THEN
+             PLEV(I)=IR
+             EXIT loop_patches
+            END IF
+           END IF
+          END IF
+         END DO loop_patches
+        END IF
+       END DO
+      END DO
+
+      DO IR=NL_TSC+1,NL_MESH
+       WRITE(*,*) 'Particles at level',IR,
+     &             COUNT(PLEV(1:N_PARTICLES).EQ.IR)
+      END DO
+
+*     Go from the finest to the coarsest level
+      DO IR=NL_MESH,NL_TSC+1,-1
+
+       CALL CPU_TIME(CPUTIME1)
+       WALLTIME1=TIME()
+
+       LOW1=SUM(NPATCH(0:IR-1))+1
+       LOW2=SUM(NPATCH(0:IR))
+       DXPA=DX/2.0**IR
+       DYPA=DY/2.0**IR
+       DZPA=DZ/2.0**IR
+       DENBAS=(4.0*PI/3.0)*ROTE*RETE**3
+
+       NBAS=COUNT(PLEV(1:N_PARTICLES).GE.IR)
+       !WRITE(*,*) 'NBAS IN IR',IR,NBAS
+
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHNX,PATCHNY,PATCHNZ,U11),
+!$OMP+            PRIVATE(IPATCH,N1,N2,N3,IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO IPATCH=LOW1,LOW2
+        N1=PATCHNX(IPATCH)
+        N2=PATCHNY(IPATCH)
+        N3=PATCHNZ(IPATCH)
+        DO KZ=1,N3
+        DO JY=1,N2
+        DO IX=1,N1
+         U11(IX,JY,KZ,IPATCH)=0.0
+        END DO
+        END DO
+        END DO
+       END DO
+
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHRX,PATCHRY,PATCHRZ,DXPA,DYPA,
+!$OMP+                   DZPA,BUF,PATCHNX,PATCHNY,PATCHNZ,NBAS,
+!$OMP+                   N_PARTICLES,PLEV,IR,RXPA,RYPA,RZPA,
+!$OMP+                   NMIN_PART,DENBAS,U11,MASAP,VOLCORRECT),
+!$OMP+            PRIVATE(IPATCH,XL,YL,ZL,N1,N2,N3,XR,YR,ZR,MINIRADX,
+!$OMP+                    MINIRADY,MINIRADZ,II,JJ,KK,SCRPAINT,I,XP,YP,
+!$OMP+                    ZP,SCRINT,IX,JY,KZ,NBAS2,SCRIX,SCRJY,SCRKZ,
+!$OMP+                    LINT,NBASPART,I1,I2,J1,J2,K1,K2,MASAP2,
+!$OMP+                    RADPART,IBASPART,IXX,JYY,KZZ,BAS,INDICE,
+!$OMP+                    SCR41,SCR42,RRR,MMM,L1,L2,L3,LL1,LL2,LL3),
+!$OMP+            DEFAULT(NONE),
+!$OMP+            REDUCTION(MAX:MAXBUF),
+!$OMP+            SCHEDULE(DYNAMIC)
+       DO IPATCH=LOW1,LOW2
+        XL=PATCHRX(IPATCH)-(1+BUF)*DXPA
+        YL=PATCHRY(IPATCH)-(1+BUF)*DYPA
+        ZL=PATCHRZ(IPATCH)-(1+BUF)*DZPA
+        N1=PATCHNX(IPATCH)
+        N2=PATCHNY(IPATCH)
+        N3=PATCHNZ(IPATCH)
+        XR=XL+(N1+2*BUF)*DXPA
+        YR=YL+(N2+2*BUF)*DYPA
+        ZR=ZL+(N3+2*BUF)*DZPA
+
+        DO II=-2,N1+3
+         MINIRADX(II)=PATCHRX(IPATCH)+(FLOAT(II)-1.5)*DXPA
+        END DO
+        DO JJ=-2,N2+3
+         MINIRADY(JJ)=PATCHRY(IPATCH)+(FLOAT(JJ)-1.5)*DYPA
+        END DO
+        DO KK=-2,N3+3
+         MINIRADZ(KK)=PATCHRZ(IPATCH)+(FLOAT(KK)-1.5)*DZPA
+        END DO
+
+        ALLOCATE(SCRPAINT(NBAS))
+        II=0
+        DO I=1,N_PARTICLES
+         IF (PLEV(I).GE.IR) THEN
+          XP=RXPA(I)
+          YP=RYPA(I)
+          ZP=RZPA(I)
+          IF (XL.LT.XP) THEN
+          IF (XP.LT.XR) THEN
+          IF (YL.LT.YP) THEN
+          IF (YP.LT.YR) THEN
+          IF (ZL.LT.ZP) THEN
+          IF (ZP.LT.ZR) THEN
+           II=II+1
+           SCRPAINT(II)=I
+          END IF
+          END IF
+          END IF
+          END IF
+          END IF
+          END IF
+         END IF
+        END DO
+
+        NBAS2=II
+        !WRITE(*,*) 'IN PATCH',IPATCH,'NBAS2=',NBAS2,xl,xr,yl,yr,zl,zr
+        ALLOCATE(SCRIX(NBAS2),SCRJY(NBAS2),SCRKZ(NBAS2))
+        ALLOCATE(SCRINT(1-BUF:N1+BUF,1-BUF:N2+BUF,1-BUF:N3+BUF))
+
+        DO KZ=1-BUF,N3+BUF
+        DO JY=1-BUF,N2+BUF
+        DO IX=1-BUF,N1+BUF
+         SCRINT(IX,JY,KZ)=0
+        END DO
+        END DO
+        END DO
+
+        L1=1-BUF
+        L2=1-BUF
+        L3=1-BUF
+        LL1=N1+BUF
+        LL2=N2+BUF
+        LL3=N3+BUF
+        DO II=1,NBAS2
+         I=SCRPAINT(II)
+
+         XP=RXPA(I)
+         YP=RYPA(I)
+         ZP=RZPA(I)
+         IX=INT((XP-XL)/DXPA)+L1
+         JY=INT((YP-YL)/DYPA)+L2
+         KZ=INT((ZP-ZL)/DZPA)+L3
+         IF (IX.EQ.L1-1) THEN
+          IX=L1
+         ELSE IF (IX.EQ.LL1+1) THEN
+          IX=LL1
+         END IF
+         IF (JY.EQ.L2-1) THEN
+          JY=L2
+         ELSE IF (JY.EQ.LL2+1) THEN
+          JY=LL2
+         END IF
+         IF (KZ.EQ.L3-1) THEN
+          KZ=L3
+         ELSE IF (KZ.EQ.LL3+1) THEN
+          KZ=LL3
+         END IF
+
+         SCRIX(II)=IX
+         SCRJY(II)=JY
+         SCRKZ(II)=KZ
+
+         SCRINT(IX,JY,KZ)=SCRINT(IX,JY,KZ)+1
+        END DO
+        !write(*,*) ipatch,nbas2,sum(scrint)
+
+        DO KZ=1,N3
+        DO JY=1,N2
+        DO IX=1,N1
+          LINT=0
+          NBASPART=0
+
+          XL=MINIRADX(IX)
+          YL=MINIRADY(JY)
+          ZL=MINIRADZ(KZ)
+
+          DO WHILE (NBASPART.LT.NMIN_PART)
+           LINT=LINT+1
+           I1=IX-LINT
+           I2=IX+LINT
+           J1=JY-LINT
+           J2=JY+LINT
+           K1=KZ-LINT
+           K2=KZ+LINT
+           IF (I1.LE.L1.OR.I2.GE.LL1.OR.
+     &         J1.LE.L2.OR.J2.GE.LL2.OR.
+     &         K1.LE.L3.OR.K2.GE.LL3) THEN
+             WRITE(*,*) 'increase BUF in INTERPOLATE_DENSITY_KERNEL',
+     &                  ipatch,nbaspart,ix,jy,kz,i1,i2,j1,j2,k1,k2,
+     &                  n1,n2,n3
+             STOP
+            END IF
+            NBASPART=SUM(SCRINT(I1:I2,J1:J2,K1:K2))
+          END DO
+
+          IF (LINT.GT.MAXBUF) MAXBUF=LINT
+
+          ALLOCATE(MASAP2(NBASPART),RADPART(NBASPART))
+
+          IBASPART=0
+          DO II=1,NBAS2
+           IXX=SCRIX(II)
+           IF (IXX.GE.I1) THEN
+           IF (IXX.LE.I2) THEN
+           JYY=SCRJY(II)
+           IF (JYY.GE.J1) THEN
+           IF (JYY.LE.J2) THEN
+           KZZ=SCRKZ(II)
+           IF (KZZ.GE.K1) THEN
+           IF (KZZ.LE.K2) THEN
+            IBASPART=IBASPART+1
+            I=SCRPAINT(II)
+            XP=RXPA(I)
+            YP=RYPA(I)
+            ZP=RZPA(I)
+            MASAP2(IBASPART)=MASAP(I)
+            BAS=(XP-XL)**2+(YP-YL)**2+(ZP-ZL)**2
+            RADPART(IBASPART)=SQRT(BAS)
+           END IF
+           END IF
+           END IF
+           END IF
+           END IF
+           END IF
+          END DO
+
+          IF (LINT.EQ.1) THEN
+           RRR=1.5*DXPA
+           ! to avoid increasing buffers:
+           !  we account for the mass in the cube (instead of sphere)
+           !  and correct the volumes
+           MMM=SUM(MASAP2(1:NBASPART))/VOLCORRECT
+          ELSE
+           ALLOCATE(INDICE(NBASPART),SCR41(NBASPART),SCR42(NBASPART))
+           CALL INDEXX(NBASPART,RADPART,INDICE)
+           DO II=1,NBASPART
+            SCR41(II)=RADPART(INDICE(II))
+            SCR42(II)=MASAP2(INDICE(II))
+           END DO
+           DO II=1,NBASPART
+            RADPART(II)=SCR41(II)
+            MASAP2(II)=SCR42(II)
+           END DO
+           DEALLOCATE(INDICE,SCR41,SCR42)
+
+           IF (NBASPART.GT.NMIN_PART) THEN
+            RRR=0.5*(RADPART(NMIN_PART)+RADPART(NMIN_PART+1))
+            MMM=SUM(MASAP2(1:NMIN_PART))
+           ELSE
+            RRR=RADPART(NBASPART)
+            MMM=SUM(MASAP2(1:NBASPART))
+           END IF
+         END IF
+
+         DEALLOCATE(MASAP2,RADPART)
+
+         U11(IX,JY,KZ,IPATCH)=MMM/(DENBAS*RRR**3)
+        END DO
+        END DO
+        END DO
+
+        DEALLOCATE(SCRIX,SCRJY,SCRKZ,SCRINT,SCRPAINT)
+
+       END DO !IPATCH
+
+       bas=1000.0
+       do i=low1,low2
+        n1=patchnx(i)
+        n2=patchny(i)
+        n3=patchnz(i)
+        bas=min(bas,minval(u11(1:n1,1:n2,1:n3,i)))
+       end do
+
+       CALL CPU_TIME(CPUTIME2)
+       WALLTIME2=TIME()
+       CPUTIME2=CPUTIME2-CPUTIME1
+       WALLTIME2=WALLTIME2-WALLTIME1
+
+       WRITE(*,*) 'At level',IR,bas,
+     &                          maxval(u11(:,:,:,low1:low2))
+       WRITE(*,*) '--> CPU, Wall time (s):', CPUTIME2,FLOAT(WALLTIME2)
+       WRITE(*,*) '--> Max kernel size (cells):',MAXBUF
+
+      END DO !IR=NL_MESH,NL_TSC+1,-1
+
 
       RETURN
       END

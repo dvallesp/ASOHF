@@ -10,9 +10,9 @@ Hubble constant (h), omega matter ----------->
 Initial redshift, box size (Mpc) ------------>
 100.0, 40.0
 Parallel(=1),serial(=0)/ Number of processors-->
-1,8
-Levels for the mesh (stand-alone) ------------>
-3
+1,24
+Levels for the mesh (stand-alone), levels interpolated by TSC----->
+9,2
 PARCHLIM(=0 no limit patches/level,>0 limit)->
 0
 LIM=max num patches/level(needs PARCHLIM>0)-->

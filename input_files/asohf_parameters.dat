@@ -20,7 +20,7 @@
 
 *      Maximum patch extension ------------------------------------
        INTEGER NAMRX,NAMRY,NAMRZ
-       PARAMETER (NAMRX=64,NAMRY=64,NAMRZ=64)
+       PARAMETER (NAMRX=32,NAMRY=32,NAMRZ=32)
 
 *      Total number of particles (all types) ---------------
        INTEGER PARTIRED

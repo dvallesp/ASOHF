@@ -89,7 +89,7 @@
 
        REAL*4 UV, UM
 
-       INTEGER IX,JY,KZ,NL,IR,L1
+       INTEGER IX,JY,KZ,NL,IR,L1,NL_TSC
        REAL*4 RX2,RY2,RZ2,A1,A2,B1,C1,A3,A4
        REAL*4 DXPA,DYPA,DZPA
 
@@ -292,7 +292,7 @@
        READ(1,*)
        READ(1,*) FLAG_PARALLEL,NUM
        READ(1,*)
-       READ(1,*) NL
+       READ(1,*) NL,NL_TSC
        READ(1,*)
        READ(1,*) PARCHLIM
        READ(1,*)
@@ -674,10 +674,18 @@
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
 
-        CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,
+        WRITE(*,*) 'TSC density interpolation, levels min,max:',0,NL_TSC
+        CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_TSC,NPATCH,PARE,
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
      &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+
+        WRITE(*,*) 'Smooth density interpolation, levels min,max:',
+     &             NL_TSC+1,NL
+        CALL INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
+     &           NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
+     &           PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
+     &           MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
 
        WRITE(*,*)'***************************'
        WRITE(*,*)'***** END MESHRENOEF ******'
@@ -730,19 +738,19 @@ c       END DO
      &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &                     PATCHRY,PATCHRZ,CR0AMR,CR0AMR11,LADO0)
 c
-c       OPEN(99,FILE='output_files/density_asohf',STATUS='UNKNOWN',
-c     &      FORM='UNFORMATTED')
-c         write(99) (((u1(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
-c         write(99) (((temp0(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
-c         do i=1,sum(npatch(0:nl))
-c          n1=patchnx(i)
-c          n2=patchny(i)
-c          n3=patchnz(i)
-c          write(99) (((u11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
-c          write(99) (((temp1(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
-c          write(99) (((conta2(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
-c         end do
-c       CLOSE(99)
+       OPEN(99,FILE='output_files/density_asohf',STATUS='UNKNOWN',
+     &      FORM='UNFORMATTED')
+         write(99) (((u1(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
+         write(99) (((cr0amr(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
+         do i=1,sum(npatch(0:nl))
+          n1=patchnx(i)
+          n2=patchny(i)
+          n3=patchnz(i)
+          write(99) (((u11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+          write(99) (((cr0amr11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+          write(99) (((solap(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+         end do
+       CLOSE(99)
 *********************************************************************
 
 c       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,SOLAP,
@@ -1306,11 +1314,6 @@ C       WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
        END DO  !IR
 
        END IF !if HAY NIVELES
-
-
-
-
-
 
 *************************************
 *      CHECKING HALOES PER LEVEL
