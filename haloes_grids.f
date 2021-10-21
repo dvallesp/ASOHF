@@ -1159,6 +1159,7 @@ c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
 *      FIN CORRECION DE SOLAPES EN IR
 ****************************************************
 
+       WRITE(*,*) 'At level 0, no. haloes:', NHALLEV(0)
        WRITE(*,*) 'End of base level', 0
        WRITE(*,*) 'Now proceeding with the',NL,'AMR levels'
 
@@ -1622,7 +1623,7 @@ c     &             NCLUS
            IF (BASXX.GT.0) THEN
            IF (BASYY.GT.0) THEN
            IF (BASZZ.GT.0) THEN ! then it's a local maximum
-C            WRITE(*,*) XCEN,YCEN,ZCEN,'substructure'
+C            WRITE(*,*) XCEN,YCEN,ZCEN,'substructure',ir
 C            WRITE(*,*) 'CHECK:',
 C     &                 MINVAL(U11(IX-1:IX+1,JY-1:JY+1,KZ-1:KZ+1,IPATCH))
 
@@ -1856,21 +1857,23 @@ c     &                 delta/rote
             CLUSRY(NCLUS)=BASY/BASDELTA
             CLUSRZ(NCLUS)=BASZ/BASDELTA
 
-*           Find its parent
-            LOW1=1
-            LOW2=SUM(NHALLEV(0:IR-1))
-            X1=CLUSRX(NCLUS)
-            Y1=CLUSRY(NCLUS)
-            Z1=CLUSRZ(NCLUS)
-            busca_pare: DO II=LOW1,LOW2
-             X2=CLUSRX(II)
-             Y2=CLUSRY(II)
-             Z2=CLUSRZ(II)
-             BAS=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
-             IF (BAS/(1.05*RADIO(II)).LT.1) THEN
-              REALCLUS(IFI,NCLUS)=II
-              EXIT busca_pare
-             END IF
+*           Find its parent (from higher to lower level)
+            busca_pare: DO I1=IR-1,0,-1
+             LOW1=SUM(NHALLEV(0:I1-1))+1
+             LOW2=SUM(NHALLEV(0:I1))
+             X1=CLUSRX(NCLUS)
+             Y1=CLUSRY(NCLUS)
+             Z1=CLUSRZ(NCLUS)
+             DO II=LOW1,LOW2
+              X2=CLUSRX(II)
+              Y2=CLUSRY(II)
+              Z2=CLUSRZ(II)
+              BAS=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+              IF (BAS/(1.05*RADIO(II)).LT.1) THEN
+               REALCLUS(IFI,NCLUS)=II
+               EXIT busca_pare
+              END IF
+             END DO
             END DO busca_pare
 
 c            WRITE(*,*) IR,CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
@@ -1884,9 +1887,12 @@ c     &             NCLUS,REALCLUS(IFI,NCLUS)
            END IF
            END IF
           END IF ! KK_ENTERO.EQ.1 (FREE HALO) OR .EQ.-1 (SUBSTRUCTURE)
-         END DO
+         END DO ! L1=1,NV_GOOD
 
          DEALLOCATE(DDD,DDDX,DDDY,DDDZ,DDDP)
+
+*        missing overlapping correction
+         WRITE(*,*) 'At level', IR,', no. haloes:', NHALLEV(IR)
 
          IF (IR.LT.NL) THEN
           LOW1=SUM(NPATCH(0:IR))+1
