@@ -318,11 +318,11 @@ c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
        READ(33,*) IRR,T,NL,MAP
        READ(33,*) ZETA
        READ(33,*) IR,NDXYZ
-       WRITE(*,*) 'IR,NL,NDXYZ,MAP', IR,NL,NDXYZ,MAP
+       !WRITE(*,*) 'IR,NL,NDXYZ,MAP', IR,NL,NDXYZ,MAP
 
        DO IR=1,NL
        READ(33,*) IRR,NPATCH(IR), NPART(IR)
-       WRITE(*,*) 'NPATCH(IR), NPART(IR)',NPATCH(IR), NPART(IR)
+       !WRITE(*,*) 'NPATCH(IR), NPART(IR)',NPATCH(IR), NPART(IR)
        READ(33,*)
 
        IF (IR.NE.IRR) WRITE(*,*)'Warning: fail in restart'
@@ -359,11 +359,11 @@ C        READ(32) (ORIPA1(I),I=1,NDXYZ)   !OJO! las nuevas versioens de MASCLET 
        READ(32) (ORIPA2(I),I=1,NDXYZ)
        CONTA=NDXYZ
        MASAP(1:NDXYZ)=MAP
-       WRITE(*,*) 'ORIPA1=',MAXVAL(ORIPA1(1:NDXYZ)),
-     &                      MINVAL(ORIPA1(1:NDXYZ))
-       WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:NDXYZ)),
-     &                      MINVAL(ORIPA2(1:NDXYZ))
-       WRITE(*,*) 'NPART(0)=',IR, NPART(0),CONTA
+C       WRITE(*,*) 'ORIPA1=',MAXVAL(ORIPA1(1:NDXYZ)),
+C     &                      MINVAL(ORIPA1(1:NDXYZ))
+C       WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:NDXYZ)),
+C     &                      MINVAL(ORIPA2(1:NDXYZ))
+       WRITE(*,*) 'NPART(IR)=',0, NPART(0),CONTA
 
        DO IR=1,NL
         LOW1=SUM(NPATCH(0:IR-1))+1
