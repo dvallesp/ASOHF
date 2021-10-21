@@ -80,7 +80,7 @@ c       PARAMETER (NMAXCLUS_PLOT=100000)
 
 *      Number of DM especies---------------------------------------
        INTEGER N_ESP
-       PARAMETER (N_ESP=1)
+       PARAMETER (N_ESP=4)
 
 *      Number of conditions to build the AMR grid
        INTEGER NCOTAS

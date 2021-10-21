@@ -576,3 +576,105 @@ c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
 
        RETURN
        END
+
+
+*********************************************************************
+       SUBROUTINE SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,
+     &                              RZPA,N_DM,NPART_ESP)
+*********************************************************************
+*      Reorders DM particles by species (assumes there are N_ESP
+*       especies, each 8 times lighter than the previous one)
+*********************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
+       REAL*4 MASAP(PARTIRED)
+       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       INTEGER N_DM
+       INTEGER NPART_ESP(0:N_ESP-1)
+
+       INTEGER I,J,K,N,IESP,CONTA
+       REAL MLOW,MHIGH,BAS,MAXMASS
+       INTEGER,ALLOCATABLE::INDICES(:)
+       REAL,ALLOCATABLE::SCR(:,:)
+
+       WRITE(*,*) 'Sorting particles by mass'
+
+       MAXMASS=MAXVAL(MASAP(1:N_DM))
+
+       CONTA=0
+       ALLOCATE(INDICES(1:N_DM))
+       DO IESP=0,N_ESP-1
+        MHIGH=2*MAXMASS/8.0**IESP
+        MLOW=0.5*MAXMASS/8.0**IESP
+
+        DO I=1,N_DM
+         BAS=MASAP(I)
+         IF (BAS.LT.MHIGH) THEN
+         IF (BAS.GT.MLOW) THEN
+          CONTA=CONTA+1
+          INDICES(CONTA)=I
+         END IF
+         END IF
+        END DO
+        IF (IESP.EQ.0) THEN
+         NPART_ESP(IESP)=CONTA
+        ELSE
+         NPART_ESP(IESP)=CONTA-SUM(NPART_ESP(0:IESP-1))
+        END IF
+        WRITE(*,*) 'Of species',IESP,', no. particles:',NPART_ESP(IESP)
+       END DO
+
+       IF (CONTA.NE.N_DM.OR.SUM(NPART_ESP(0:N_ESP-1)).NE.N_DM) THEN
+        WRITE(*,*) 'Wrong sorting, cannot continue',CONTA,N_DM
+        STOP
+       END IF
+
+       ALLOCATE(SCR(7,N_DM))
+
+!$OMP PARALLEL DO SHARED(SCR,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        SCR(1,I)=RXPA(INDICES(I))
+        SCR(2,I)=RYPA(INDICES(I))
+        SCR(3,I)=RZPA(INDICES(I))
+        SCR(4,I)=U2DM(INDICES(I))
+        SCR(5,I)=U3DM(INDICES(I))
+        SCR(6,I)=U4DM(INDICES(I))
+        SCR(7,I)=MASAP(INDICES(I))
+       END DO
+
+!$OMP PARALLEL DO SHARED(SCR,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        RXPA(I)=SCR(1,I)
+        RYPA(I)=SCR(2,I)
+        RZPA(I)=SCR(3,I)
+        U2DM(I)=SCR(4,I)
+        U3DM(I)=SCR(5,I)
+        U4DM(I)=SCR(6,I)
+        MASAP(I)=SCR(7,I)
+       END DO
+
+       DEALLOCATE(INDICES,SCR)
+
+C       WRITE(*,*) 'Checking...'
+*      CHECK
+C       BAS=MASAP(1)
+C       DO I=2,N_DM
+C        IF (MASAP(I).GT.1.0001*BAS) THEN
+C         WRITE(*,*) 'Wrong, I=',I
+C         STOP
+C        END IF
+C        BAS=MASAP(I)
+C       END DO
+C       stop
+
+       RETURN
+       END
