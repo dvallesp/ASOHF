@@ -317,6 +317,16 @@
        H2=ACHE
        MPAPOLEV(1:100)=LIM   !max. num. of patches per level, 100 levels max.
 
+       IF (NL_TSC.GT.NL) THEN
+        WRITE(*,*) 'Error, NL_TSC must be less or equal than NL',
+     &              NL_TSC,NL
+        STOP
+       END IF
+       IF (NL_TSC.NE.N_ESP-2) THEN
+        WRITE(*,*) 'Error, NL_TSC must be (N_ESP-1)-1',NL_TSC,N_ESP
+        STOP
+       END IF
+
 **************************************************************
 *     ...PARALLEL RUNNING...
 !$OMP PARALLEL SHARED(NUM)
@@ -682,14 +692,16 @@
         CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_TSC,NPATCH,PARE,
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
-     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
 
-        WRITE(*,*) 'Smooth density interpolation, levels min,max:',
-     &             NL_TSC+1,NL
-        CALL INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
-     &           NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
-     &           PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
-     &           MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+        IF (NL_TSC.LT.NL) THEN
+         WRITE(*,*) 'Smooth density interpolation, levels min,max:',
+     &              NL_TSC+1,NL
+         CALL INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
+     &            NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
+     &            PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
+     &            MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
+        END IF
 
        WRITE(*,*)'***************************'
        WRITE(*,*)'***** END MESHRENOEF ******'

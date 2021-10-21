@@ -638,7 +638,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       SUBROUTINE INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_MESH,NPATCH,PARE,
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
-     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
 ************************************************************************
 *     Interpolates density field (TSC)
 ************************************************************************
@@ -656,6 +656,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
      &       MASAP(PARTIRED)
       REAL LADO0,T,ZETA
+      INTEGER NPART_ESP(0:N_ESP-1)
 
 *     COMMON VARIABLES
       REAL DX,DY,DZ
@@ -678,7 +679,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       ! Now it will store the maximum mesh level of a particle.
       REAL XL,YL,ZL,DXPA,DYPA,DZPA,XR,YR,ZR,XP,YP,ZP,BAS,DENBAS
       INTEGER I,IX,JY,KZ,II,JJ,KK,N1,N2,N3,I1,I2,J1,J2,K1,K2,IR,IPATCH
-      INTEGER BUF,LOW1,LOW2,NBAS
+      INTEGER BUF,LOW1,LOW2,NBAS,LOWP1,LOWP2
       REAL,ALLOCATABLE::RXPA2(:),RYPA2(:),RZPA2(:),MASAP2(:)
       REAL MINIRADX(-2:NAMRX+3),MINIRADY(-2:NAMRY+3),
      &     MINIRADZ(-2:NAMRZ+3)
@@ -729,7 +730,95 @@ C        WRITE(*,*) LVAL(I,IPARE)
      &             COUNT(PLEV(1:N_PARTICLES).EQ.IR)
       END DO
 
-      DO IR=NL_MESH,1,-1
+      ! NOW, BASE GRID.
+      XL=-LADO0/2.0
+      YL=-LADO0/2.0
+      ZL=-LADO0/2.0
+
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1), PRIVATE(IX,JY,KZ), DEFAULT(NONE)
+      DO KZ=1,NZ
+      DO JY=1,NY
+      DO IX=1,NX
+       U1(IX,JY,KZ)=0.0
+      END DO
+      END DO
+      END DO
+
+!$OMP PARALLEL DO SHARED(N_PARTICLES,RXPA,RYPA,RZPA,DX,DY,DZ,XL,YL,ZL,
+!$OMP+                   RADX,RADY,RADZ,NX,NY,NZ,U1,MASAP),
+!$OMP+            PRIVATE(I,XP,YP,ZP,IX,JY,KZ,BAS,VX,VY,VZ,II,JJ,KK,
+!$OMP+                    I1,J1,K1),
+!$OMP+            DEFAULT(NONE)
+      DO I=1,N_PARTICLES
+       XP=RXPA(I)
+       YP=RYPA(I)
+       ZP=RZPA(I)
+
+       IX=INT((XP-XL)/DX)+1
+       JY=INT((YP-YL)/DY)+1
+       KZ=INT((ZP-ZL)/DZ)+1
+       IF (IX.LT.1) IX=1
+       IF (IX.GT.NX) IX=NX
+       IF (JY.LT.1) JY=1
+       IF (JY.GT.NY) JY=NY
+       IF (KZ.LT.1) KZ=1
+       IF (KZ.GT.NZ) KZ=NZ
+
+       BAS=ABS(XP-RADX(IX-1))/DX
+       VX(-1)=0.5*(1.5-BAS)**2
+       BAS=ABS(XP-RADX(IX))/DX
+       VX(0)=0.75-BAS**2
+       BAS=ABS(XP-RADX(IX+1))/DX
+       VX(1)=0.5*(1.5-BAS)**2
+
+       BAS=ABS(YP-RADY(JY-1))/DY
+       VY(-1)=0.5*(1.5-BAS)**2
+       BAS=ABS(YP-RADY(JY))/DY
+       VY(0)=0.75-BAS**2
+       BAS=ABS(YP-RADY(JY+1))/DY
+       VY(1)=0.5*(1.5-BAS)**2
+
+       BAS=ABS(ZP-RADZ(KZ-1))/DZ
+       VZ(-1)=0.5*(1.5-BAS)**2
+       BAS=ABS(ZP-RADZ(KZ))/DZ
+       VZ(0)=0.75-BAS**2
+       BAS=ABS(ZP-RADZ(KZ+1))/DZ
+       VZ(1)=0.5*(1.5-BAS)**2
+
+       DO KK=-1,1
+       DO JJ=-1,1
+       DO II=-1,1
+        I1=IX+II
+        J1=JY+JJ
+        K1=KZ+KK
+        IF (I1.EQ.NX+1) I1=1
+        IF (I1.EQ.0) I1=NX
+        IF (J1.EQ.NY+1) J1=1
+        IF (J1.EQ.0) J1=NY
+        IF (K1.EQ.NZ+1) K1=1
+        IF (K1.EQ.0) K1=NZ
+
+        U1(I1,J1,K1)= U1(I1,J1,K1) + MASAP(I)*VX(II)*VY(JJ)*VZ(KK)
+       END DO
+       END DO
+       END DO
+
+      END DO
+
+      DENBAS=DX*DY*DZ*ROTE*RETE**3
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,DENBAS,U1), PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+      DO IX=1,NX
+      DO JY=1,NY
+      DO KZ=1,NZ
+       U1(IX,JY,KZ)=U1(IX,JY,KZ)/DENBAS
+      END DO
+      END DO
+      END DO
+
+      WRITE(*,*) 'At level',0,minval(u1(:,:,:)),maxval(u1(:,:,:))
+
+      DO IR=1,NL_MESH
        NBAS=COUNT(PLEV(1:N_PARTICLES).GE.IR)
        ALLOCATE(RXPA2(NBAS),RYPA2(NBAS),RZPA2(NBAS),MASAP2(NBAS))
 
@@ -876,101 +965,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
        end do
        WRITE(*,*) 'At level',IR,bas,
      &                          maxval(u11(:,:,:,low1:low2))
-      END DO !ir=NL_MESH,1,-1
-
-      ! NOW, BASE GRID.
-      XL=-LADO0/2.0
-      YL=-LADO0/2.0
-      ZL=-LADO0/2.0
-
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1), PRIVATE(IX,JY,KZ), DEFAULT(NONE)
-      DO KZ=1,NZ
-      DO JY=1,NY
-      DO IX=1,NX
-       U1(IX,JY,KZ)=0.0
-      END DO
-      END DO
-      END DO
-
-!$OMP PARALLEL DO SHARED(N_PARTICLES,RXPA,RYPA,RZPA,DX,DY,DZ,XL,YL,ZL,
-!$OMP+                   RADX,RADY,RADZ,NX,NY,NZ,U1,MASAP),
-!$OMP+            PRIVATE(I,XP,YP,ZP,IX,JY,KZ,BAS,VX,VY,VZ,II,JJ,KK,
-!$OMP+                    I1,J1,K1),
-!$OMP+            DEFAULT(NONE)
-      DO I=1,N_PARTICLES
-       XP=RXPA(I)
-       YP=RYPA(I)
-       ZP=RZPA(I)
-
-       IX=INT((XP-XL)/DX)+1
-       JY=INT((YP-YL)/DY)+1
-       KZ=INT((ZP-ZL)/DZ)+1
-       IF (IX.LT.1) IX=1
-       IF (IX.GT.NX) IX=NX
-       IF (JY.LT.1) JY=1
-       IF (JY.GT.NY) JY=NY
-       IF (KZ.LT.1) KZ=1
-       IF (KZ.GT.NZ) KZ=NZ
-
-       BAS=ABS(XP-RADX(IX-1))/DX
-       VX(-1)=0.5*(1.5-BAS)**2
-       BAS=ABS(XP-RADX(IX))/DX
-       VX(0)=0.75-BAS**2
-       BAS=ABS(XP-RADX(IX+1))/DX
-       VX(1)=0.5*(1.5-BAS)**2
-
-       BAS=ABS(YP-RADY(JY-1))/DY
-       VY(-1)=0.5*(1.5-BAS)**2
-       BAS=ABS(YP-RADY(JY))/DY
-       VY(0)=0.75-BAS**2
-       BAS=ABS(YP-RADY(JY+1))/DY
-       VY(1)=0.5*(1.5-BAS)**2
-
-       BAS=ABS(ZP-RADZ(KZ-1))/DZ
-       VZ(-1)=0.5*(1.5-BAS)**2
-       BAS=ABS(ZP-RADZ(KZ))/DZ
-       VZ(0)=0.75-BAS**2
-       BAS=ABS(ZP-RADZ(KZ+1))/DZ
-       VZ(1)=0.5*(1.5-BAS)**2
-
-       DO KK=-1,1
-       DO JJ=-1,1
-       DO II=-1,1
-        I1=IX+II
-        J1=JY+JJ
-        K1=KZ+KK
-        IF (I1.EQ.NX+1) I1=1
-        IF (I1.EQ.0) I1=NX
-        IF (J1.EQ.NY+1) J1=1
-        IF (J1.EQ.0) J1=NY
-        IF (K1.EQ.NZ+1) K1=1
-        IF (K1.EQ.0) K1=NZ
-        if (MASAP(I)*VX(II)*VY(JJ)*VZ(KK).lt.0) then
-         write(*,*) '-------'
-         write(*,*) xp,yp,zp
-         write(*,*) ix,jy,kz
-         write(*,*) ii,jj,kk
-         write(*,*) vx(ii),vy(jj),vz(kk)
-        end if
-        U1(I1,J1,K1)= U1(I1,J1,K1) + MASAP(I)*VX(II)*VY(JJ)*VZ(KK)
-       END DO
-       END DO
-       END DO
-
-      END DO
-
-      DENBAS=DX*DY*DZ*ROTE*RETE**3
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,DENBAS,U1), PRIVATE(IX,JY,KZ),
-!$OMP+            DEFAULT(NONE)
-      DO IX=1,NX
-      DO JY=1,NY
-      DO KZ=1,NZ
-       U1(IX,JY,KZ)=U1(IX,JY,KZ)/DENBAS
-      END DO
-      END DO
-      END DO
-
-      WRITE(*,*) 'At level',0,minval(u1(:,:,:)),maxval(u1(:,:,:))
+       END DO !ir=1,NL_MESH
 
       RETURN
       END
@@ -980,7 +975,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       SUBROUTINE INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
      &           NL_MESH,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
      &           PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
-     &           MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+     &           MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
 ************************************************************************
 *     Interpolates density field (assuring the field will be continuous)
 ************************************************************************
@@ -998,6 +993,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
      &       MASAP(PARTIRED)
       REAL LADO0,T,ZETA
+      INTEGER NPART_ESP(0:N_ESP-1)
 
 *     COMMON VARIABLES
       REAL DX,DY,DZ

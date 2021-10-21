@@ -946,7 +946,8 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        ESP=0.2*DX
        ESP_LOG=1.05
        NSHELL=50 !THIS WILL BE GOTTEN RID OF
-       WRITE(*,*) 'RESOLUTION (IR,DX)=',IR,DX
+       WRITE(*,*) '<-------- BASE GRID -------->'
+       WRITE(*,*) '--> IR,DX:',IR,DX
 
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,CONTA,UBAS1,U1),
 !$OMP+            PRIVATE(IX,JY,KZ),
@@ -972,7 +973,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        END DO
        END DO
        END DO
-       WRITE(*,*)'ESTIMATION_0:',IR,KK_ENTERO
+       WRITE(*,*) 'Clean cells above virial contrast',KK_ENTERO
 *      Ordenamos todas las celdas de los vecinos
        ALLOCATE(DDD(KK_ENTERO))
        ALLOCATE(DDDX(KK_ENTERO))
@@ -1161,9 +1162,11 @@ c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
 
        WRITE(*,*) 'At level 0, no. haloes:', NHALLEV(0)
        WRITE(*,*) 'End of base level', 0
-       WRITE(*,*) 'Now proceeding with the',NL,'AMR levels'
 
        IF (NL.GT.0) THEN
+        WRITE(*,*)
+        WRITE(*,*) '<-------- Now proceeding with the',NL,
+     &             'AMR levels -------->'
 *      Find the l=1 cells covered by l=0 haloes (they will
 *      potentially host substructures)
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA1),
@@ -1289,7 +1292,8 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
          DXPA=DX/(2.0**IR)
          DYPA=DY/(2.0**IR)
          DZPA=DZ/(2.0**IR)
-         WRITE(*,*) 'RESOLUTION (IR,DX)=',IR,DXPA
+
+         WRITE(*,*) '----> NEW LEVEL: IR,DX=',IR,DXPA,'<----'
 
          LOW1=SUM(NPATCH(0:IR-1))+1
          LOW2=SUM(NPATCH(0:IR))
@@ -1321,7 +1325,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
           END DO
           END DO
          END DO
-         WRITE(*,*)'ESTIMATION:', IR,KK_ENTERO,CONTRASTEC
+         WRITE(*,*) 'Clean cells above virial contrast',KK_ENTERO
 
          ALLOCATE(DDD(KK_ENTERO))
          ALLOCATE(DDDX(KK_ENTERO))
@@ -1361,7 +1365,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
           END DO
          END DO
 
-         WRITE(*,*) 'CHECK KK_ENTERO,II=',KK_ENTERO,II
+         !WRITE(*,*) 'CHECK KK_ENTERO,II=',KK_ENTERO,II
 
          CALL SORT_CELLS_AMR(KK_ENTERO,DDD,DDDX,DDDY,DDDZ,DDDP)
 
@@ -1893,6 +1897,11 @@ c     &             NCLUS,REALCLUS(IFI,NCLUS)
 
 *        missing overlapping correction
          WRITE(*,*) 'At level', IR,', no. haloes:', NHALLEV(IR)
+         LOW1=SUM(NHALLEV(0:IR-1))+1
+         LOW2=SUM(NHALLEV(0:IR))
+         WRITE(*,*) '--> Of which, potential substructure:',
+     &               COUNT(REALCLUS(IFI,LOW1:LOW2).GT.0)
+         WRITE(*,*)
 
          IF (IR.LT.NL) THEN
           LOW1=SUM(NPATCH(0:IR))+1
