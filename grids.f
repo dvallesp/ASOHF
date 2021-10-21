@@ -745,9 +745,10 @@ C        WRITE(*,*) LVAL(I,IPARE)
       END DO
 
 !$OMP PARALLEL DO SHARED(N_PARTICLES,RXPA,RYPA,RZPA,DX,DY,DZ,XL,YL,ZL,
-!$OMP+                   RADX,RADY,RADZ,NX,NY,NZ,U1,MASAP),
+!$OMP+                   RADX,RADY,RADZ,NX,NY,NZ,MASAP),
 !$OMP+            PRIVATE(I,XP,YP,ZP,IX,JY,KZ,BAS,VX,VY,VZ,II,JJ,KK,
 !$OMP+                    I1,J1,K1),
+!$OMP+            REDUCTION(+:U1)
 !$OMP+            DEFAULT(NONE)
       DO I=1,N_PARTICLES
        XP=RXPA(I)
