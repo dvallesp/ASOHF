@@ -929,7 +929,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
-       REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4
+       REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4,MINDERIV
        REAL VECDENS(1000),VECRAD(1000),DERIVATIVE(1000),BASVOL_SHELL
 
        REAL*4, ALLOCATABLE::DDD(:)
@@ -1136,8 +1136,8 @@ c          WRITE(*,*) DELTA/ROTE, II
          CLUSRY(NCLUS)=BASY/BASDELTA
          CLUSRZ(NCLUS)=BASZ/BASDELTA
 
-         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
-     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18
+C         WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+C     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
 
         END IF ! KK_ENTERO.EQ.0
        END DO ! I=1,NV_GOOD
@@ -1180,8 +1180,6 @@ c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
           END DO
           END DO
          END DO
-
-         WRITE(*,*) NPATCH(1)
 
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHRX,PATCHRY,
 !$OMP+                   PATCHRZ,DX,DY,DZ,CLUSRX,CLUSRY,CLUSRZ,RADIO,
@@ -1576,7 +1574,7 @@ c           END DO
 
                IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
                 JJ=JJ+1
-                CONTA1(IX,JY,KZ,IPATCH)=2
+                CONTA1(IX,JY,KZ,IPATCH)=2 ! do not try to find an additional halo here (at this level)
                 BASVOL=BASVOL+VOLCELL
 
                 BAS=U11(IX,JY,KZ,IPATCH)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
@@ -1608,9 +1606,9 @@ c     &                 delta/rote
            CLUSRY(NCLUS)=BASY/BASDELTA
            CLUSRZ(NCLUS)=BASZ/BASDELTA
 
-           WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
-     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,II,JJ,DELTA/ROTE,
-     &             NCLUS
+c           WRITE(*,*) IR,CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,II,JJ,DELTA/ROTE,
+c     &             NCLUS
           ELSE IF(KK_ENTERO.EQ.-1) THEN ! this mean this peak must be a substructure
            BASX =U11(IX+1,JY,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
            BASY =U11(IX,JY+1,KZ,IPATCH)-U11(IX,JY,KZ,IPATCH)
@@ -1624,9 +1622,9 @@ c     &                 delta/rote
            IF (BASXX.GT.0) THEN
            IF (BASYY.GT.0) THEN
            IF (BASZZ.GT.0) THEN ! then it's a local maximum
-            WRITE(*,*) XCEN,YCEN,ZCEN,'substructure'
-            WRITE(*,*) 'CHECK:',
-     &                 MINVAL(U11(IX-1:IX+1,JY-1:JY+1,KZ-1:KZ+1,IPATCH))
+C            WRITE(*,*) XCEN,YCEN,ZCEN,'substructure'
+C            WRITE(*,*) 'CHECK:',
+C     &                 MINVAL(U11(IX-1:IX+1,JY-1:JY+1,KZ-1:KZ+1,IPATCH))
 
             NCLUS=NCLUS+1
             REALCLUS(IFI,NCLUS)=-1
@@ -1692,6 +1690,7 @@ c     &                 delta/rote
             ITER_GROW=0
             FLAG_ITER=1
             JJ=0
+            MINDERIV=1000.0
 
             DO WHILE(DELTA.GT.CONTRASTEC*ROTE.AND.FLAG_ITER.EQ.1)
              ITER_GROW=ITER_GROW+1
@@ -1807,7 +1806,7 @@ c     &                 delta/rote
 
                 IF (AA.GE.R_INT.AND.AA.LT.R_EXT) THEN
                  II=II+1
-                 CONTA1(IX,JY,KZ,IPATCH)=2
+                 CONTA1(IX,JY,KZ,IPATCH)=2 ! do not try to find an additional halo here (at this level)
                  BASVOL=BASVOL+VOLCELL
 
                  BAS=U11(IX,JY,KZ,IPATCH)*VOLCELL !U1 is not density contrast, but 1+delta = rho/rho_B!!!
@@ -1838,9 +1837,11 @@ c     &                 delta/rote
               ELSE
                BAS=LOG(VECDENS(JJ))-LOG(VECDENS(JJ-1))
                DERIVATIVE(JJ)=BAS/(LOG(VECRAD(JJ))-LOG(VECRAD(JJ-1)))
-               IF (DERIVATIVE(JJ).GT.DERIVATIVE(JJ-1)) FLAG_ITER=0
+               IF (DERIVATIVE(JJ).GT.MINDERIV) FLAG_ITER=0
               END IF
-              WRITE(*,*) JJ,DERIVATIVE(JJ),II,DELTA/ROTE
+              BAS=DERIVATIVE(JJ)
+              MINDERIV=MIN(MINDERIV,BAS+0.1*ABS(BAS))
+C              WRITE(*,*) JJ,DERIVATIVE(JJ),II,DELTA/ROTE
              END IF
 
 c            write(*,*) iter_grow,r_ext,
@@ -1861,7 +1862,6 @@ c     &                 delta/rote
             X1=CLUSRX(NCLUS)
             Y1=CLUSRY(NCLUS)
             Z1=CLUSRZ(NCLUS)
-            WRITE(*,*) LOW1,LOW2
             busca_pare: DO II=LOW1,LOW2
              X2=CLUSRX(II)
              Y2=CLUSRY(II)
@@ -1873,9 +1873,9 @@ c     &                 delta/rote
              END IF
             END DO busca_pare
 
-            WRITE(*,*) CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
-     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,II,JJ,DELTA/ROTE,
-     &             NCLUS,REALCLUS(IFI,NCLUS)
+c            WRITE(*,*) IR,CLUSRX(NCLUS),CLUSRY(NCLUS),CLUSRZ(NCLUS),
+c     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,DELTA/ROTE,
+c     &             NCLUS,REALCLUS(IFI,NCLUS)
 
            END IF
            END IF
@@ -2037,7 +2037,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
        COMMON /ESPACIADO/ DX,DY,DZ
 
        REAL X1,X2,X3,X4,Y1,Y2,Y3,Y4,Z1,Z2,Z3,Z4,DXPA,DYPA,DZPA
-       INTEGER I,J,K,IX,JY,KZ,II,JJ,KK,LOW1,LOW2,IR,N1,N2,N3,LOW3
+       INTEGER I,J,K,IX,JY,KZ,II,JJ,KK,LOW1,LOW2,IR,N1,N2,N3,LOW3,CONTA
 
        DO IR=1,NL
         NRELEVANT_PATCHES(IR)=0
@@ -2064,6 +2064,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
         DYPA=DY/2.0**IR
         DZPA=DZ/2.0**IR
 
+        CONTA=0
         DO I=LOW1,LOW2
          N1=PATCHNX(I)
          N2=PATCHNY(I)
@@ -2080,12 +2081,13 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
          IF (X1.LE.X4.AND.X3.LE.X2) THEN
          IF (Y1.LE.Y4.AND.Y3.LE.Y2) THEN
          IF (Z1.LE.Z4.AND.Z3.LE.Z2) THEN
-          NRELEVANT_PATCHES(IR)=NRELEVANT_PATCHES(IR)+1
-          RELEVANT_PATCHES(LOW3+NRELEVANT_PATCHES(IR))=I
+          CONTA=CONTA+1
+          RELEVANT_PATCHES(LOW3+CONTA)=I
          END IF
          END IF
          END IF
         END DO
+        NRELEVANT_PATCHES(IR)=CONTA
         LOW3=LOW3+NRELEVANT_PATCHES(IR)
        END DO
 
