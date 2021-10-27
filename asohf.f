@@ -89,7 +89,7 @@
 
        REAL*4 UV, UM
 
-       INTEGER IX,JY,KZ,NL,IR,L1,NL_TSC
+       INTEGER IX,JY,KZ,NL,IR,L1
        REAL*4 RX2,RY2,RZ2,A1,A2,B1,C1,A3,A4
        REAL*4 DXPA,DYPA,DZPA
 
@@ -293,7 +293,7 @@
        READ(1,*)
        READ(1,*) FLAG_PARALLEL,NUM
        READ(1,*)
-       READ(1,*) NL,NL_TSC
+       READ(1,*) NL
        READ(1,*)
        READ(1,*) PARCHLIM
        READ(1,*)
@@ -316,16 +316,6 @@
        N_PARTICLES=N_GAS+N_DM
        H2=ACHE
        MPAPOLEV(1:100)=LIM   !max. num. of patches per level, 100 levels max.
-
-       IF (NL_TSC.GT.NL) THEN
-        WRITE(*,*) 'Error, NL_TSC must be less or equal than NL',
-     &              NL_TSC,NL
-        STOP
-       END IF
-       IF (NL_TSC.NE.N_ESP-2) THEN
-        WRITE(*,*) 'Error, NL_TSC must be (N_ESP-1)-1',NL_TSC,N_ESP
-        STOP
-       END IF
 
 **************************************************************
 *     ...PARALLEL RUNNING...
@@ -688,20 +678,25 @@
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
 
-        WRITE(*,*) 'TSC density interpolation, levels min,max:',0,NL_TSC
-        CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_TSC,NPATCH,PARE,
-     &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-     &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
-     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
+c        WRITE(*,*) 'TSC density interpolation, levels min,max:',0,NL_TSC
+c        CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_TSC,NPATCH,PARE,
+c     &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
+c     &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
+c     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
+c
+c        IF (NL_TSC.LT.NL) THEN
+c         WRITE(*,*) 'Smooth density interpolation, levels min,max:',
+c     &              NL_TSC+1,NL
+c         CALL INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
+c     &            NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
+c     &            PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
+c     &            MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
+c        END IF
 
-        IF (NL_TSC.LT.NL) THEN
-         WRITE(*,*) 'Smooth density interpolation, levels min,max:',
-     &              NL_TSC+1,NL
-         CALL INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
-     &            NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
-     &            PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
-     &            MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
-        END IF
+       CALL DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
+     &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
+     &              PATCHRZ,RXPA,RYPA,RZPA,MASAP,N_PARTICLES,N_DM,
+     &              N_GAS,LADO0,T,ZETA,NPART_ESP)
 
        WRITE(*,*)'***************************'
        WRITE(*,*)'***** END MESHRENOEF ******'
