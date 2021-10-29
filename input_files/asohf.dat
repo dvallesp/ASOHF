@@ -1,31 +1,50 @@
-*************PARAMETERS FOR ASOHF*************
-Files: first, last, every ------------------->
+***********************************************************************
+*                         ASOHF PARAMETERS FILE                       *
+***********************************************************************
+*	General parameters block                                      *
+***********************************************************************
+Files: first, last, every -------------------------------------------->
 4000,4000,50
-Cells per direction (NX,NY,NZ)--------------->
+Cells per direction (NX,NY,NZ) --------------------------------------->
 128,128,128
-GAS,DM particles (all levels)----------------->
+GAS,DM particles (all levels) ---------------------------------------->
 0,21943314
-Hubble constant (h), omega matter ----------->
+Hubble constant (h), omega matter ------------------------------------>
 0.678,0.31
-Initial redshift, box size (Mpc) ------------>
+Initial redshift, box size (Mpc) ------------------------------------->
 100.0, 40.0
-Parallel(=1),serial(=0)/ Number of processors-->
+Parallel(=1),serial(=0)/ Number of processors ------------------------>
 1,24
-Levels for the mesh (stand-alone) ----------->
-8
-PARCHLIM(=0 no limit patches/level,>0 limit)->
-0
-LIM=max num patches/level(needs PARCHLIM>0)-->
-1000
-Variable: 1(gas), 2(dm), 0(gas+dm)----------->
-2
-Merger_tree:1(no),2(con %),3(main line)------>
-1
-Max num of bins for profiles (NSHELL)-------->
-50
-Max.reach around halos (BOUND,Mpc),BORDES---->
-8.0, 1
-FLAG_SA,FLAG_MASCLET,FLAG_GAS----------------->
+Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
 0,1,0
-FLAG_WDM (=1 write DM particles, =0 no)------->
+***********************************************************************
+*	Mesh building parameters block                                *
+***********************************************************************
+Levels for the mesh (stand-alone) ------------------------------------>
+8
+PARCHLIM(=0 no limit patches/level,>0 limit) ------------------------->
 0
+Max num of patches per level(needs PARCHLIM>0) ----------------------->
+1000
+Refinement threshold (num. part.), refinable fraction to extend ------>
+3,0.1
+Minimum patch size (child cells) ------------------------------------->
+14
+Base grid refinement border, AMR grids refinement border ------------->
+8,0
+Density interpolation kernel (1=linear, 2=quadratic) ----------------->
+2
+Variable for mesh halo finding: 1(gas), 2(dm), 0(gas+dm) ------------->
+2
+***********************************************************************
+*	Halo finding parameters block                                 *
+***********************************************************************
+Max. reach around halos (Mpc), excluded cells in boundaries ---------->
+8.0, 1
+FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
+0
+***********************************************************************
+*	Merger tree parameters block                                  *
+***********************************************************************
+Merger_tree: 1(no), 2(complete, with %), 3(main line) ---------------->
+1

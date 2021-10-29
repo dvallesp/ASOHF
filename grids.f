@@ -2,7 +2,8 @@
       SUBROUTINE CREATE_MESH(ITER,NX,NY,NZ,NL_MESH,NPATCH,PARE,
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,
-     &           U4DM,MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+     &           U4DM,MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
+     &           REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,BORAMR)
 ************************************************************************
 *     Creats a mesh hierarchy for the given particle distribution
 ************************************************************************
@@ -21,6 +22,9 @@
      &       U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED),
      &       MASAP(PARTIRED)
       REAL LADO0,T,ZETA
+      INTEGER REFINE_THR,MIN_PATCHSIZE
+      REAL FRAC_REFINABLE
+      INTEGER BOR,BORAMR
 
 *     COMMON VARIABLES
       REAL DX,DY,DZ
@@ -39,9 +43,9 @@
       INTEGER,ALLOCATABLE::CR01(:,:,:,:)
       INTEGER,ALLOCATABLE::CONTA1(:,:,:)
       INTEGER,ALLOCATABLE::CONTA11(:,:,:,:)
-      REAL MAP,XL,YL,ZL,DXPA,DYPA,DZPA,BAS,FRAC_REFINABLE
-      INTEGER I,IX,JY,KZ,REFINE_THR,REFINE_COUNT,BOR,MIN_PATCHSIZE
-      INTEGER INI_EXTENSION,NBIS,IRPA,BORAMR,LOW1,LOW2,IPATCH,IPARE
+      REAL MAP,XL,YL,ZL,DXPA,DYPA,DZPA,BAS
+      INTEGER I,IX,JY,KZ,REFINE_COUNT
+      INTEGER INI_EXTENSION,NBIS,IRPA,LOW1,LOW2,IPATCH,IPARE
       INTEGER INMAX(3),INMAX2(2),I1,I2,J1,J2,K1,K2,N1,N2,N3,IR,MARCA
       INTEGER NP1,NP2,NP3,BASINT,NPALEV3,II,JJ,KK
 
@@ -55,12 +59,7 @@
       CHARACTER*30 FILERR
 
 !     hard-coded parameters (for now, at least)
-      REFINE_THR=3
-      BOR=8
-      BORAMR=0
       INI_EXTENSION=2 !initial extension of a patch around a cell (on each direction)
-      MIN_PATCHSIZE=14 !minimum size (child cells) to be accepted
-      FRAC_REFINABLE=0.1
       NPALEV3=(INT(NAMRX/5)**3)+1
       write(*,*) 'NPALEV3=',NPALEV3
 
@@ -631,6 +630,9 @@ C        WRITE(*,*) LVAL(I,IPARE)
        END DO
       END DO
 
+      WRITE(*,*) '     ===> TOTAL NUMBER OF PATCHES:',
+     &           SUM(NPATCH(0:NL_MESH)),'<==='
+
       RETURN
       END
 
@@ -638,7 +640,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       SUBROUTINE DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
      &              PATCHRZ,RXPA,RYPA,RZPA,MASAP,N_PARTICLES,N_DM,
-     &              N_GAS,LADO0,T,ZETA,NPART_ESP)
+     &              N_GAS,LADO0,T,ZETA,NPART_ESP,INTERP_DEGREE)
 ************************************************************************
 *      Computes the density field on the AMR hierarchy (including base)
 *       grid) by assigning each particle a cloud its size in the
@@ -657,7 +659,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
      &       MASAP(PARTIRED)
       REAL LADO0,T,ZETA
-      INTEGER NPART_ESP(0:N_ESP-1)
+      INTEGER NPART_ESP(0:N_ESP-1),INTERP_DEGREE
 
 *     VARIABLES
       REAL*4 U1(NMAX,NMAY,NMAZ)
@@ -673,7 +675,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       COMMON /BACK/ RETE,HTE,ROTE
 
 *     KERNELS
-      INTEGER NMAX_KERNELS,INTERP_DEGREE
+      INTEGER NMAX_KERNELS
       PARAMETER (NMAX_KERNELS=2**NLEVELS)
       REAL KERNELS(-NMAX_KERNELS:NMAX_KERNELS,0:NLEVELS)
 
@@ -687,8 +689,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
 
       WRITE(*,*) '==== Density interpolation'
 
-      INTERP_DEGREE=2
-      WRITE(*,*) 'Computing 1D kernels...'
+      WRITE(*,*) 'Computing 1D kernels of degree',INTERP_DEGREE,'...'
       CALL COMPUTE_KERNELS(KERNELS,NL,INTERP_DEGREE)
 
 *     BASE GRID

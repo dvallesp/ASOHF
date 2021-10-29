@@ -24,11 +24,11 @@
        END
 
 ********************************************************************
-       SUBROUTINE OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
-     &                       NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
-     &                       PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
-     &                       NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
-     &                       REALCLUS,NSOLAP,SOLAPA,NHALLEV)
+       SUBROUTINE oldOVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,
+     &                       CONTRASTEC,NSHELL,RODO,NPATCH,PATCHNX,
+     &                       PATCHNY,PATCHNZ,PATCHRX,PATCHRY,PATCHRZ,NX,
+     &                       NY,NZ,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
+     &                       CLUSRZ,REALCLUS,NSOLAP,SOLAPA,NHALLEV)
 ********************************************************************
 *      Accounts for the overlaps between haloes found within the
 *      grid (prior to refining with particles)
@@ -857,12 +857,211 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        END
 
 ********************************************************************
+       SUBROUTINE OVERLAPPING(IFI,IR,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
+     &                        PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
+     &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
+     &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
+     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
+********************************************************************
+*      Detect and correct overlaps on the cluster catalogue
+********************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+*      I/O DATA
+       INTEGER IFI,IR,NL,NX,NY,NZ
+       INTEGER NPATCH(0:NLEVELS)
+       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
+       INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
+       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
+       INTEGER PARE(NPALEV)
+       INTEGER NCLUS
+       REAL MASA(MAXNCLUS),RADIO(MAXNCLUS)
+       REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+       INTEGER REALCLUS(MAXITER,MAXNCLUS),LEVHAL(MAXNCLUS)
+       INTEGER NHALLEV(0:NLEVELS)
+       REAL BOUND,CONTRASTEC,RODO
+       INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
+       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
+       INTEGER CR0AMR(NMAX,NMAY,NMAZ)
+       INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
+
+*      GLOBAL VARIABLES
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
+
+       REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
+       COMMON /GRID/ RADX,RADY,RADZ
+
+       REAL*4  RX(0:NAMRX+1,NPALEV),RY(0:NAMRX+1,NPALEV),
+     &         RZ(0:NAMRX+1,NPALEV)
+       COMMON /GRIDAMR/ RX,RY,RZ
+
+       REAL*4 RETE,HTE,ROTE
+       COMMON /BACK/ RETE,HTE,ROTE
+
+       REAL*4 U1(NMAX,NMAY,NMAZ)
+       REAL*4 U1G(NMAX,NMAY,NMAZ)
+       REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
+       REAL*4 U11G(NAMRX,NAMRY,NAMRZ,NPALEV)
+       COMMON /VARIA/ U1,U11,U1G,U11G
+
+       REAL*4 ACHE,T0,RE0
+       COMMON /DOS/ ACHE,T0,RE0
+
+*      LOCAL VARIABLES
+       INTEGER,ALLOCATABLE::SOLAPA(:,:),NSOLAP(:)
+       INTEGER IRR,I,J,K,IX,JY,KZ,IPATCH,LOWH1,LOWH2,LOWH3,BASINT
+       INTEGER IMAXCLUS,IMINCLUS,CONTA,FLAG_ITER,NUM_ITERS,BASINT2
+       REAL BAS,BASX,BASY,BASZ,R1,R2,DIST,X1,Y1,Z1,X2,Y2,Z2,VOL1,VOL2
+       REAL VINT,XI,PI,SOLAP_LOWER_THR,M1,M2
+
+       SOLAP_LOWER_THR=0.5
+
+       PI=DACOS(-1.D0)
+
+       WRITE(*,*) '== HALOES OVERLAPPING IN IR =', IR
+       WRITE(*,*) 'NCLUS,NHALLEV(IR)=', NCLUS, NHALLEV(IR)
+
+       LOWH1=SUM(NHALLEV(0:IR-1))+1
+       LOWH2=SUM(NHALLEV(0:IR))
+
+       ALLOCATE(NSOLAP(LOWH1:LOWH2), SOLAPA(LOWH1:LOWH2,NMAXSOLAP))
+
+!$OMP PARALLEL DO SHARED(NSOLAP,SOLAPA), PRIVATE(I,J), DEFAULT(NONE)
+       DO I=LOWH1,LOWH2
+        NSOLAP(I)=0
+        DO J=1,NMAXSOLAP
+         SOLAPA(I,J)=0
+        END DO
+       END DO
+
+       NUM_ITERS=0
+       FLAG_ITER=1
+
+       DO WHILE (FLAG_ITER.EQ.1)
+        NUM_ITERS=NUM_ITERS+1
+        CONTA=0
+
+*       1. Look for clusters completely included in other ones, and delete
+*        the smallest ones.
+        DO I=LOWH1,LOWH2
+         BASINT=REALCLUS(IFI,I)
+         IF (BASINT.NE.0) THEN
+          R1=RADIO(I)
+          X1=CLUSRX(I)
+          Y1=CLUSRY(I)
+          Z1=CLUSRZ(I)
+          DO J=I+1,LOWH2
+           BASINT2=REALCLUS(IFI,J)
+           IF (BASINT2.NE.0) THEN
+            R2=RADIO(J)
+            X2=CLUSRX(J)
+            Y2=CLUSRY(J)
+            Z2=CLUSRZ(J)
+            DIST=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+            IF (ABS(R1-R2).GE.DIST) THEN
+             ! A sphere is completely included in the other one.
+             ! We shall remove the smallest one.
+             IMAXCLUS=I
+             IMINCLUS=J
+             IF (R2.GT.R1) THEN
+              IMAXCLUS=J
+              IMINCLUS=I
+             END IF !(R2.GT.R1)
+
+             REALCLUS(IFI,IMINCLUS)=0 !The smallest halo is removed
+             CONTA=CONTA+1
+            END IF !(ABS(R1-R2).GE.DIST)
+           END IF !(BASINT2.NE.0)
+          END DO !J=I+1,LOWH2
+         END IF !(BASINT.NE.0) THEN
+        END DO !I=LOWH1,LOWH2
+
+*       2. Look for clusters which overlap a large amount of their
+*        volume, and merge them.
+        DO I=LOWH1,LOWH2
+         BASINT=REALCLUS(IFI,I)
+         IF (BASINT.NE.0) THEN
+          R1=RADIO(I)
+          X1=CLUSRX(I)
+          Y1=CLUSRY(I)
+          Z1=CLUSRZ(I)
+          M1=MASA(I)
+          DO J=I+1,LOWH2
+           BASINT2=REALCLUS(IFI,J)
+           IF (BASINT2.NE.0) THEN
+            R2=RADIO(J)
+            X2=CLUSRX(J)
+            Y2=CLUSRY(J)
+            Z2=CLUSRZ(J)
+            M2=MASA(J)
+
+            ! Compute the volume overlap
+            DIST=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+            BAS=DIST/(R1+R2)
+            IF (BAS.LT.1.0) THEN
+             XI=BAS
+             VINT=(PI/12.0) * (R1+R2)**3 * ((1-XI)**2/XI) *
+     &               (XI**2 + 2*XI - 3*(R1-R2)**2/(R1+R2)**2)
+             VINT=VINT/(4*PI/3*MIN(R1,R2)**3) ! fraction of the smallest cluster volume overlapped
+
+             IF (VINT.GT.SOLAP_LOWER_THR) THEN
+              IMAXCLUS=I
+              IMINCLUS=J
+              IF (R2.GT.R1) THEN
+               IMAXCLUS=J
+               IMINCLUS=I
+              END IF !(R2.GT.R1)
+
+              REALCLUS(IFI,IMINCLUS)=0 !The smallest halo is removed
+              CONTA=CONTA+1
+
+              RADIO(IMAXCLUS)=(R1**3+R2**3)**(1.0/3.0)
+              CLUSRX(IMAXCLUS)=(M1*X1+M2*X2)/(M1+M2)
+              CLUSRY(IMAXCLUS)=(M1*Y1+M2*Y2)/(M1+M2)
+              CLUSRZ(IMAXCLUS)=(M1*Z1+M2*Z2)/(M1+M2)
+
+C              write(*,*) '--------------'
+C              write(*,*) i,j,dist,bas
+C              write(*,*) x1,y1,z1,r1,m1
+C              write(*,*) x2,y2,z2,r2,m2
+C              write(*,*) vint
+C              write(*,*) '-->',CLUSRX(IMAXCLUS),CLUSRY(IMAXCLUS),
+C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
+
+             END IF !(VINT.GT.SOLAP_LOWER_THR)
+            END IF !(BAS.LT.1.0)
+           END IF !(BASINT2.NE.0)
+          END DO !J=I+1,LOWH2
+         END IF !(BASINT.NE.0) THEN
+        END DO !I=LOWH1,LOWH2
+
+        IF (CONTA.EQ.0) FLAG_ITER=0
+        !WRITE(*,*) 'OVERLAPPING',IR,NUM_ITERS,CONTA
+       END DO !WHILE (FLAG_ITER.EQ.1)
+
+       BASINT=COUNT(REALCLUS(IFI,LOWH1:LOWH2).EQ.0)
+       WRITE(*,*) 'REMOVED HALOS_0----->', BASINT
+       BASINT=COUNT(REALCLUS(IFI,LOWH1:LOWH2).NE.0)
+       WRITE(*,*) 'POSSIBLE HALOS_0----->', BASINT
+       BASINT=COUNT(REALCLUS(IFI,LOWH1:LOWH2).EQ.-1)
+       BASINT2=COUNT(REALCLUS(IFI,LOWH1:LOWH2).GT.0)
+       WRITE(*,*) '--> Of which free,substructure:',BASINT,BASINT2
+       WRITE(*,*)
+
+       RETURN
+       END
+
+********************************************************************
        SUBROUTINE HALOFIND_GRID(IFI,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
      &                          PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &                          PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                          CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
-     &                          NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,
-     &                          RODO,SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11)
+     &                          NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
+     &                          VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS)
 ********************************************************************
 *      Pipeline for tentative halo finding over the grid
 ********************************************************************
@@ -880,8 +1079,8 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER NCLUS
        REAL MASA(MAXNCLUS),RADIO(MAXNCLUS)
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
-       INTEGER SOLAPA(MAXNCLUS,NMAXSOLAP),NSOLAP(MAXNCLUS)
        INTEGER REALCLUS(MAXITER,MAXNCLUS),LEVHAL(MAXNCLUS)
+       INTEGER PATCHCLUS(MAXNCLUS)
        INTEGER NHALLEV(0:NLEVELS)
        REAL BOUND,CONTRASTEC,RODO
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
@@ -921,12 +1120,12 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER VID(NLEVELS,NPALEV),NVID(NLEVELS)
        INTEGER RELEVANT_PATCHES(NPALEV),NRELEVANT_PATCHES(NLEVELS)
 
-       INTEGER IR,NSHELL,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
+       INTEGER IR,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
        INTEGER L1,L2,L3,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
        INTEGER N1,N2,N3,KONTA,LOW1,LOW2,I2,ICEN1(1),ICEN4(4),CEL,I1,J1
        INTEGER K1,BORAMR,IRR,BASINT,FLAG_ITER
        REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
-       REAL REF,ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
+       REAL ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
        REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4,MINDERIV
@@ -942,10 +1141,8 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        PI=DACOS(-1.D0)
 
        IR=0
-       REF=0.2*DX !THIS WILL BE GOTTEN RID OF
        ESP=0.2*DX
        ESP_LOG=1.05
-       NSHELL=50 !THIS WILL BE GOTTEN RID OF
        WRITE(*,*) '<-------- BASE GRID -------->'
        WRITE(*,*) '--> IR,DX:',IR,DX
 
@@ -1028,6 +1225,7 @@ c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
          REALCLUS(IFI,NCLUS)=-1
          LEVHAL(NCLUS)=IR
          NHALLEV(IR)=NHALLEV(IR)+1
+         PATCHCLUS(NCLUS)=0
 
          IF(NCLUS.GT.MAXNCLUS) THEN
           WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
@@ -1145,22 +1343,23 @@ C     &             RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
 
        DEALLOCATE(DDD,DDDX,DDDY,DDDZ)
 
+       WRITE(*,*) 'At level',IR,', num. haloes:', NHALLEV(IR)
+
 ****************************************************
 *      CORRECION DE SOLAPES:
 *      VAMOS A VER QUE CUMULOS SOLAPAN EN IR
 ****************************************************
 
-c       CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
-c     &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
-c     &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
-c     &                 NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
-c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
+c       CALL OVERLAPPING(IFI,IR,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
+c     &                        PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+c     &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
+c     &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
+c     &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
+c     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
 
 ****************************************************
 *      FIN CORRECION DE SOLAPES EN IR
 ****************************************************
-
-       WRITE(*,*) 'At level 0, no. haloes:', NHALLEV(0)
        WRITE(*,*) 'End of base level', 0
 
        IF (NL.GT.0) THEN
@@ -1298,11 +1497,9 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
          LOW1=SUM(NPATCH(0:IR-1))+1
          LOW2=SUM(NPATCH(0:IR))
 
-         REF=0.2*DXPA !THIS WILL BE GOTTEN RID OF
          ESP=0.2*DXPA
          ESP_LOG=1.05
          BORAMR=1
-         NSHELL=50 !THIS WILL BE GOTTEN RID OF
          BOUNDIR=BOUND/2.0**IR
 
 *        estimation to allocate
@@ -1402,6 +1599,7 @@ c         END DO
            REALCLUS(IFI,NCLUS)=-1
            LEVHAL(NCLUS)=IR
            NHALLEV(IR)=NHALLEV(IR)+1
+           PATCHCLUS(NCLUS)=IPATCH
 
            IF(NCLUS.GT.MAXNCLUS) THEN
             WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
@@ -1478,7 +1676,7 @@ c           END DO
               R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
              ELSE
               WRITE(*,*) 'WARNING: growing not converged', r_int, r_ext,
-     &                                                     boundir
+     &                    boundir,iter_grow,delta/rote,kk_entero
               STOP
              END IF
             END IF
@@ -1635,6 +1833,7 @@ C     &                 MINVAL(U11(IX-1:IX+1,JY-1:JY+1,KZ-1:KZ+1,IPATCH))
             REALCLUS(IFI,NCLUS)=-1
             LEVHAL(NCLUS)=IR
             NHALLEV(IR)=NHALLEV(IR)+1
+            PATCHCLUS(NCLUS)=IPATCH
 
             IF(NCLUS.GT.MAXNCLUS) THEN
              WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
@@ -1707,7 +1906,7 @@ C     &                 MINVAL(U11(IX-1:IX+1,JY-1:JY+1,KZ-1:KZ+1,IPATCH))
                R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
               ELSE
                WRITE(*,*) 'WARNING: growing not converged', r_int,
-     &                    r_ext,boundir
+     &                    r_ext,boundir,iter_grow,delta/rote,kk_entero
                STOP
               END IF
              END IF
@@ -1895,13 +2094,19 @@ c     &             NCLUS,REALCLUS(IFI,NCLUS)
 
          DEALLOCATE(DDD,DDDX,DDDY,DDDZ,DDDP)
 
-*        missing overlapping correction
          WRITE(*,*) 'At level', IR,', no. haloes:', NHALLEV(IR)
          LOW1=SUM(NHALLEV(0:IR-1))+1
          LOW2=SUM(NHALLEV(0:IR))
          WRITE(*,*) '--> Of which, potential substructure:',
      &               COUNT(REALCLUS(IFI,LOW1:LOW2).GT.0)
          WRITE(*,*)
+
+c         CALL OVERLAPPING(IFI,IR,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
+c     &                        PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+c     &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
+c     &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
+c     &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
+c     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
 
          IF (IR.LT.NL) THEN
           LOW1=SUM(NPATCH(0:IR))+1
@@ -2028,6 +2233,22 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
         END DO !(IR=1,NL)
 
        END IF !(NL.GT.0)
+
+       DO IR=0,NL
+        IF (NHALLEV(IR).GT.0) THEN
+         CALL OVERLAPPING(IFI,IR,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
+     &                        PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
+     &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
+     &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
+     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
+        END IF
+       END DO
+
+       BASINT=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
+       WRITE(*,*) '====> TOTAL NUMBER OF TENTATIVE FREE HALOES',BASINT
+       BASINT=COUNT(REALCLUS(IFI,1:NCLUS).GT.0)
+       WRITE(*,*) '====> TOTAL NUMBER OF TENTATIVE SUBSTRUCTURES',BASINT
 
        RETURN
        END

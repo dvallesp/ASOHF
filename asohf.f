@@ -151,13 +151,13 @@
        REAL*4 VESC2, RS, CONCEN, VMAX2, F2, FC
 
        INTEGER NCLUS,ICMIN,ICMAX
-       INTEGER SOLAPA(MAXNCLUS,NMAXSOLAP), NSOLAP(MAXNCLUS)
        INTEGER KONTA3,KONTA,KONTACAPA,KONTA1,KONTA2
        REAL*4 DIS, VKK, BASMAS, MASAKK
        REAL*4 CMX, CMY, CMZ, SOLMAS, MASAMIN, DELTA2
        REAL*4 VCMX, VCMY, VCMZ, VCM,VVV2, MASA2
        REAL*4 MASA(MAXNCLUS), RADIO(MAXNCLUS)
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+       INTEGER PATCHCLUS(MAXNCLUS)
 
        REAL*8 CMX8,CMY8,CMZ8,VCMX8,VCMY8,VCMZ8
 
@@ -250,9 +250,11 @@
        INTEGER NX1,NX2,NY1,NY2,NZ1,NZ2, BORDES
        INTEGER LOW1,LOW2
 
-       INTEGER PARCHLIM       ! =0, sin limite por nivel, =/ 0 limites
-       INTEGER MPAPOLEV(100)  !maximo numero de parches por nivel, 100 niveles max.
-       COMMON /LIMPARCH/ PARCHLIM,MPAPOLEV
+       INTEGER PARCHLIM       ! =0: no limit patches per level, != 0: do limit
+       INTEGER MPAPOLEV(NLEVELS)
+
+       INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE,BOR,BORAMR
+       REAL MINFRAC_REFINABLE
 
 *      ---PARALLEL---
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR, FLAG_PARALLEL
@@ -279,43 +281,71 @@
 ****************************************************
 *     NX,NY,NZ < or = NMAX,NMAY,NMAZ               *
 ****************************************************
-       READ(1,*)
-       READ(1,*)
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*                         ASOHF PARAMETERS FILE                       *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*       General parameters block                                      *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !Files: first, last, every -------------------------------------------->
        READ(1,*) FIRST,LAST,EVERY
-       READ(1,*)
+       READ(1,*) !Cells per direction (NX,NY,NZ) --------------------------------------->
        READ(1,*) NX,NY,NZ
-       READ(1,*)
+       READ(1,*) !GAS,DM particles (all levels) ---------------------------------------->
        READ(1,*) N_GAS,N_DM
-       READ(1,*)
+       READ(1,*) !Hubble constant (h), omega matter ------------------------------------>
        READ(1,*) ACHE,OMEGA0
-       READ(1,*)
+       READ(1,*) !Initial redshift, box size (Mpc) ------------------------------------->
        READ(1,*) ZI,LADO0
-       READ(1,*)
+       READ(1,*) !Parallel(=1),serial(=0)/ Number of processors ------------------------>
        READ(1,*) FLAG_PARALLEL,NUM
-       READ(1,*)
-       READ(1,*) NL
-       READ(1,*)
-       READ(1,*) PARCHLIM
-       READ(1,*)
-       READ(1,*) LIM
-       READ(1,*)
-       READ(1,*) VAR
-       READ(1,*)
-       READ(1,*) PLOT
-       READ(1,*)
-       READ(1,*) NSHELL
-       READ(1,*)
-       READ(1,*) BOUND, BORDES
-       READ(1,*)
+       READ(1,*) !Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
        READ(1,*) FLAG_SA,FLAG_MASCLET,FLAG_GAS
-       READ(1,*)
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*       Mesh building parameters block                                *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !Levels for the mesh (stand-alone) ------------------------------------>
+       READ(1,*) NL
+       IF (NL.GT.NLEVELS) THEN
+        WRITE(*,*) 'Fatal ERROR: NLEVELS too small in parameters file',
+     &             NL,NLEVELS
+        STOP
+       END IF
+       READ(1,*) !PARCHLIM(=0 no limit patches/level,>0 limit) ------------------------->
+       READ(1,*) PARCHLIM
+       READ(1,*) !LIM=max num patches/level(needs PARCHLIM>0) -------------------------->
+       IF (PARCHLIM.EQ.1) THEN
+        READ(1,*) (MPAPOLEV(I),I=1,NL)
+       ELSE
+        READ(1,*)
+       END IF
+       READ(1,*) !Refinement threshold (num. part.), refinable fraction to extend ------>
+       READ(1,*) REFINE_THR,MINFRAC_REFINABLE
+       READ(1,*) !Minimum patch size (child cells) ------------------------------------->
+       READ(1,*) MIN_PATCHSIZE
+       READ(1,*) !Base grid refinement border, AMR grids refinement border ------------->
+       READ(1,*) BOR,BORAMR
+       READ(1,*) !Density interpolation kernel (1=linear, 2=quadratic) ----------------->
+       READ(1,*) INTERP_DEGREE
+       READ(1,*) !Variable for mesh halo finding: 1(gas), 2(dm), 0(gas+dm) ------------->
+       READ(1,*) VAR
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*       Halo finding parameters block                                 *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !Max. reach around halos (Mpc), excluded cells in boundaries ---------->
+       READ(1,*) BOUND, BORDES
+       READ(1,*) !FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
        READ(1,*) FLAG_WDM
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*       Merger tree parameters block                                  *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !Merger_tree: 1(no), 2(complete, with %), 3(main line) ---------------->
+       READ(1,*) PLOT
+
 
        CLOSE(1)
 
        N_PARTICLES=N_GAS+N_DM
        H2=ACHE
-       MPAPOLEV(1:100)=LIM   !max. num. of patches per level, 100 levels max.
 
 **************************************************************
 *     ...PARALLEL RUNNING...
@@ -576,7 +606,7 @@
         NPART=0
 
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,MASA,RADIO,
-!$OMP+                   CLUSRX,CLUSRY,CLUSRZ,LEVHAL,NSOLAP),
+!$OMP+                   CLUSRX,CLUSRY,CLUSRZ,LEVHAL),
 !$OMP+            PRIVATE(I)
         DO I=1,NMAXNCLUSBAS
          CLUSRX(I)=0.0
@@ -585,7 +615,6 @@
          MASA(I)=0.0
          RADIO(I)=0.0
          LEVHAL(I)=0
-         NSOLAP(I)=0
         END DO
 
         NCLUS=0
@@ -597,7 +626,6 @@
         RETE=0.0
 
         SUBHALOS=0
-        SOLAPA=0
 
 !$OMP PARALLEL DO SHARED(PABAS,U2DM,U3DM,U4DM,RXPA,RYPA,RZPA,
 !$OMP+                   MASAP,ORIPA1,ORIPA2,LIP,LIR,CONTADM),
@@ -674,7 +702,9 @@
          CALL CREATE_MESH(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
      &                    PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
-     &                    N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA)
+     &                    N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
+     &                    REFINE_THR,MIN_PATCHSIZE,MINFRAC_REFINABLE,
+     &                    BOR,BORAMR)
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
 
@@ -696,7 +726,7 @@ c        END IF
        CALL DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
      &              PATCHRZ,RXPA,RYPA,RZPA,MASAP,N_PARTICLES,N_DM,
-     &              N_GAS,LADO0,T,ZETA,NPART_ESP)
+     &              N_GAS,LADO0,T,ZETA,NPART_ESP,INTERP_DEGREE)
 
        WRITE(*,*)'***************************'
        WRITE(*,*)'***** END MESHRENOEF ******'
@@ -784,514 +814,26 @@ c     &                     U11)
      &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
-     &                    NSOLAP,SOLAPA,NHALLEV,BOUND,CONTRASTEC,RODO,
-     &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11)
+     &                    NHALLEV,BOUND,CONTRASTEC,RODO,
+     &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS)
+
+       open(55, file='./output_files/haloesgrids.res', status='unknown')
+       do i=1,nclus
+        write(55,*) clusrx(i),clusry(i),clusrz(i),radio(i),masa(i),
+     &              levhal(i), realclus(ifi,i), patchclus(i)
+       end do
+       close(55)
 
        STOP
 
-c!!! hacer paralelo
-       CONTA2=1                !celdas de parches (1 valen, 0 no)
-c!!!
-       CONTAP(1:NPALEV)=1      !parches (1 valen, 0 no)
-       ICEN=0
-       CEL=0
-       CEL2=0
-       CEN=0
-       CEN2=0
-       VID=0
-
-*      We proceed from top to bottom
-       IF (NL.GE.1) THEN
-
-       DO IR=NL, 1, -1    !!!!!!!!!!!!
-
-       DXPA=0.0
-       DYPA=0.0
-       DZPA=0.0
-       DXPA=DX/(2.0**IR)
-       DYPA=DY/(2.0**IR)
-       DZPA=DZ/(2.0**IR)
-
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-
-       WRITE(*,*) 'RESOLUTION=',IR,DXPA
-
-       REF=0.0
-       REF=1.5*DXPA
-       ESP=(LOG10(LADO*0.5)-LOG10(REF))/(NSHELL-1)
-
-**************==estimacion==*****
-       KONTA=0
-!$OMP  PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                    U11,CONTRASTEC,LOW1,LOW2),
-!$OMP+             PRIVATE(N1,N2,N3,I,IX,JY,KZ,UBAS1),
-!$OMP+             REDUCTION(+:KONTA)
-       DO I=LOW1,LOW2
-
-        N1=PATCHNX(I)
-        N2=PATCHNY(I)
-        N3=PATCHNZ(I)
-
-        DO KZ=1,N3
-        DO JY=1,N2
-        DO IX=1,N1
-
-        UBAS1(IX,JY,KZ)=0.0
-        UBAS1(IX,JY,KZ)=U11(IX,JY,KZ,I)
-        IF (UBAS1(IX,JY,KZ).GE.CONTRASTEC) KONTA=KONTA+1
-
-        END DO
-        END DO
-        END DO
-
-       END DO
-       WRITE(*,*)'ESTIMATION:', IR,KONTA,CONTRASTEC
-***************
-
-
-*      Asi obtengo todos los vecinos de cada parche de IR
-       VECINO=0
-       NVECI=0
-       CALL VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
-     &           PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
-     &           CONTA2,VECINO,NVECI)
-
-*      Empieza la busqueda de celdita en este nivel
-
-
-!!!!!!OJO       CONTA2=1
-
-       MAXIMO(1:NPATCH(IR))=0.0
-
-!!!!hacer paralelo (I2)
-
-       DO I2=1,NPATCH(IR)           !ID "local" de parche en IR
-       I=SUM(NPATCH(0:IR-1)) + I2   !ID "absoluto" de parche en la simu.
-
-        N1=0
-        N2=0
-        N3=0
-        N1=PATCHNX(I)
-        N2=PATCHNY(I)
-        N3=PATCHNZ(I)
-
-        MAXIMO(I2)=MAXVAL(U11(1:N1,1:N2,1:N3,I)*
-     &                    CONTA2(1:N1,1:N2,1:N3,I))
-
-        !SUSANA_QUESTION_1: YA NO ES NECESARIO *CONTA2, NO?
-        ! creo que no pq U11 ya esta corregido mas arriba:
-c!SUSANA        MAXIMO(I2)=MAXVAL(U11(1:N1,1:N2,1:N3,I))
-
-        END DO
-!!!!hacer paralelo
-
-**////////**********
-       KK_REAL=0.0
-       KK_REAL=MAXVAL(MAXIMO(1:NPATCH(IR)))
-
-C_VICENT       DO WHILE (KK_REAL.GE.CONTRASTEC)
-       DO
-       IF(KK_REAL.LT.CONTRASTEC) EXIT
-C_VICENT
-
-       CEN=MAXLOC(MAXIMO(1:NPATCH(IR)))    !numero "local" de parche en IR
-       CEN(1)=SUM(NPATCH(0:IR-1))+CEN(1)   !numero "absoluto" de parche
-
-        IF (CEN(1).GT.SUM(NPATCH(0:IR))) THEN
-         WRITE(*,*) 'WARNING!!CEN1=',CEN(1),NPATCH(IR),SUM(NPATCH(0:IR))
-         STOP
-       END IF
-
-       CEL=CEN(1)   !!numero "absoluto" de parche
-
-**     TENGO QUE SABER TODA LA FAMILIA DE VECINOS DEL PARCHE ELEGIDO
-
-       FLAG=0
-       NV=0
-       NV2=0
-       NV3=0
-       NV=1        !primer vecino: el mismo
-       VID(NV)=CEL
-
-       NV2=0
-       NV3=NV
-
-*       CONTAP(1:NPATCH(IR))=1
-       CONTAP(LOW1:LOW2)=1    !(1 vale, 0 no)
-
-       CONTAP(VID(NV))=0      !asi este no se puede autocontar
-
-*****************8
-C_VICENT       DO WHILE (FLAG.EQ.0)
-       DO
-       IF (FLAG.NE.0) EXIT
-cC_VICENT
-       DO II=NV2+1, NV3
-
-       DO JJ=1, NVECI(VID(II))
-
-       KK_ENTERO=0
-       KK_ENTERO=CONTAP(VECINO(JJ,VID(II)))
-       IF (KK_ENTERO.EQ.1) THEN
-
-       NV=NV+1
-       VID(NV)=VECINO(JJ,VID(II))
-       CONTAP(VECINO(JJ,VID(II)))=0
-
-       END IF
-
-       END DO
-
-       END DO
-
-       IF (NV.EQ.NV3) THEN
-        FLAG=1
-       ELSE
-        NV2=NV3
-        NV3=NV
-       END IF
-
-       END DO  ! WHILE FLAG
-******************8
-
-
-*      VAMOS A LIQUIDAR TODA LA JERARQUIA DE VECINOS
-*      voy a ordenar todas las celdas de los vecinos VECTORIZANDO!!
-        KK_ENTERO=0
-C_VICENT
-!$OMP  PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+                 U11,CONTRASTEC,NV,VID,CONTA2),
-!$OMP+             PRIVATE(I,N1,N2,N3,KK_ENTERO_2),
-!$OMP+             REDUCTION(+:KK_ENTERO)
-C_VICENT
-       DO I=1,NV
-        N1=0
-        N2=0
-        N3=0
-        N1=PATCHNX(VID(I))
-        N2=PATCHNY(VID(I))
-        N3=PATCHNZ(VID(I))
-
-        KK_ENTERO_2=0
-        KK_ENTERO_2=COUNT(U11(1:N1,1:N2,1:N3,VID(I))
-     &              *CONTA2(1:N1,1:N2,1:N3,VID(I)).GE.CONTRASTEC)
-c!SUSANA        KK_ENTERO_2=COUNT(U11(1:N1,1:N2,1:N3,VID(I)).GE.CONTRASTEC)
-        KK_ENTERO=KK_ENTERO+KK_ENTERO_2
-
-        !SUSANA_QUESTION_2: YA NO ES NECESARIO *CONTA2, NO?-->creo q no
-        !SUSANA_QUESTION_2:no habria que poner *REAL(CONTA2)))
-       END DO
-
-
-       ALLOCATE(DDD(KK_ENTERO))
-       ALLOCATE(DDDP(KK_ENTERO))
-       ALLOCATE(DDDX(KK_ENTERO))
-       ALLOCATE(DDDY(KK_ENTERO))
-       ALLOCATE(DDDZ(KK_ENTERO))
-       ALLOCATE(INDICE2(KK_ENTERO))
-       ALLOCATE(DDD2(KK_ENTERO))
-       ALLOCATE(DDDP2(KK_ENTERO))
-       ALLOCATE(DDDX2(KK_ENTERO))
-       ALLOCATE(DDDY2(KK_ENTERO))
-       ALLOCATE(DDDZ2(KK_ENTERO))
-
-C_VICENT
-!$OMP  PARALLEL DO SHARED(KK_ENTERO,INDICE,DDD2,DDDP2,
-!$OMP+       DDD,DDDP,DDDX,DDDY,DDDZ,DDDX2,DDDY2,DDDZ2),
-!$OMP+       PRIVATE(I)
-C_VICENT
-        DO I=1, KK_ENTERO
-         DDD(I)=0.0
-         DDDP(I)=0
-         DDDX(I)=0
-         DDDY(I)=0
-         DDDZ(I)=0
-         INDICE(I)=0
-         DDD2(I)=0.0
-         DDDP2(I)=0
-         DDDX2(I)=0
-         DDDY2(I)=0
-         DDDZ2(I)=0
-       END DO
-
-       II=0
-       DO I=1,NV
-        N1=PATCHNX(VID(I))
-        N2=PATCHNY(VID(I))
-        N3=PATCHNZ(VID(I))
-
-        DO KZ=1, N3
-        DO JY=1, N2
-        DO IX=1, N1
-
-        KK_REAL=0.0
-        KK_REAL=U11(IX,JY,KZ,VID(I))*CONTA2(IX,JY,KZ,VID(I))
-c!SUSANA        KK_REAL=U11(IX,JY,KZ,VID(I))
-
-        IF(KK_REAL.GE.CONTRASTEC) THEN
-         II=II+1
-         DDD(II)=1.0/KK_REAL
-         DDDP2(II)=VID(I)
-         DDDX2(II)=IX
-         DDDY2(II)=JY
-         DDDZ2(II)=KZ
-        END IF
-
-        END DO
-        END DO
-        END DO
-       END DO
-
-       IF (II.NE.KK_ENTERO) THEN
-         WRITE(*,*) 'WARNING,NV', II, KK_ENTERO
-         STOP
-       END IF
-
-       CALL INDEXX(KK_ENTERO,DDD(1:KK_ENTERO),INDICE2(1:KK_ENTERO))
-C_VICENT
-!$OMP  PARALLEL DO SHARED(KK_ENTERO,INDICE2,DDD,DDD2),
-!$OMP+       PRIVATE(I)
-C_VICENT
-       DO I=1,KK_ENTERO
-        DDD2(I)=1.0/DDD(INDICE2(I))
-       END DO
-       !ahora ya estan ordenadas todas las celdas de todos los parches vecinos
-
-!$OMP  PARALLEL DO SHARED(KK_ENTERO,INDICE2,DDD2,DDDP2,
-!$OMP+       DDD,DDDP,DDDX,DDDY,DDDZ,DDDX2,DDDY2,DDDZ2),
-!$OMP+       PRIVATE(I)
-       DO I=1, KK_ENTERO
-        DDD(I)=0.0
-        DDDP(I)=0
-        DDDX(I)=0
-        DDDY(I)=0
-        DDDZ(I)=0
-        DDD(I)=DDD2(I)
-        DDDP(I)=DDDP2(INDICE2(I))
-        DDDX(I)=DDDX2(INDICE2(I))
-        DDDY(I)=DDDY2(INDICE2(I))
-        DDDZ(I)=DDDZ2(INDICE2(I))
-       END DO
-
-       NV_GOOD=0     !num. celdas parches vecinos ordenadas de > a <
-       NV_GOOD=KK_ENTERO
-       KK_ENTERO=0
-
-
-       DO L1=1,NV_GOOD
-
-*      de todos los vecinos de CEL este es el parche y celda elegidos!!
-
-       CEL2=DDDP(L1)   !me da el parche correspondiente al vecino
-       ICEN(1)=DDDX(L1)
-       ICEN(2)=DDDY(L1)
-       ICEN(3)=DDDZ(L1)
-
-       KK_ENTERO=0
-       KK_ENTERO=CONTA2(ICEN(1),ICEN(2),ICEN(3),CEL2)
-       IF (KK_ENTERO.EQ.1) THEN
-
-*      COORDENADAS DE ESTA CELDA DEL PARCHE
-       RX2=0.0
-       RY2=0.0
-       RZ2=0.0
-       RX2=PATCHRX(CEL2) - 0.5*DXPA + (ICEN(1)-1)*DXPA
-       RY2=PATCHRY(CEL2) - 0.5*DYPA + (ICEN(2)-1)*DYPA
-       RZ2=PATCHRZ(CEL2) - 0.5*DZPA + (ICEN(3)-1)*DZPA
-
-       NCLUS=NCLUS+1
-       LEVHAL(NCLUS)=IR
-       REALCLUS(IFI,NCLUS)=-1
-
-       NHALLEV(IR)=NHALLEV(IR)+1
-       CLUSRX(NCLUS)=RX2
-       CLUSRY(NCLUS)=RY2
-       CLUSRZ(NCLUS)=RZ2
-
-       PRUEBAX=0.0
-       PRUEBAY=0.0
-       PRUEBAZ=0.0
-       DELTA_PRUEBA=0.0
-
-*      EXTENDEMOS RADIALMENTE EL CLUSTER NCLUS
-       RMIN=0.0
-       DELTA=0.0
-       SHELL=0
-       BASMAS=0.0   !MASA TOTAL DEL CUMULO
-       DELTA2=0.0   !DELTA TOTAL DEL CUMULO
-       VOL2=0.0     !VOL TOTAL DEL CUMULO
-
-       DELTA2=10.0*CONTRASTEC*ROTE
-
-       DO WHILE(DELTA2.GT.(CONTRASTEC)*ROTE)
-
-       IF(SHELL<NSHELL) THEN
-
-          SHELL=SHELL+1
-          DELTA=0.0
-          RSHELL=0.0
-          VOL=0.0
-
-       ELSE
-          WRITE(*,*) 'WARNING: DEMASIADAS CAPAS'
-          WRITE(*,*) SHELL,DELTA,DELTA2,(CONTRASTEC)*ROTE,RSHELL
-C          STOP
-       END IF
-
-       RRRR=0.0
-       R111=0.0
-       R222=0.0
-       RRRR=LOG10(REF)+(SHELL-1)*ESP
-       IF (SHELL.EQ.1) THEN
-         R111=RRRR+0.5*ESP
-         R222=0.0
-         R111=10.0**R111
-       ELSE
-        R111=RRRR+0.5*ESP
-        R222=RRRR-0.5*ESP
-        R111=10.0**R111
-        R222=10.0**R222
-       END IF
-       RSHELL=R111
-
-       VOL=PI*(4.0/3.0)*((R111*RETE)**3-(R222*RETE)**3)
-
-*      EXTENDEMOS buscando en todas las celdas de todos los vecinos...
-C_VICENT ----PARALELIZAR EN II!!!!
-!$OMP  PARALLEL DO SHARED(NV,PATCHRX,PATCHRY,PATCHRZ,VID,
-!$OMP+       CONTA2,DXPA,DYPA,DZPA,CLUSRX,CLUSRY,CLUSRZ,NCLUS,
-!$OMP+       R222,R111,U11),
-!$OMP+       PRIVATE(II,N1,N2,N3,IX,JY,KZ,KK_ENTERO,
-!$OMP+       RX2,RY2,RZ2,AA),
-!$OMP+       REDUCTION(+:DELTA,PRUEBAX,PRUEBAY,PRUEBAZ,
-!$OMP+                  DELTA_PRUEBA)
-C_VICENT
-       DO II=1,NV
-        N1=0
-        N2=0
-        N3=0
-        N1=PATCHNX(VID(II))
-        N2=PATCHNY(VID(II))
-        N3=PATCHNZ(VID(II))
-
-       DO KZ=1, N3
-       DO JY=1, N2
-       DO IX=1, N1
-
-       KK_ENTERO=0
-       KK_ENTERO=CONTA2(IX,JY,KZ,VID(II))
-       IF (KK_ENTERO.EQ.1) THEN
-
-         RX2=0.0
-         RY2=0.0
-         RZ2=0.0
-         RX2=PATCHRX(VID(II)) - 0.5*DXPA + (IX-1)*DXPA
-         RY2=PATCHRY(VID(II)) - 0.5*DYPA + (JY-1)*DYPA
-         RZ2=PATCHRZ(VID(II)) - 0.5*DZPA + (KZ-1)*DZPA
-
-         AA=0.0
-         AA=SQRT((CLUSRX(NCLUS)-RX2)**2+(CLUSRY(NCLUS)-RY2)**2
-     &          +(CLUSRZ(NCLUS)-RZ2)**2)
-
-         IF(AA.GE.R222.AND.AA.LE.R111) THEN
-
-           DELTA=DELTA+U11(IX,JY,KZ,VID(II))*DXPA*DYPA*DZPA
-           CONTA2(IX,JY,KZ,VID(II))=0
-
-           PRUEBAX=PRUEBAX+RX2*U11(IX,JY,KZ,VID(II))
-           PRUEBAY=PRUEBAY+RY2*U11(IX,JY,KZ,VID(II))
-           PRUEBAZ=PRUEBAZ+RZ2*U11(IX,JY,KZ,VID(II))
-           DELTA_PRUEBA=DELTA_PRUEBA+U11(IX,JY,KZ,VID(II))
-
-         END IF
-
-       END IF
-
-       END DO
-       END DO
-       END DO
-
-       END DO  ! NV
-
-       BASMAS=BASMAS+DELTA*RODO*RE0**3
-       VOL2=PI*(4.0/3.0)*(RSHELL*RETE)**3
-       DELTA2=BASMAS/VOL2
-       DELTA=(DELTA*RODO*RE0**3)/VOL
-       RMIN=RSHELL
-
-       END DO  !!EN DO WHILE DE CRECER EL HALO (DELTA2)
-
-       MASA(NCLUS)=BASMAS
-       RADIO(NCLUS)=RSHELL
-
-       PRUEBAX=PRUEBAX/DELTA_PRUEBA
-       PRUEBAY=PRUEBAY/DELTA_PRUEBA
-       PRUEBAZ=PRUEBAZ/DELTA_PRUEBA
-
-       CLUSRX(NCLUS)=PRUEBAX
-       CLUSRY(NCLUS)=PRUEBAY
-       CLUSRZ(NCLUS)=PRUEBAZ
-
-       KK_REAL=0.0
-       KK_REAL=MASA(NCLUS)
-       IF (KK_REAL.LE.0.0) REALCLUS(IFI,NCLUS)=0
-
-       END IF
-
-       END DO  !NV_GOOD
-
-       DEALLOCATE(DDD)
-       DEALLOCATE(DDDP)
-       DEALLOCATE(DDDX)
-       DEALLOCATE(DDDY)
-       DEALLOCATE(DDDZ)
-       DEALLOCATE(INDICE2)
-       DEALLOCATE(DDD2)
-       DEALLOCATE(DDDP2)
-       DEALLOCATE(DDDX2)
-       DEALLOCATE(DDDY2)
-       DEALLOCATE(DDDZ2)
-*      Fin VECTORIZACION!!!
-
-*       DO I=LOW1, LOW2
-C_VICENT
-!$OMP  PARALLEL DO SHARED(IR,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
-!$OMP+              MAXIMO,U11),
-!$OMP+       PRIVATE(I2,I,N1,N2,N3)
-C_VICNET
-        DO I2=1,NPATCH(IR)
-         I=SUM(NPATCH(0:IR-1)) + I2
-
-         N1=0
-         N2=0
-         N3=0
-         N1=PATCHNX(I)
-         N2=PATCHNY(I)
-         N3=PATCHNZ(I)
-
-*        MAXIMO(I)=MAXVAL(U11(1:N1,1:N2,1:N3,I)
-*     &           *CONTA2(1:N1,1:N2,1:N3,I))
-         MAXIMO(I2)=MAXVAL(U11(1:N1,1:N2,1:N3,I)
-     &              *CONTA2(1:N1,1:N2,1:N3,I))
-c!SUSANA         MAXIMO(I2)=MAXVAL(U11(1:N1,1:N2,1:N3,I))
-       END DO
-
-       KK_REAL=0.0
-       KK_REAL=MAXVAL(MAXIMO(1:NPATCH(IR)))
-
-       END DO !WHILE MAXVAL(MAXIMO(IR)).GT.CONTRASTEC
-**////////**********
-
-
-         WRITE(*,*) '==== First Estimate ==='
-         WRITE(*,*)  IFI,IR,REF,ESP,NCLUS
-         KONTA2=0
-         KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
-         WRITE(*,*) 'POSSIBLE HALOS_0----->', KONTA2
-         KONTA2=0
-         KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.0)
-         WRITE(*,*) 'REMOVED HALOS_0----->', KONTA2
+         !WRITE(*,*) '==== First Estimate ==='
+         !WRITE(*,*)  IFI,IR,REF,ESP,NCLUS
+         !KONTA2=0
+         !KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
+         !WRITE(*,*) 'POSSIBLE HALOS_0----->', KONTA2
+         !KONTA2=0
+         !KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.0)
+         !WRITE(*,*) 'REMOVED HALOS_0----->', KONTA2
 
 
 ****************************************************
@@ -1299,38 +841,27 @@ c!SUSANA         MAXIMO(I2)=MAXVAL(U11(1:N1,1:N2,1:N3,I))
 *      VAMOS A VER QUE CUMULOS SOLAPAN EN IR
 ****************************************************
 
-       CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
-     &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
-     &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
-     &                 NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
-     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
+c       CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
+c     &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
+c     &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
+c     &                 NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
+c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
 
-       WRITE(*,*) '==== After correcting overlaps ==='
-       WRITE(*,*)  IFI,IR,REF,ESP,NCLUS
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
-       WRITE(*,*) 'POSSIBLE HALOS_0----->', KONTA2
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.0)
-       WRITE(*,*) 'REMOVED HALOS_0----->', KONTA2
+c     WRITE(*,*) '==== After correcting overlaps ==='
+c     WRITE(*,*)  IFI,IR,REF,ESP,NCLUS
+c     KONTA2=0
+c     KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
+c     WRITE(*,*) 'POSSIBLE HALOS_0----->', KONTA2
+c     KONTA2=0
+c     KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.0)
+c     WRITE(*,*) 'REMOVED HALOS_0----->', KONTA2
 
-****************************************************
-*      FIN CORRECION DE SOLAPES EN IR
-****************************************************
-
-       WRITE(*,*)' FIN NIVEL ', IR
-C       CALL ITIME(TIME)
-C       WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
-
-       END DO  !IR
-
-       END IF !if HAY NIVELES
 
 *************************************
 *      CHECKING HALOES PER LEVEL
 *************************************
-       WRITE(*,*)'CHECKING HALOES PER LEVEL 1', NCLUS
-       DO I=0, NL
+       WRITE(*,*) 'CHECKING HALOES PER LEVEL 1', NCLUS
+       DO I=0,NL
         WRITE(*,*) I, NHALLEV(I)
        END DO
 *************************************
