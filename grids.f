@@ -47,7 +47,8 @@
       INTEGER I,IX,JY,KZ,REFINE_COUNT
       INTEGER INI_EXTENSION,NBIS,IRPA,LOW1,LOW2,IPATCH,IPARE
       INTEGER INMAX(3),INMAX2(2),I1,I2,J1,J2,K1,K2,N1,N2,N3,IR,MARCA
-      INTEGER NP1,NP2,NP3,BASINT,NPALEV3,II,JJ,KK
+      INTEGER NP1,NP2,NP3,BASINT,NPALEV3,II,JJ,KK,BOR_OVLP
+      INTEGER I1BIS,I2BIS,J1BIS,J2BIS,K1BIS,K2BIS
 
       INTEGER,ALLOCATABLE::LNPATCH(:)
       INTEGER,ALLOCATABLE::LPATCHNX(:,:),LPATCHNY(:,:),LPATCHNZ(:,:)
@@ -60,6 +61,7 @@
 
 !     hard-coded parameters (for now, at least)
       INI_EXTENSION=2 !initial extension of a patch around a cell (on each direction)
+      BOR_OVLP=0
       NPALEV3=(INT(NAMRX/5)**3)+1
       write(*,*) 'NPALEV3=',NPALEV3
 
@@ -239,10 +241,27 @@
         CONTA1(I1:I2,J1:J2,K1:K2)=0
        ELSE
         IPATCH=IPATCH+1
-*       WRITE(*,*) IPATCH,N1,N2,N3,
-*     &             COUNT(CONTA1(I1:I2,J1:J2,K1:K2).GE.REFINE_THR)
-        CONTA1(I1:I2,J1:J2,K1:K2)=0
-        CR0(I1:I2,J1:J2,K1:K2)=-1
+c       WRITE(*,*) IPATCH,N1,N2,N3,I1,I2,J1,J2,K1,K2,
+c     &             COUNT(CONTA1(I1:I2,J1:J2,K1:K2).GE.REFINE_THR)
+c       WRITE(*,*) '*',I1+BOR_OVLP,I2-BOR_OVLP,J1+BOR_OVLP,J2-BOR_OVLP,
+c     &         K1+BOR_OVLP,K2-BOR_OVLP
+c       write(*,*) '**',IX,JY,KZ
+
+        I1BIS=I1+BOR_OVLP
+        I2BIS=I2-BOR_OVLP
+        J1BIS=J1+BOR_OVLP
+        J2BIS=J2-BOR_OVLP
+        K1BIS=K1+BOR_OVLP
+        K2BIS=K2-BOR_OVLP
+        IF (I1.EQ.IX) I1BIS=I1
+        IF (I2.EQ.IX) I2BIS=I2
+        IF (J1.EQ.JY) J1BIS=J1
+        IF (J2.EQ.JY) J2BIS=J2
+        IF (K1.EQ.KZ) K1BIS=K1
+        IF (K2.EQ.KZ) K2BIS=K2
+
+        CONTA1(I1BIS:I2BIS,J1BIS:J2BIS,K1BIS:K2BIS)=0
+        CR0(I1BIS:I2BIS,J1BIS:J2BIS,K1BIS:K2BIS)=-1
 
         PATCHNX(IPATCH)=N1
         PATCHNY(IPATCH)=N2
@@ -395,10 +414,11 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
 !$OMP+                   MIN_PATCHSIZE,DXPA,DYPA,DZPA,LPATCHNX,
 !$OMP+                   LPATCHNY,LPATCHNZ,LPATCHX,LPATCHY,LPATCHZ,
 !$OMP+                   LPATCHRX,LPATCHRY,LPATCHRZ,LVAL,PATCHRX,
-!$OMP+                   PATCHRY,PATCHRZ,FRAC_REFINABLE),
+!$OMP+                   PATCHRY,PATCHRZ,FRAC_REFINABLE,BOR_OVLP),
 !$OMP+            PRIVATE(IPARE,REFINE_COUNT,IPATCH,INMAX,IX,JY,KZ,
 !$OMP+                    BASINT,NP1,NP2,NP3,I1,I2,J1,J2,K1,K2,N1,N2,N3,
-!$OMP+                    MARCA,NBIS,BAS),
+!$OMP+                    MARCA,NBIS,BAS,I1BIS,I2BIS,J1BIS,J2BIS,K1BIS,
+!$OMP+                    K2BIS),
 !$OMP+            DEFAULT(NONE)
        DO IPARE=LOW1,LOW2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         REFINE_COUNT=COUNT(CR01(:,:,:,IPARE).GE.REFINE_THR)
@@ -504,8 +524,21 @@ c          WRITE(*,*) 'N1,N2,N3,refinable:',N1,N2,N3,
 c     &             COUNT(CONTA11(I1:I2,J1:J2,K1:K2,IPARE).GE.REFINE_THR)
 c          write(*,*) 'x,y,z',i1,j1,k1
 
-          CONTA11(I1:I2,J1:J2,K1:K2,IPARE)=0
-          CR01(I1:I2,J1:J2,K1:K2,IPARE)=-1
+          I1BIS=I1+BOR_OVLP
+          I2BIS=I2-BOR_OVLP
+          J1BIS=J1+BOR_OVLP
+          J2BIS=J2-BOR_OVLP
+          K1BIS=K1+BOR_OVLP
+          K2BIS=K2-BOR_OVLP
+          IF (I1.EQ.IX) I1BIS=I1
+          IF (I2.EQ.IX) I2BIS=I2
+          IF (J1.EQ.JY) J1BIS=J1
+          IF (J2.EQ.JY) J2BIS=J2
+          IF (K1.EQ.KZ) K1BIS=K1
+          IF (K2.EQ.KZ) K2BIS=K2
+
+          CONTA11(I1BIS:I2BIS,J1BIS:J2BIS,K1BIS:K2BIS,IPARE)=0
+          CR01(I1BIS:I2BIS,J1BIS:J2BIS,K1BIS:K2BIS,IPARE)=-1
 
           LPATCHNX(IPATCH,IPARE)=N1
           LPATCHNY(IPATCH,IPARE)=N2
