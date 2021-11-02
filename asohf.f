@@ -253,8 +253,9 @@
        INTEGER PARCHLIM       ! =0: no limit patches per level, != 0: do limit
        INTEGER MPAPOLEV(NLEVELS)
 
-       INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE,BOR,BORAMR
-       REAL MINFRAC_REFINABLE
+       INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE
+       INTEGER BOR,BORAMR,BOR_OVLP
+       REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW
 
 *      ---PARALLEL---
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR, FLAG_PARALLEL
@@ -324,6 +325,8 @@
        READ(1,*) MIN_PATCHSIZE
        READ(1,*) !Base grid refinement border, AMR grids refinement border ------------->
        READ(1,*) BOR,BORAMR
+       READ(1,*) !Allow for addition overlap (to avoid losing signal) in the mesh ------>
+       READ(1,*) BOR_OVLP
        READ(1,*) !Density interpolation kernel (1=linear, 2=quadratic) ----------------->
        READ(1,*) INTERP_DEGREE
        READ(1,*) !Variable for mesh halo finding: 1(gas), 2(dm), 0(gas+dm) ------------->
@@ -333,6 +336,8 @@
        READ(1,*) !***********************************************************************
        READ(1,*) !Max. reach around halos (Mpc), excluded cells in boundaries ---------->
        READ(1,*) BOUND, BORDES
+       READ(1,*) !Minimum fraction of shared volume to merge (in grid search) ---------->
+       READ(1,*) VOL_SOLAP_LOW
        READ(1,*) !FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
        READ(1,*) FLAG_WDM
        READ(1,*) !***********************************************************************
@@ -704,7 +709,7 @@
      &                    PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
      &                    N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
      &                    REFINE_THR,MIN_PATCHSIZE,MINFRAC_REFINABLE,
-     &                    BOR,BORAMR)
+     &                    BOR,BORAMR,BOR_OVLP)
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
 
@@ -815,7 +820,8 @@ c     &                     U11)
      &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                    NHALLEV,BOUND,CONTRASTEC,RODO,
-     &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS)
+     &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS,
+     &                    VOL_SOLAP_LOW)
 
        open(55, file='./output_files/haloesgrids.res', status='unknown')
        do i=1,nclus

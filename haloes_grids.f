@@ -862,7 +862,8 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
      &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
-     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
+     &                        VECINO,NVECI,CR0AMR,CR0AMR11,
+     &                        VOL_SOLAP_LOW)
 ********************************************************************
 *      Detect and correct overlaps on the cluster catalogue
 ********************************************************************
@@ -887,6 +888,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
+       REAL VOL_SOLAP_LOW
 
 *      GLOBAL VARIABLES
        REAL*4 DX,DY,DZ
@@ -918,7 +920,7 @@ CXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCXCX
        REAL BAS,BASX,BASY,BASZ,R1,R2,DIST,X1,Y1,Z1,X2,Y2,Z2,VOL1,VOL2
        REAL VINT,XI,PI,SOLAP_LOWER_THR,M1,M2
 
-       SOLAP_LOWER_THR=0.5
+       SOLAP_LOWER_THR=VOL_SOLAP_LOW
 
        PI=DACOS(-1.D0)
 
@@ -1061,7 +1063,8 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
      &                          PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                          CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                          NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
-     &                          VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS)
+     &                          VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS,
+     &                          VOL_SOLAP_LOW)
 ********************************************************************
 *      Pipeline for tentative halo finding over the grid
 ********************************************************************
@@ -1087,6 +1090,7 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
        INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
+       REAL VOL_SOLAP_LOW
 
 *      GLOBAL VARIABLES
        REAL*4 DX,DY,DZ
@@ -2241,7 +2245,8 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
      &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
-     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
+     &                        VECINO,NVECI,CR0AMR,CR0AMR11,
+     &                        VOL_SOLAP_LOW)
         END IF
        END DO
 

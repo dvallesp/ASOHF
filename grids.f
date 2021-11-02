@@ -3,7 +3,8 @@
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,
      &           U4DM,MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
-     &           REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,BORAMR)
+     &           REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,BORAMR,
+     &           BOR_OVLP)
 ************************************************************************
 *     Creats a mesh hierarchy for the given particle distribution
 ************************************************************************
@@ -61,7 +62,6 @@
 
 !     hard-coded parameters (for now, at least)
       INI_EXTENSION=2 !initial extension of a patch around a cell (on each direction)
-      BOR_OVLP=0
       NPALEV3=(INT(NAMRX/5)**3)+1
       write(*,*) 'NPALEV3=',NPALEV3
 

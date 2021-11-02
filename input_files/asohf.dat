@@ -1,7 +1,7 @@
 ***********************************************************************
 *                         ASOHF PARAMETERS FILE                       *
 ***********************************************************************
-*	General parameters block                                      *
+*	      General parameters block                                      *
 ***********************************************************************
 Files: first, last, every -------------------------------------------->
 4000,4000,50
@@ -18,7 +18,7 @@ Parallel(=1),serial(=0)/ Number of processors ------------------------>
 Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
 0,1,0
 ***********************************************************************
-*	Mesh building parameters block                                *
+*	      Mesh building parameters block                                *
 ***********************************************************************
 Levels for the mesh (stand-alone) ------------------------------------>
 8
@@ -29,22 +29,26 @@ Max num of patches per level(needs PARCHLIM>0) ----------------------->
 Refinement threshold (num. part.), refinable fraction to extend ------>
 3,0.1
 Minimum patch size (child cells) ------------------------------------->
-14
+16
 Base grid refinement border, AMR grids refinement border ------------->
 8,0
+Allow for addition overlap (to avoid losing signal) in the mesh ------>
+0
 Density interpolation kernel (1=linear, 2=quadratic) ----------------->
 2
 Variable for mesh halo finding: 1(gas), 2(dm), 0(gas+dm) ------------->
 2
 ***********************************************************************
-*	Halo finding parameters block                                 *
+*	      Halo finding parameters block                                 *
 ***********************************************************************
 Max. reach around halos (Mpc), excluded cells in boundaries ---------->
 8.0, 1
+Minimum fraction of shared volume to merge (in grid search) ---------->
+0.4
 FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
 0
 ***********************************************************************
-*	Merger tree parameters block                                  *
+*	      Merger tree parameters block                                  *
 ***********************************************************************
 Merger_tree: 1(no), 2(complete, with %), 3(main line) ---------------->
 1
