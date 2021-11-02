@@ -2448,10 +2448,20 @@ C        WRITE(*,*) LVAL(I,IPARE)
            DO KK=CORNZZ1,CORNZZ2
            DO JJ=CORNYY1,CORNYY2
            DO II=CORNXX1,CORNXX2
-              IX=II-CORNXX1+CORNX1
-              JY=JJ-CORNYY1+CORNY1
-              KZ=KK-CORNZZ1+CORNZ1
-              IF (SOLAP(IX,JY,KZ,I).EQ.1) SOLAP(II,JJ,KK,J)=0
+            IX=II-CORNXX1+CORNX1
+            JY=JJ-CORNYY1+CORNY1
+            KZ=KK-CORNZZ1+CORNZ1
+              ! MODIFIED DV 02-11-2021: AVOID BORDERS
+            IF (SOLAP(IX,JY,KZ,I).EQ.1.AND.
+     &          SOLAP(II,JJ,KK,J).EQ.1) THEN !there's an overlap we need to take care of
+             IF (IX.EQ.1.OR.IX.EQ.N1.OR.
+     &           JY.EQ.1.OR.JY.EQ.N2.OR.
+     &           KZ.EQ.1.OR.KZ.EQ.N3) THEN ! if the master candidate is close to the patch border
+              SOLAP(IX,JY,KZ,I)=0 ! then make master the other one
+             ELSE
+              SOLAP(II,JJ,KK,J)=0 ! default veinsgrid behaviour
+             END IF
+            END IF
            END DO
            END DO
            END DO
