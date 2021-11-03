@@ -57,6 +57,9 @@
       REAL,ALLOCATABLE::LPATCHRX(:,:),LPATCHRY(:,:),LPATCHRZ(:,:)
       INTEGER,ALLOCATABLE::LVAL(:,:)
 
+      REAL,ALLOCATABLE::DDD(:)
+      INTEGER,ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:)
+
       CHARACTER*15 FILE6
       CHARACTER*30 FILERR
 
@@ -142,13 +145,34 @@
       REFINE_COUNT=COUNT(CR0.GE.REFINE_THR)
       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
 
+      ALLOCATE(DDD(REFINE_COUNT),DDDX(REFINE_COUNT),
+     &         DDDY(REFINE_COUNT),DDDZ(REFINE_COUNT))
+
+      I=0
+      DO KZ=1,NZ
+      DO JY=1,NY
+      DO IX=1,NX
+       IF (CR0(IX,JY,KZ).GE.REFINE_THR) THEN
+        I=I+1
+        DDD(I)=FLOAT(CR0(IX,JY,KZ))
+        DDDX(I)=IX
+        DDDY(I)=JY
+        DDDZ(I)=KZ
+       END IF
+      END DO
+      END DO
+      END DO
+
+      CALL SORT_CELLS(REFINE_COUNT,DDD,DDDX,DDDY,DDDZ)
+      write(*,*) !ddd(1:10000)
+
       IPATCH=0
 
-      DO WHILE (REFINE_COUNT.GT.0.AND.IPATCH.LT.NPALEV) !--------------
-       INMAX=MAXLOC(CR0)
-       IX=INMAX(1)
-       JY=INMAX(2)
-       KZ=INMAX(3)
+      DO I=1,REFINE_COUNT
+       IX=DDDX(I)
+       JY=DDDY(I)
+       KZ=DDDZ(I)
+       IF (CR0(IX,JY,KZ).LT.REFINE_THR) CYCLE
        !IF (CONTA1(IX,JY,KZ).LT.REFINE_THR) EXIT
 
        I1=MAX(IX-INI_EXTENSION,BOR+1)
@@ -241,11 +265,12 @@
         CONTA1(I1:I2,J1:J2,K1:K2)=0
        ELSE
         IPATCH=IPATCH+1
-c       WRITE(*,*) IPATCH,N1,N2,N3,I1,I2,J1,J2,K1,K2,
-c     &             COUNT(CONTA1(I1:I2,J1:J2,K1:K2).GE.REFINE_THR)
-c       WRITE(*,*) '*',I1+BOR_OVLP,I2-BOR_OVLP,J1+BOR_OVLP,J2-BOR_OVLP,
-c     &         K1+BOR_OVLP,K2-BOR_OVLP
-c       write(*,*) '**',IX,JY,KZ
+       WRITE(*,*) IPATCH,N1,N2,N3,I1,I2,J1,J2,K1,K2,
+     &             COUNT(CONTA1(I1:I2,J1:J2,K1:K2).GE.REFINE_THR)
+       WRITE(*,*) '*',I1+BOR_OVLP,I2-BOR_OVLP,J1+BOR_OVLP,J2-BOR_OVLP,
+     &         K1+BOR_OVLP,K2-BOR_OVLP
+       write(*,*) '**',IX,JY,KZ
+       write(*,*) '***',refine_count
 
         I1BIS=I1+BOR_OVLP
         I2BIS=I2-BOR_OVLP
@@ -283,6 +308,8 @@ c       write(*,*) '**',IX,JY,KZ
 
 
       END DO  !-----------------------------------------------------
+
+      DEALLOCATE(DDD,DDDX,DDDY,DDDZ)
 
       NPATCH(IR)=IPATCH
 
