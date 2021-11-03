@@ -265,12 +265,12 @@
         CONTA1(I1:I2,J1:J2,K1:K2)=0
        ELSE
         IPATCH=IPATCH+1
-       WRITE(*,*) IPATCH,N1,N2,N3,I1,I2,J1,J2,K1,K2,
-     &             COUNT(CONTA1(I1:I2,J1:J2,K1:K2).GE.REFINE_THR)
-       WRITE(*,*) '*',I1+BOR_OVLP,I2-BOR_OVLP,J1+BOR_OVLP,J2-BOR_OVLP,
-     &         K1+BOR_OVLP,K2-BOR_OVLP
-       write(*,*) '**',IX,JY,KZ
-       write(*,*) '***',refine_count
+c       WRITE(*,*) IPATCH,N1,N2,N3,I1,I2,J1,J2,K1,K2,
+c     &             COUNT(CONTA1(I1:I2,J1:J2,K1:K2).GE.REFINE_THR)
+c       WRITE(*,*) '*',I1+BOR_OVLP,I2-BOR_OVLP,J1+BOR_OVLP,J2-BOR_OVLP,
+c     &         K1+BOR_OVLP,K2-BOR_OVLP
+c       write(*,*) '**',IX,JY,KZ
+c       write(*,*) '***',REFINE_COUNT
 
         I1BIS=I1+BOR_OVLP
         I2BIS=I2-BOR_OVLP
