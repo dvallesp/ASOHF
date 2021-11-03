@@ -3,3 +3,8 @@ compila.sh
 output_files/*
 !output_files/.gitkeep
 simu_masclet
+*asohf.out*
+*.x
+*.mod
+*.out
+scr*
