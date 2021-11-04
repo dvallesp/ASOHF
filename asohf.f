@@ -27,7 +27,7 @@
 *           3)Merger_r00000 (optional, PLOT=3) ---> main line
 *           4)Grid_asohf00000 (only when FLAG_SA=0)
 *
-*           If REALCLUS(IFI,I)= -1  ------> HALO
+*           If REALCLUS(I)= -1  ------> HALO
 *                             = 0   ------> RUBBISH (double or poor)
 *                             = #>0 ------> SUBHALO within #
 *
@@ -126,7 +126,7 @@
 
        INTEGER II,JJ,KK,KK1,KK2,KKK2,ICEN(3),IR2,III,KK3,KK4
        INTEGER IX1,IX2,N1,N2,N3,NTOT,VAR,IX3
-       INTEGER NFILE,FIRST,EVERY,IFI,LAST,PLOT
+       INTEGER NFILE,FIRST,EVERY,LAST
        REAL*4 PRUEBAX,PRUEBAY,PRUEBAZ,DELTA_PRUEBA
        REAL*4 ZETA,AA1,AA2,LIM,BAS, BAS1, BAS2
        REAL*4 RRRR,R111,R222
@@ -135,7 +135,7 @@
        CHARACTER*14 FILE3, FILE7
        CHARACTER*30 FILERR3,FILERR7
        INTEGER*4 DATE(3), TIME(3), CONTAERR
-       INTEGER CONTAITER,MARK(MAXITER2),NFILE2,IFI2
+       INTEGER MARK(MAXITER2),NFILE2,IFI2
 
        INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV),CEN(1),CEL
        INTEGER NV, NV2,FLAG,VID(NPALEV),NV3
@@ -155,64 +155,48 @@
        REAL*4 DIS, VKK, BASMAS, MASAKK
        REAL*4 CMX, CMY, CMZ, SOLMAS, MASAMIN, DELTA2
        REAL*4 VCMX, VCMY, VCMZ, VCM,VVV2, MASA2
+
+       REAL*8 CMX8,CMY8,CMZ8,VCMX8,VCMY8,VCMZ8
+
+*      ---HALOS AND SUBHALOS---
        REAL*4 MASA(MAXNCLUS), RADIO(MAXNCLUS)
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
        INTEGER PATCHCLUS(MAXNCLUS)
 
-       REAL*8 CMX8,CMY8,CMZ8,VCMX8,VCMY8,VCMZ8
+       INTEGER REALCLUS(MAXNCLUS)
 
-*      ---HALOS Y SUBHALOS---
-       INTEGER NNCLUS(MAXITER)
-       REAL*4 NR(MAXITER,NMAXNCLUS)
-       REAL*4 CONCENTRA(MAXITER,NMAXNCLUS)
-       REAL*4 ANGULARM(MAXITER,NMAXNCLUS)
-       REAL*4 NMASA(MAXITER,NMAXNCLUS)
-       REAL*4 NCLUSRX(MAXITER,NMAXNCLUS)
-       REAL*4 NCLUSRY(MAXITER,NMAXNCLUS)
-       REAL*4 NCLUSRZ(MAXITER,NMAXNCLUS)
-       REAL*4 VMAXCLUS(MAXITER,NMAXNCLUS)
-       REAL*4 VCM2(MAXITER,NMAXNCLUS)
+       REAL*4 CONCENTRA(NMAXNCLUS)
+       REAL*4 ANGULARM(NMAXNCLUS)
+       REAL*4 VMAXCLUS(NMAXNCLUS)
+       REAL*4 VCM2(NMAXNCLUS)
 
-       INTEGER IPLIP(MAXITER,NMAXNCLUS)
-       INTEGER IPLIR(MAXITER,NMAXNCLUS)
-       REAL*4 VX(MAXITER,NMAXNCLUS)
-       REAL*4 VY(MAXITER,NMAXNCLUS)
-       REAL*4 VZ(MAXITER,NMAXNCLUS)
+       INTEGER IPLIP(NMAXNCLUS)
+       INTEGER IPLIR(NMAXNCLUS)
+       REAL*4 VX(NMAXNCLUS)
+       REAL*4 VY(NMAXNCLUS)
+       REAL*4 VZ(NMAXNCLUS)
 
-       REAL*4 VCMAX(MAXITER,NMAXNCLUS)
-       REAL*4 MCMAX(MAXITER,NMAXNCLUS)
-       REAL*4 RCMAX(MAXITER,NMAXNCLUS)
+       REAL*4 VCMAX(NMAXNCLUS)
+       REAL*4 MCMAX(NMAXNCLUS)
+       REAL*4 RCMAX(NMAXNCLUS)
 
-       REAL*4 M200(MAXITER,NMAXNCLUS)
-       REAL*4 R200(MAXITER,NMAXNCLUS)
+       REAL*4 M200(NMAXNCLUS)
+       REAL*4 R200(NMAXNCLUS)
        INTEGER FLAG_200
 
        INTEGER NCAPAS(NMAXNCLUS)
-       INTEGER REALCLUS(MAXITER,MAXNCLUS)
+
 
 *      ---PARTICULAS E ITERACIONES---
-       INTEGER DMPITER(MAXITER)
-       REAL*4 ZETAS(MAXITER),TIEMPO(MAXITER)
        INTEGER LIP(PARTIRED),LIR(PARTIRED),CONTADM(PARTIRED)
-       INTEGER DMPCLUS(MAXITER,NMAXNCLUS)
-
-*       ----- module mtree.f -----
-*       INTEGER DMLIP(MAXITER,PARTIRED_PLOT)
-*       INTEGER DMLIR(MAXITER,PARTIRED_PLOT)
-*       INTEGER NHOST(MAXITER,0:ININL,PARTIRED)
-*       INTEGER HHOST(MAXITER,NMAXDAD,0:ININL,PARTIRED)
-*       REAL*4 NEW_MASAP(MAXITER,PARTIRED_PLOT)
-*       REAL*4 RATIO(MAXITER,NMAXDAD,NMAXCLUS_PLOT)
-*       INTEGER DAD(MAXITER,NMAXDAD,NMAXCLUS_PLOT)
-*       INTEGER NDAD(MAXITER,NMAXNCLUS)
+       INTEGER DMPCLUS(NMAXNCLUS)
 
 *      ---SUBSTRUCTURE---
        INTEGER LEVHAL(MAXNCLUS),NHALLEV(0:NLEVELS)
-       INTEGER NLEVHAL(MAXITER,NMAXNCLUS)
        INTEGER SUBHALOS(NMAXNCLUS)
 
 *      ---HALO SHAPE---
-       REAL*4 INERTIA(3,3),EIGENVAL(MAXITER,3,NMAXNCLUS)
+       REAL*4 INERTIA(3,3),EIGENVAL(3,NMAXNCLUS)
        REAL*4 BASEIGENVAL(3),AADMX(3)
        INTEGER DIMEN,NROT
 
@@ -344,7 +328,7 @@
        READ(1,*) !*       Merger tree parameters block                                  *
        READ(1,*) !***********************************************************************
        READ(1,*) !Merger_tree: 1(no), 2(complete, with %), 3(main line) ---------------->
-       READ(1,*) PLOT
+       READ(1,*) !PLOT
 
 
        CLOSE(1)
@@ -446,98 +430,41 @@
        WRITE(*,*)'NFILE2=',NFILE2
        WRITE(*,*)'NFILE=',NFILE
 
-!$OMP PARALLEL DO SHARED(NNCLUS,ZETAS,TIEMPO,NFILE,DMPITER),PRIVATE(I)
-       DO I=1,NFILE
-        NNCLUS(I)=0
-        ZETAS(I)=0.0
-        TIEMPO(I)=0.0
-        DMPITER(I)=0
-       END DO
-
        NMAXNCLUSBAS=NMAXNCLUS
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,CONCENTRA,
-!$OMP+                   ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
+!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,CONCENTRA,
+!$OMP+                   ANGULARM,CLUSRX,CLUSRY,CLUSRZ,
 !$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ),PRIVATE(I)
        DO I=1,NMAXNCLUSBAS
-        NMASA(:,I)=0.0
-        NR(:,I)=0.0
-        CONCENTRA(:,I)=0.0
-        ANGULARM(:,I)=0.0
-        NCLUSRX(:,I)=0.0
-        NCLUSRY(:,I)=0.0
-        NCLUSRZ(:,I)=0.0
-        VCM2(:,I)=0.0
-        VMAXCLUS(:,I)=0.0
+        CONCENTRA(I)=0.0
+        ANGULARM(I)=0.0
+        CLUSRX(I)=0.0
+        CLUSRY(I)=0.0
+        CLUSRZ(I)=0.0
+        VCM2(I)=0.0
+        VMAXCLUS(I)=0.0
 
-        VX(:,I)=0.0
-        VY(:,I)=0.0
-        VZ(:,I)=0.0
+        VX(I)=0.0
+        VY(I)=0.0
+        VZ(I)=0.0
        END DO
 
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+                M200,R200,IPLIP,IPLIR,REALCLUS,NLEVHAL,
+!$OMP+                M200,R200,IPLIP,IPLIR,REALCLUS,LEVHAL,
 !$OMP+                EIGENVAL),PRIVATE(I)
        DO I=1,NMAXNCLUSBAS
-        VCMAX(:,I)=0.0
-        MCMAX(:,I)=0.0
-        RCMAX(:,I)=0.0
-        M200(:,I)=0.0
-        R200(:,I)=0.0
-        IPLIP(:,I)=0
-        IPLIR(:,I)=0
-        DMPCLUS(:,I)=0
-        REALCLUS(:,I)=0    !de momento no hay halos
-        NLEVHAL(:,I)=0
-        EIGENVAL(:,:,I)=0.0
+        VCMAX(I)=0.0
+        MCMAX(I)=0.0
+        RCMAX(I)=0.0
+        M200(I)=0.0
+        R200(I)=0.0
+        IPLIP(I)=0
+        IPLIR(I)=0
+        LEVHAL(I)=0
+        DMPCLUS(I)=0
+        REALCLUS(I)=0    !de momento no hay halos
+        EIGENVAL(:,I)=0.0
        END DO
 
-       IF (PLOT.GT.1) THEN   !MERGER TREE
-
-        ALLOCATE (DMLIP(MAXITER,PARTIRED_PLOT))
-        ALLOCATE (DMLIR(MAXITER,PARTIRED_PLOT))
-        ALLOCATE (NEW_MASAP(MAXITER,PARTIRED_PLOT))
-        ALLOCATE (NHOST(MAXITER,0:ININL,PARTIRED))
-        ALLOCATE (DAD(MAXITER,NMAXDAD,NMAXCLUS_PLOT))
-        ALLOCATE (NDAD(MAXITER,NMAXNCLUS))
-        ALLOCATE (HHOST(MAXITER,NMAXHOST,0:ININL,PARTIRED))
-
-        NBASPART_PLOT=PARTIRED_PLOT
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DMLIP,DMLIR,
-!$OMP+             NEW_MASAP),PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-         DMLIP(:,I)=0
-         DMLIR(:,I)=0
-         NEW_MASAP(:,I)=0.0
-        END DO
-
-        NBASPART_PLOT=PARTIRED
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-         NHOST(:,:,I)=0
-         HHOST(:,:,:,I)=0
-        END DO
-
-        NBASPART_PLOT=NMAXCLUS_PLOT
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-         NDAD(:,I)=0
-         DAD(:,:,I)=0
-        END DO
-
-        IF (PLOT.EQ.2) THEN
-         ALLOCATE(RATIO(MAXITER,NMAXDAD,NMAXCLUS_PLOT))
-         NBASPART_PLOT=NMAXCLUS_PLOT
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-         DO I=1,NBASPART_PLOT
-          RATIO(:,:,I)=0.0
-         END DO
-        END IF  !PLOT=2
-       END IF  !PLOT>1
-
-       CONTAITER=0
        MARK(1:NFILE2)=0
 
        INERTIA=0.0
@@ -548,16 +475,9 @@
 *//////////////////////////////////////////
 *//////////////////////////////////////////
 
-        CONTAITER=CONTAITER+1
         ITER=FIRST+EVERY*(IFI2-1)
 
-        IFI=CONTAITER
-
-        IF (MARK(IFI2).EQ.0) THEN
-
-        MARK(IFI2)=1
-
-        WRITE(*,*)'STARTING ITER', ITER, IFI2, IFI
+        WRITE(*,*)'STARTING ITER', ITER, IFI2
 
         PATCHNX=0
         PATCHNY=0
@@ -665,8 +585,6 @@
         ! Background cosmology variables
         ROTE=RODO*(1.0+ZETA)**3
         RETE=RE0/(1.0+ZETA)
-        ZETAS(IFI)=ZETA
-        TIEMPO(IFI)=T
 
        ELSE
 *       Reading external list of particles (either Masclet particles
@@ -695,8 +613,6 @@
         ! Background cosmology variables
         ROTE=RODO*(1.0+ZETA)**3
         RETE=RE0/(1.0+ZETA)
-        ZETAS(IFI)=ZETA
-        TIEMPO(IFI)=T
 
         WRITE(*,*)'***********************'
         WRITE(*,*)'***** MESHRENOEF ******'
@@ -815,7 +731,7 @@ c     &                     U11)
 *      Looking for candidate haloes at the AMR levels
 **********************************************************
 
-       CALL HALOFIND_GRID(IFI,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
+       CALL HALOFIND_GRID(NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
      &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
@@ -826,116 +742,51 @@ c     &                     U11)
        open(55, file='./output_files/haloesgrids.res', status='unknown')
        do i=1,nclus
         write(55,*) clusrx(i),clusry(i),clusrz(i),radio(i),masa(i),
-     &              levhal(i), realclus(ifi,i), patchclus(i)
+     &              levhal(i), realclus(i), patchclus(i)
        end do
        close(55)
 
        STOP
 
-         !WRITE(*,*) '==== First Estimate ==='
-         !WRITE(*,*)  IFI,IR,REF,ESP,NCLUS
-         !KONTA2=0
-         !KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
-         !WRITE(*,*) 'POSSIBLE HALOS_0----->', KONTA2
-         !KONTA2=0
-         !KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.0)
-         !WRITE(*,*) 'REMOVED HALOS_0----->', KONTA2
-
-
-****************************************************
-*      CORRECION DE SOLAPES:
-*      VAMOS A VER QUE CUMULOS SOLAPAN EN IR
-****************************************************
-
-c       CALL OVERLAPING(IFI,IR,NL,REF,ESP,BOUND,CONTA,CONTRASTEC,
-c     &                 NSHELL,RODO,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
-c     &                 PATCHRX,PATCHRY,PATCHRZ,NX,NY,NZ,
-c     &                 NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
-c     &                 REALCLUS,NSOLAP,SOLAPA,NHALLEV)
-
-c     WRITE(*,*) '==== After correcting overlaps ==='
-c     WRITE(*,*)  IFI,IR,REF,ESP,NCLUS
-c     KONTA2=0
-c     KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
-c     WRITE(*,*) 'POSSIBLE HALOS_0----->', KONTA2
-c     KONTA2=0
-c     KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.0)
-c     WRITE(*,*) 'REMOVED HALOS_0----->', KONTA2
-
-
-*************************************
-*      CHECKING HALOES PER LEVEL
-*************************************
-       WRITE(*,*) 'CHECKING HALOES PER LEVEL 1', NCLUS
-       DO I=0,NL
-        WRITE(*,*) I, NHALLEV(I)
-       END DO
-*************************************
-
-*********************************************************
-*      CHECKING....
-*********************************************************
-       WRITE(*,*) '---------------------------------'
-       WRITE(*,*) 'CHECKING HIERARCHY_0:'
-       WRITE(*,*) '---------------------------------'
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.-1)
-       WRITE(*,*) 'POSSIBLE HALOS_0----->', KONTA2
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NCLUS).EQ.0)
-       WRITE(*,*) 'REMOVED HALOS_0----->', KONTA2
-*******************************************************
-
-
 *******************************************************
 *      SORTING OUT ALL THE CLUSTERS
 *******************************************************
 
-       AA1=0.0
-       DO I=1, NCLUS
-
-       NNCLUS(IFI)=NNCLUS(IFI)+ABS(REALCLUS(IFI,I))
-
-       KK_ENTERO=0
-       KK_ENTERO=REALCLUS(IFI,I)
-       IF(KK_ENTERO.EQ.-1) THEN
-
-       KK_REAL=0.0
-       KK_REAL=MASA(I)
-       IF (KK_REAL.LE.0.0) WRITE(*,*) 'WAR:', I,MASA(I)*9.1717E18
-
-          NCLUSRX(IFI,NNCLUS(IFI))=CLUSRX(I)
-          NCLUSRY(IFI,NNCLUS(IFI))=CLUSRY(I)
-          NCLUSRZ(IFI,NNCLUS(IFI))=CLUSRZ(I)
-          NMASA(IFI,NNCLUS(IFI))=MASA(I)*9.1717E18
-          NR(IFI,NNCLUS(IFI))=RADIO(I)
-          AA1=AA1+NMASA(IFI,NNCLUS(IFI))
-          NLEVHAL(IFI,NNCLUS(IFI))=LEVHAL(I)
-
-       END IF
-
+       NHALLEV(:)=0
+       J=0
+       DO I=1,NCLUS
+        IF (REALCLUS(I).EQ.0) CYCLE
+        J=J+1
+        CLUSRX(J)=CLUSRX(I)
+        CLUSRY(J)=CLUSRY(I)
+        CLUSRZ(J)=CLUSRZ(I)
+        RADIO(J)=RADIO(I)
+        MASA(J)=MASA(I)
+        LEVHAL(J)=LEVHAL(I)
+        PATCHCLUS(J)=PATCHCLUS(I)
+        REALCLUS(J)=REALCLUS(I)
+        NHALLEV(LEVHAL(J))=NHALLEV(LEVHAL(J))+1
        END DO
+       NCLUS=J
 
-       REALCLUS(IFI,1:NNCLUS(IFI))=-1
-
-       WRITE(*,*)'MASSES MAX & MIN=', MAXVAL(NMASA(IFI,1:NNCLUS(IFI))),
-     &            MINVAL(NMASA(IFI,1:NNCLUS(IFI)))
+       WRITE(*,*)'MASSES: MIN, MAX AND MEAN=', MINVAL(MASA(1:NCLUS)),
+     &            MAXVAL(MASA(1:NCLUS)), SUM(MASA(1:NCLUS))/NCLUS
 
 cv7       WRITE(*,*) 'ESTIMATION HALOES_0 (ONLY WITH GRID)'
 cv7       WRITE(*,*)'=================================='
-cv7       DO I=1, NNCLUS(IFI)
+cv7       DO I=1, NCLUS
 cv7CX       KK_ENTERO=0
-cv7CX       KK_ENTERO=REALCLUS(IFI,I)
+cv7CX       KK_ENTERO=REALCLUS(I)
 cv7CX       IF (KK_ENTERO.NE.0) THEN
-cv7       WRITE(*,*) I, NMASA(IFI,I),NR(IFI,I),NCLUSRX(IFI,I),
-cv7     &            NCLUSRY(IFI,I),NCLUSRZ(IFI,I),REALCLUS(IFI,I)
+cv7       WRITE(*,*) I, MASA(I),RADIO(I),CLUSRX(I),
+cv7     &            CLUSRY(I),CLUSRZ(I),REALCLUS(I)
 cv7CX       END IF
 cv7       END DO
 cv7       WRITE(*,*)'=================================='
 
 
-       WRITE(*,*) 'NNCLUS=', NNCLUS(IFI)
-       AA1=AA1/NNCLUS(IFI)
+       WRITE(*,*) 'NCLUS=', NCLUS
+       AA1=AA1/NCLUS
        WRITE(*,*)'MEAN MASS',AA1
 
 
@@ -947,20 +798,20 @@ cv7       WRITE(*,*)'=================================='
 
        KK_ENTERO=0
 !!!!!paralelizar
-       DO KK1=1, NNCLUS(IFI)
+       DO KK1=1, NCLUS
 
-       IF((NCLUSRX(IFI,KK1)-NR(IFI,KK1)).GT.(LADO*0.5).OR.
-     &    (NCLUSRX(IFI,KK1)-NR(IFI,KK1)).LT. (-LADO*0.5).OR.
-     &    (NCLUSRX(IFI,KK1)+NR(IFI,KK1)).GT.(LADO*0.5).OR.
-     &    (NCLUSRX(IFI,KK1)+NR(IFI,KK1)).LT. (-LADO*0.5).OR.
-     &    (NCLUSRY(IFI,KK1)-NR(IFI,KK1)).GT.(LADO*0.5).OR.
-     &    (NCLUSRY(IFI,KK1)-NR(IFI,KK1)).LT. (-LADO*0.5).OR.
-     &    (NCLUSRY(IFI,KK1)+NR(IFI,KK1)).GT.(LADO*0.5).OR.
-     &    (NCLUSRY(IFI,KK1)+NR(IFI,KK1)).LT. (-LADO*0.5).OR.
-     &    (NCLUSRZ(IFI,KK1)-NR(IFI,KK1)).GT.(LADO*0.5).OR.
-     &    (NCLUSRZ(IFI,KK1)-NR(IFI,KK1)).LT. (-LADO*0.5).OR.
-     &    (NCLUSRZ(IFI,KK1)+NR(IFI,KK1)).GT.(LADO*0.5).OR.
-     &    (NCLUSRZ(IFI,KK1)+NR(IFI,KK1)).LT. (-LADO*0.5)) THEN
+       IF((CLUSRX(KK1)-RADIO(KK1)).GT.(LADO*0.5).OR.
+     &    (CLUSRX(KK1)-RADIO(KK1)).LT. (-LADO*0.5).OR.
+     &    (CLUSRX(KK1)+RADIO(KK1)).GT.(LADO*0.5).OR.
+     &    (CLUSRX(KK1)+RADIO(KK1)).LT. (-LADO*0.5).OR.
+     &    (CLUSRY(KK1)-RADIO(KK1)).GT.(LADO*0.5).OR.
+     &    (CLUSRY(KK1)-RADIO(KK1)).LT. (-LADO*0.5).OR.
+     &    (CLUSRY(KK1)+RADIO(KK1)).GT.(LADO*0.5).OR.
+     &    (CLUSRY(KK1)+RADIO(KK1)).LT. (-LADO*0.5).OR.
+     &    (CLUSRZ(KK1)-RADIO(KK1)).GT.(LADO*0.5).OR.
+     &    (CLUSRZ(KK1)-RADIO(KK1)).LT. (-LADO*0.5).OR.
+     &    (CLUSRZ(KK1)+RADIO(KK1)).GT.(LADO*0.5).OR.
+     &    (CLUSRZ(KK1)+RADIO(KK1)).LT. (-LADO*0.5)) THEN
 
        KK_ENTERO=KK_ENTERO+1
        END IF
@@ -981,14 +832,14 @@ cv7       WRITE(*,*)'=================================='
        WRITE(*,*) '============================================='
 
 
-!$OMP  PARALLEL DO SHARED(NNCLUS,IFI,NLEVHAL,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+                   RXPA,RYPA,RZPA,MASAP,NL,NPART,NMASA,DMPCLUS,
-!$OMP+                   VCM2,NR,U2DM,U3DM,U4DM),
+!$OMP  PARALLEL DO SHARED(NCLUS,LEVHAL,CLUSRX,CLUSRY,CLUSRZ,
+!$OMP+                   RXPA,RYPA,RZPA,MASAP,NL,NPART,DMPCLUS,
+!$OMP+                   VCM2,U2DM,U3DM,U4DM),
 !$OMP+   PRIVATE(I,MASADM,KONTA,BASMAS,MASAKK,VCMX,VCMY,VCMZ,VCM,
 !$OMP+           REF_MIN,REF_MAX,LIP,LIR,BAS,IR,J,AADM,
 !$OMP+           KK_REAL,KK1,KK2,CONTADM,CMX,CMY,CMZ,MASA2)
 *****************************
-       DO I=1, NNCLUS(IFI)
+       DO I=1, NCLUS
 ****************************
 
        MASADM=0.0
@@ -1009,10 +860,10 @@ cv7       WRITE(*,*)'=================================='
        LIR=0
 
 *****susana
-C       IF (NLEVHAL(IFI,I).EQ.0) BAS=2.0
-C       IF (NLEVHAL(IFI,I).EQ.1) BAS=1.25
-C       IF (NLEVHAL(IFI,I).EQ.2) BAS=1.2
-C       IF (NLEVHAL(IFI,I).GT.2) BAS=1.1
+C       IF (LEVHAL(I).EQ.0) BAS=2.0
+C       IF (LEVHAL(I).EQ.1) BAS=1.25
+C       IF (LEVHAL(I).EQ.2) BAS=1.2
+C       IF (LEVHAL(I).GT.2) BAS=1.1
         BAS=1.1
 *****
 
@@ -1022,12 +873,12 @@ C       IF (NLEVHAL(IFI,I).GT.2) BAS=1.1
        DO J=1, NPART(0)
 
        AADM=0.0
-       AADM=SQRT((RXPA(J)-NCLUSRX(IFI,I))**2+
-     &           (RYPA(J)-NCLUSRY(IFI,I))**2+
-     &           (RZPA(J)-NCLUSRZ(IFI,I))**2)
+       AADM=SQRT((RXPA(J)-CLUSRX(I))**2+
+     &           (RYPA(J)-CLUSRY(I))**2+
+     &           (RZPA(J)-CLUSRZ(I))**2)
 
        KK_REAL=0.0
-       KK_REAL=NR(IFI,I)
+       KK_REAL=RADIO(I)
        IF(AADM.LT.BAS*KK_REAL) THEN
 
         REF_MIN=MIN(REF_MIN,AADM)
@@ -1054,12 +905,12 @@ C       IF (NLEVHAL(IFI,I).GT.2) BAS=1.1
        DO J=KK1+1, KK2
 
        AADM=0.0
-       AADM=SQRT((RXPA(J)-NCLUSRX(IFI,I))**2+
-     &           (RYPA(J)-NCLUSRY(IFI,I))**2+
-     &           (RZPA(J)-NCLUSRZ(IFI,I))**2)
+       AADM=SQRT((RXPA(J)-CLUSRX(I))**2+
+     &           (RYPA(J)-CLUSRY(I))**2+
+     &           (RZPA(J)-CLUSRZ(I))**2)
 
        KK_REAL=0.0
-       KK_REAL=NR(IFI,I)
+       KK_REAL=RADIO(I)
        IF(AADM.LT.BAS*KK_REAL) THEN
 
         REF_MIN=MIN(REF_MIN,AADM)
@@ -1091,10 +942,10 @@ C       IF (NLEVHAL(IFI,I).GT.2) BAS=1.1
 ***** fuera necesario
 
        VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
-       VCM2(IFI,I)=VCM
+       VCM2(I)=VCM
        MASAKK=MASADM*9.1717E18
-       NMASA(IFI,I)=MASAKK
-       DMPCLUS(IFI,I)=KONTA  !esto solo da un num inicial de part. a cada halo
+       MASA(I)=MASAKK
+       DMPCLUS(I)=KONTA  !esto solo da un num inicial de part. a cada halo
 
 *****************************
        END DO        !I
@@ -1116,18 +967,18 @@ C       IF (NLEVHAL(IFI,I).GT.2) BAS=1.1
 
        KONTA2=0
        NUMPARTBAS=NUMPART
-!$OMP  PARALLEL DO SHARED(NNCLUS,IFI,DMPCLUS,NUMPARTBAS,
+!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,NUMPARTBAS,
 !$OMP+                    REALCLUS),
 !$OMP+             PRIVATE(I,KK_ENTERO)
 !$OMP+             REDUCTION(+:KONTA2)
-       DO I=1, NNCLUS(IFI)
+       DO I=1, NCLUS
 
         KK_ENTERO=0
-        KK_ENTERO=DMPCLUS(IFI,I)
+        KK_ENTERO=DMPCLUS(I)
         IF (KK_ENTERO.LT.NUMPARTBAS) THEN
 cx_test10        IF (KK_ENTERO.LT.1) THEN
 
-        REALCLUS(IFI,I)=0
+        REALCLUS(I)=0
         KONTA2=KONTA2+1
 
        END IF
@@ -1144,13 +995,13 @@ cx_test10        IF (KK_ENTERO.LT.1) THEN
        WRITE(*,*) 'CHECKING HIERARCHY:'
        WRITE(*,*) '---------------------------------'
        KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
+       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
        WRITE(*,*) 'REAL HALOS----->', KONTA2
        KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.0)
+       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.0)
        WRITE(*,*) 'REMOVED HALOS----->', KONTA2
        KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).GT.0)
+       KONTA2=COUNT(REALCLUS(1:NCLUS).GT.0)
        WRITE(*,*) 'SUBSTRUCTURE----->', KONTA2
        WRITE(*,*) '---------------------------------'
 *********************************************************
@@ -1171,40 +1022,33 @@ cx_test10        IF (KK_ENTERO.LT.1) THEN
 
        DO I=0,NL
        WRITE(*,*)'Halos at level ', I,' =',
-     &            COUNT(NLEVHAL(IFI,1:NNCLUS(IFI)).EQ.I),
-     &            COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).NE.0.AND.
-     &                       NLEVHAL(IFI,1:NNCLUS(IFI)).EQ.I)
+     &            COUNT(LEVHAL(1:NCLUS).EQ.I),
+     &            COUNT(REALCLUS(1:NCLUS).NE.0.AND.
+     &                       LEVHAL(1:NCLUS).EQ.I)
        END DO
        WRITE(*,*)'=================================='
 
 CX
        KONTA2=0
-       KONTA2=MAXVAL(DMPCLUS(IFI,1:NNCLUS(IFI)))
-       WRITE(*,*) 'MAXVAL(DMPCLUS(IFI,1:NNCLUS(IFI)))=', KONTA2
-       WRITE(*,*) 'MINVAL(DMPCLUS(IFI,1:NNCLUS(IFI)))=',
-     &             MINVAL(DMPCLUS(IFI,1:NNCLUS(IFI)))
+       KONTA2=MAXVAL(DMPCLUS(1:NCLUS))
+       WRITE(*,*) 'MAXVAL(DMPCLUS(IFI,1:NCLUS))=', KONTA2
+       WRITE(*,*) 'MINVAL(DMPCLUS(IFI,1:NCLUS))=',
+     &             MINVAL(DMPCLUS(1:NCLUS))
        !OJO: Debido a los valores de BAS anteriores y posteriores,
        !     a continuación pueden haber más particulas que antes!
        KONTA2=KONTA2+1000000 !!!!!PRUEBA!!!
 
 
        KONTA1=0
-       KONTA1=NNCLUS(IFI)
-       WRITE(*,*) 'NNCLUS(IFI)=', NNCLUS(IFI)
+       KONTA1=NCLUS
+       WRITE(*,*) 'NCLUS=', NCLUS
 
 c_v6: .............
        NN=NUM*3      !NUMERO DE HALOS POR BUCLE (3/procesador cada vez)
-       NH=NNCLUS(IFI)
+       NH=NCLUS
        IP=0
        IP2=0
        WRITE(*,*)'NUMBER HALOS/PROCESSOR=', NN
-
-
-        IF(PLOT.GT.1) THEN
-         ALLOCATE(IP_PARAL(KONTA2,NN))   !CON KONTA1 ENTRE 1 Y NN
-         ALLOCATE(IR_PARAL(KONTA2,NN))
-         ALLOCATE(MASAP_PARAL(KONTA2,NN))
-        END IF
 
        !+++++!
        DO
@@ -1217,30 +1061,17 @@ c_v6: .............
        IF (IP.GT.NH) EXIT
 c_v6: .............
 
-      IF(PLOT.GT.1) THEN
-        NBASPART_PLOT=NN
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,IP_PARAL,
-!$OMP+                   IR_PARAL,MASAP_PARAL),
-!$OMP+            PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-           IP_PARAL(:,I)=0
-           IR_PARAL(:,I)=0
-           MASAP_PARAL(:,I)=0.0
-        END DO
-      END IF
-
-
        KONTA1=0
        KONTA2=0
        PABAS=PARTIRED_PLOT
        NUMPARTBAS=NUMPART
        !!!OJO: a continuacion cambio OMEGA0 por OMEGAZ
 
-!$OMP  PARALLEL DO SHARED(NNCLUS,IFI,REALCLUS,
-!$OMP+           NLEVHAL,NPART,RXPA,RYPA,RZPA,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+           NL,NR,MASAP,U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,
+!$OMP  PARALLEL DO SHARED(NCLUS,REALCLUS,
+!$OMP+           LEVHAL,NPART,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,
+!$OMP+           NL,MASAP,U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,
 !$OMP+           PI,RETE,ROTE,VCMAX,MCMAX,RCMAX,M200,R200,CONTRASTEC,
-!$OMP+           OMEGAZ,CGR,UM,UV,DMPCLUS,CONCENTRA,PLOT,
+!$OMP+           OMEGAZ,CGR,UM,UV,DMPCLUS,CONCENTRA,
 !$OMP+           ORIPA1,ORIPA2,ANGULARM,PABAS,IPLIP,IPLIR,DIMEN,
 !$OMP+           EIGENVAL,NUMPARTBAS,IP_PARAL,IR_PARAL,MASAP_PARAL,
 !$OMP+           IP,IP2,NH),
@@ -1253,16 +1084,16 @@ c_v6: .............
 !$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL)
 
 *****************************
-c_v6:       DO I=1, NNCLUS(IFI)
+c_v6:       DO I=1, NCLUS
        DO I=IP, IP2
 ****************************
 
        KONTA1=0
-       KONTA1=DMPCLUS(IFI,I)
-       DMPCLUS(IFI,I)=0
+       KONTA1=DMPCLUS(I)
+       DMPCLUS(I)=0
 
        KK_ENTERO=0
-       KK_ENTERO=REALCLUS(IFI,I)
+       KK_ENTERO=REALCLUS(I)
 
        IF (KK_ENTERO.NE.0) THEN
 
@@ -1299,22 +1130,22 @@ c_v6:       DO I=1, NNCLUS(IFI)
 
 **     COMPUTING VCM OF HALO I
 
-*       BAS=1.0 + 2./(2.**(NLEVHAL(IFI,I)+1))
-       IF (NLEVHAL(IFI,I).EQ.0) BAS=2.0
-       IF (NLEVHAL(IFI,I).EQ.1) BAS=1.25
-       IF (NLEVHAL(IFI,I).EQ.2) BAS=1.2
-       IF (NLEVHAL(IFI,I).GT.2) BAS=1.1
+*       BAS=1.0 + 2./(2.**(LEVHAL(I)+1))
+       IF (LEVHAL(I).EQ.0) BAS=2.0
+       IF (LEVHAL(I).EQ.1) BAS=1.25
+       IF (LEVHAL(I).EQ.2) BAS=1.2
+       IF (LEVHAL(I).GT.2) BAS=1.1
 *       BAS=1.2
 
 *      NIVEL BASE
        IR=0
 
        DO J=1, NPART(0)
-        AADM=SQRT((RXPA(J)-NCLUSRX(IFI,I))**2+
-     &            (RYPA(J)-NCLUSRY(IFI,I))**2+
-     &            (RZPA(J)-NCLUSRZ(IFI,I))**2)
+        AADM=SQRT((RXPA(J)-CLUSRX(I))**2+
+     &            (RYPA(J)-CLUSRY(I))**2+
+     &            (RZPA(J)-CLUSRZ(I))**2)
 
-        IF(AADM.LT.BAS*NR(IFI,I)) THEN
+        IF(AADM.LT.BAS*RADIO(I)) THEN
          REF_MIN=MIN(REF_MIN,AADM)
          REF_MAX=MAX(REF_MAX,AADM)
 
@@ -1339,12 +1170,12 @@ c_v6:       DO I=1, NNCLUS(IFI)
        KK2=SUM(NPART(0:IR))
 
        DO J=KK1+1, KK2
-        AADM=SQRT((RXPA(J)-NCLUSRX(IFI,I))**2+
-     &            (RYPA(J)-NCLUSRY(IFI,I))**2+
-     &            (RZPA(J)-NCLUSRZ(IFI,I))**2)
+        AADM=SQRT((RXPA(J)-CLUSRX(I))**2+
+     &            (RYPA(J)-CLUSRY(I))**2+
+     &            (RZPA(J)-CLUSRZ(I))**2)
 
 
-        IF(AADM<BAS*NR(IFI,I)) THEN
+        IF(AADM<BAS*RADIO(I)) THEN
          REF_MIN=MIN(REF_MIN,AADM)
          REF_MAX=MAX(REF_MAX,AADM)
 
@@ -1370,16 +1201,16 @@ cx       IF (MASADM.GT.0.0) THEN
        END IF
 
        VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
-       VCM2(IFI,I)=VCM
+       VCM2(I)=VCM
        MASAKK=MASADM*9.1717E18
 
 *      ASIGNACION CM
-       NCLUSRX(IFI,I)=CMX
-       NCLUSRY(IFI,I)=CMY
-       NCLUSRZ(IFI,I)=CMZ
-       VX(IFI,I)=VCMX
-       VY(IFI,I)=VCMY
-       VZ(IFI,I)=VCMZ
+       CLUSRX(I)=CMX
+       CLUSRY(I)=CMY
+       CLUSRZ(I)=CMZ
+       VX(I)=VCMX
+       VY(I)=VCMY
+       VZ(I)=VCMZ
 
 **     FIN VCM
 
@@ -1394,10 +1225,10 @@ cx       IF (MASADM.GT.0.0) THEN
 
        IF (MASADM.GT.0.0) THEN
         CONCEN=124.0*((MASADM*9.1717E18*(ACHE/3.66D-3)**(-1))**(-0.084))
-        RS=NR(IFI,I)/CONCEN
+        RS=RADIO(I)/CONCEN
        END IF
 
-       CONCENTRA(IFI,I)=CONCEN
+       CONCENTRA(I)=CONCEN
 
        FC=LOG(1.0+CONCEN)-(CONCEN/(1.0+CONCEN))
        IF (FC.GT.0.0) VMAX2=(CGR*MASADM*F2)/(RS*RETE*2.0*FC)
@@ -1411,8 +1242,8 @@ cx       IF (MASADM.GT.0.0) THEN
 *      al centro (dista es la dist. al centro). Tambien reordena LIR y LIP
 
        DISTA=0.0
-       CALL REORDENAR(KONTA,NCLUSRX(IFI,I),NCLUSRY(IFI,I),
-     &   NCLUSRZ(IFI,I),RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
+       CALL REORDENAR(KONTA,CLUSRX(I),CLUSRY(I),
+     &   CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
 
        FAC=0
        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
@@ -1420,14 +1251,14 @@ cx       IF (MASADM.GT.0.0) THEN
         FAC=FAC+1
         KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
-        CALL UNBINDING4(FAC,IFI,I,REF_MIN,REF_MAX,DISTA,
+        CALL UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           NR,NMASA,NCLUSRX,NCLUSRY,NCLUSRZ,
+     &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
      &           LIP,LIR,KONTA,CONTADM,VX,VY,VZ)
 
 
-        CALL REORDENAR(KONTA,NCLUSRX(IFI,I),NCLUSRY(IFI,I),
-     &     NCLUSRZ(IFI,I),RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
+        CALL REORDENAR(KONTA,CLUSRX(I),CLUSRY(I),
+     &     CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
 
         CONTAERR=abs(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
 
@@ -1435,7 +1266,7 @@ cx       IF (MASADM.GT.0.0) THEN
        END DO
 
 
-       NR(IFI,I)=REF_MAX
+       RADIO(I)=REF_MAX
 
 *      AQUI: las particulas estan ordenadar de menor a mayor
 *      distancia al centro!!!!!
@@ -1480,17 +1311,17 @@ cx       IF (MASADM.GT.0.0) THEN
 
          BAS2=BAS/DISTA(J)
          IF (BAS2.GT.BAS1) THEN
-          VCMAX(IFI,I)=BAS2
-          MCMAX(IFI,I)=BAS
-          RCMAX(IFI,I)=DISTA(J)
+          VCMAX(I)=BAS2
+          MCMAX(I)=BAS
+          RCMAX(I)=DISTA(J)
           BAS1=BAS2
          END IF
 
 CV2         IF (DELTA2.LE.200.0/OMEGA0.AND.FLAG_200.EQ.0) THEN
 c_v8         IF (DELTA2.LE.200.0/OMEGA0) THEN
           IF (DELTA2.LE.200.0/OMEGAZ) THEN
-          M200(IFI,I)=DELTA2*VOL*ROTE
-          R200(IFI,I)=DISTA(J)
+          M200(I)=DELTA2*VOL*ROTE
+          R200(I)=DISTA(J)
           FLAG_200=1
          END IF
 
@@ -1511,12 +1342,12 @@ c_v8         IF (DELTA2.LE.200.0/OMEGA0) THEN
 
        END IF
 
-       VCMAX(IFI,I)=VCMAX(IFI,I)*NORMA*CGR/RETE
-       VCMAX(IFI,I)=SQRT(VCMAX(IFI,I))*UV
-       MCMAX(IFI,I)=MCMAX(IFI,I)*NORMA*UM
-       RCMAX(IFI,I)=RCMAX(IFI,I)   !*RETE
-       M200(IFI,I)=M200(IFI,I)*UM
-       R200(IFI,I)=R200(IFI,I)     !*RETE
+       VCMAX(I)=VCMAX(I)*NORMA*CGR/RETE
+       VCMAX(I)=SQRT(VCMAX(I))*UV
+       MCMAX(I)=MCMAX(I)*NORMA*UM
+       RCMAX(I)=RCMAX(I)   !*RETE
+       M200(I)=M200(I)*UM
+       R200(I)=R200(I)     !*RETE
 
 
        IF (SALIDA.NE.1.AND.KONTA2.NE.0) THEN   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1599,16 +1430,16 @@ COJO!!
        DO J=1,KONTA
         IF (CONTADM(J).EQ.0) THEN
 
-         AADMX(1)=RXPA(LIP(J))-NCLUSRX(IFI,I)
-         AADMX(2)=RYPA(LIP(J))-NCLUSRY(IFI,I)
-         AADMX(3)=RZPA(LIP(J))-NCLUSRZ(IFI,I)
+         AADMX(1)=RXPA(LIP(J))-CLUSRX(I)
+         AADMX(2)=RYPA(LIP(J))-CLUSRY(I)
+         AADMX(3)=RZPA(LIP(J))-CLUSRZ(I)
          AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
 
 CV2
         VVV2=0.0
-        VVV2=(U2DM(LIP(J))-VX(IFI,I))**2
-     &      +(U3DM(LIP(J))-VY(IFI,I))**2
-     &      +(U4DM(LIP(J))-VZ(IFI,I))**2
+        VVV2=(U2DM(LIP(J))-VX(I))**2
+     &      +(U3DM(LIP(J))-VY(I))**2
+     &      +(U4DM(LIP(J))-VZ(I))**2
 CV2
 
 
@@ -1617,19 +1448,9 @@ CV2
           BASMAS=BASMAS+(MASAP(LIP(J))/NORMA)
 
 *********anyadido susana
-          DMPCLUS(IFI,I)=DMPCLUS(IFI,I)+1
-c          IF (PLOT.EQ.2) THEN
-          IF (PLOT.GT.1) THEN
-            IR_PARAL(DMPCLUS(IFI,I),I-IP+1)=ORIPA1(LIP(J))   !I-IP
-            IP_PARAL(DMPCLUS(IFI,I),I-IP+1)=ORIPA2(LIP(J))
-            MASAP_PARAL(DMPCLUS(IFI,I),I-IP+1)=MASAP(LIP(J))
-          END IF
+          DMPCLUS(I)=DMPCLUS(I)+1
 
-c          IF (PLOT.GT.1) THEN  ! We do ANY merger tree
-c            DONDE(IFI,ORIPA1(LIP(J)),ORIPA2(LIP(J)))=I
-c          ENDIF
-
-          ANGULARM(IFI,I)=ANGULARM(IFI,I)+MASAP(LIP(J))*AADM*SQRT(VVV2)
+          ANGULARM(I)=ANGULARM(I)+MASAP(LIP(J))*AADM*SQRT(VVV2)
 
 **        INERTIA TENSOR
           DO JY=1, 3
@@ -1643,22 +1464,22 @@ c          ENDIF
           VKK=SQRT(U2DM(LIP(J))**2+U3DM(LIP(J))**2+
      &             U4DM(LIP(J))**2)
 
-          IF (VKK.GT.VMAXCLUS(IFI,I)) THEN
-           VMAXCLUS(IFI,I)=VKK
+          IF (VKK.GT.VMAXCLUS(I)) THEN
+           VMAXCLUS(I)=VKK
           END IF
 
 **        CLOSEST PARTICLE TO THE CENTER OF THE HALO
           IF (AADM.LT.DIS) THEN
            DIS=AADM
-           IPLIR(IFI,I)=ORIPA1(LIP(J))
-           IPLIP(IFI,I)=ORIPA2(LIP(J))
+           IPLIR(I)=ORIPA1(LIP(J))
+           IPLIP(I)=ORIPA2(LIP(J))
           END IF
 
           IF(AADM.NE.0.0) THEN
            AA=0.0
-           AA=((RXPA(LIP(J))-NCLUSRX(IFI,I))/AADM)*U2DM(LIP(J))+
-     &        ((RYPA(LIP(J))-NCLUSRY(IFI,I))/AADM)*U3DM(LIP(J))+
-     &        ((RZPA(LIP(J))-NCLUSRZ(IFI,I))/AADM)*U4DM(LIP(J))
+           AA=((RXPA(LIP(J))-CLUSRX(I))/AADM)*U2DM(LIP(J))+
+     &        ((RYPA(LIP(J))-CLUSRY(I))/AADM)*U3DM(LIP(J))+
+     &        ((RZPA(LIP(J))-CLUSRZ(I))/AADM)*U4DM(LIP(J))
            VR=VR+AA*MASAP(LIP(J))
           END IF
 
@@ -1670,8 +1491,8 @@ c          ENDIF
 
 
 *      CONTROL DE SEGURIDAD
-       IF(DMPCLUS(IFI,I).NE.KONTA2) THEN
-         WRITE(*,*) 'WARNING!', DMPCLUS(IFI,I),KONTA2
+       IF(DMPCLUS(I).NE.KONTA2) THEN
+         WRITE(*,*) 'WARNING!', DMPCLUS(I),KONTA2
          STOP
        ENDIF
 
@@ -1680,89 +1501,45 @@ c          ENDIF
 *      SAVING MASSES, RADII, PROFILES AND SHAPES...
 *******************************************************
 
-       NMASA(IFI,I)=BASMAS*NORMA*9.1717E18    !!MASA2
-       ANGULARM(IFI,I)=ANGULARM(IFI,I)/BASMAS
-       NR(IFI,I)=RSHELL
+       MASA(I)=BASMAS*NORMA*9.1717E18    !!MASA2
+       ANGULARM(I)=ANGULARM(I)/BASMAS
+       RADIO(I)=RSHELL
 
-       INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/DMPCLUS(IFI,I)
+       INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/DMPCLUS(I)
        BASEIGENVAL(1:3)=0.0
 
-       IF (DMPCLUS(IFI,I).GE.NUMPARTBAS) THEN
+       IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
         CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
         CALL SORT(BASEIGENVAL,DIMEN,DIMEN)
        END IF
 
        DO II=1, DIMEN
-        EIGENVAL(IFI,II,I)=BASEIGENVAL(II)
-        EIGENVAL(IFI,II,I)=SQRT(EIGENVAL(IFI,II,I))
+        EIGENVAL(II,I)=BASEIGENVAL(II)
+        EIGENVAL(II,I)=SQRT(EIGENVAL(II,I))
        END DO
 
 ******************************************
 ************ FIN HALO I ******************
 ******************************************
 
-*       IF (NMASA(IFI,I).EQ.0.0) KKKONTA=KKKONTA+1
+*       IF (MASA(I).EQ.0.0) KKKONTA=KKKONTA+1
 
 
        END IF   !IF REALCLUS.ne.0 (KK_ENTERO.NE.0)
 
 *****************
-       END DO   !NNCLUS I
+       END DO   !NCLUS I
 ****************
 
 
 cx---------xc
        KONTA2=0
-       KONTA2=SUM(DMPCLUS(IFI,1:NNCLUS(IFI)))
+       KONTA2=SUM(DMPCLUS(1:NCLUS))
        PABAS=KONTA2
 cx       WRITE(*,*) 'MAX. DMPITER(IFI)=', KONTA2
        IF(IP.EQ.1) WRITE(*,*) 'INITIAL MAX. DMPITER(IFI)=', KONTA2
 C       IF(IP.GT.NH) WRITE(*,*) 'FINAL MAX. DMPITER(IFI)=', KONTA2
 cx--------xc
-
-*-----SOLO NECESARIO PARA EL MERGER TREE O PARA FLAG_WDM=1: ----*
-       IF (PLOT.GT.1) THEN
-*-----------------------------*
-
-*****************************
-c_v6:       DO I=1, NNCLUS(IFI)
-       DO I=IP, IP2
-****************************
-       DO J=1,DMPCLUS(IFI,I)
-
-          DMPITER(IFI)=DMPITER(IFI)+1
-
-c          IF (FLAG_WDM.EQ.1.OR.PLOT.EQ.2) THEN
-            DMLIR(IFI,DMPITER(IFI))=IR_PARAL(J,I-IP+1)
-            DMLIP(IFI,DMPITER(IFI))=IP_PARAL(J,I-IP+1)
-            NEW_MASAP(IFI,DMPITER(IFI))=MASAP_PARAL(J,I-IP+1)
-            IX1=DMLIR(IFI,DMPITER(IFI))
-            IX2=DMLIP(IFI,DMPITER(IFI))
-            NHOST(IFI,IX1,IX2)=NHOST(IFI,IX1,IX2)+1
-            IX3=NHOST(IFI,IX1,IX2)
-            IF(IX3.GT.NMAXHOST) THEN
-               WRITE(*,*)'WARNING!! NHOST>NMAXDAD'
-               STOP
-            END IF
-            HHOST(IFI,IX3,IX1,IX2)=I
-c          END IF
-          !!COMMENT: tal y como esta, este if se necesita si PLOT>1!!
-          !!OJO!!  PARTIRED_PLOT tiene que se >= PABAS
-          IF (DMPITER(IFI).GT.PABAS) THEN
-            WRITE(*,*)'WARNING! DMPITER(IFI)>',PABAS, PARTIRED_PLOT
-            STOP
-          END IF
-
-       END DO  !J
-
-****************************
-       END DO      !I
-****************************
-
-*-----------------------------*
-       ENDIF !PLOT
-*-----------------------------*
-
 
 c_v6: .............
         IP=IP2 !!! IP
@@ -1772,11 +1549,6 @@ c_v6: .............
        END DO
        !+++++
 
-         IF (PLOT.GT.1) THEN
-           DEALLOCATE(IP_PARAL)
-           DEALLOCATE(IR_PARAL)
-           DEALLOCATE(MASAP_PARAL)
-        END IF
 c_v6: .............
 
 
@@ -1785,23 +1557,23 @@ c_v6: .............
 *************************************************
 
        WRITE(*,*)'HALOES WITHOUT MASS=',
-     &        COUNT(NMASA(IFI,1:NNCLUS(IFI)).LE.0.0)
+     &        COUNT(MASA(1:NCLUS).LE.0.0)
 
        WRITE(*,*)'HALOES WITH MASS=0',
-     &        COUNT(NMASA(IFI,1:NNCLUS(IFI)).EQ.0.0)
+     &        COUNT(MASA(1:NCLUS).EQ.0.0)
 *       WRITE(*,*)'KKKONTA=',KKKONTA
 
        WRITE(*,*) 'Total number of particles within halos:',
-     &            SUM(DMPCLUS(IFI,1:NNCLUS(IFI)))
+     &            SUM(DMPCLUS(1:NCLUS))
 
 
        WRITE(*,*)'After refining with DM particles...'
        WRITE(*,*)'===================================='
        DO I=0,NL
        WRITE(*,*)'Haloes at level ', I,' =',
-     &            COUNT(NLEVHAL(IFI,1:NNCLUS(IFI)).EQ.I.
-     &            AND.REALCLUS(IFI,1:NNCLUS(IFI)).NE.0),
-     &            COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
+     &            COUNT(LEVHAL(1:NCLUS).EQ.I
+     &            .AND.REALCLUS(1:NCLUS).NE.0),
+     &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
        END DO
        WRITE(*,*)'===================================='
 
@@ -1810,10 +1582,10 @@ c_v6: .............
 
        WRITE(*,*) 'ESTIMATION HALOES_1 (AFTER UNBINDING)'
        WRITE(*,*)'=================================='
-       DO I=1, NNCLUS(IFI)
-       IF (REALCLUS(IFI,I).NE.0) THEN
-       WRITE(*,*) I, NMASA(IFI,I),NR(IFI,I),NCLUSRX(IFI,I),
-     &            NCLUSRY(IFI,I),NCLUSRZ(IFI,I)
+       DO I=1, NCLUS
+       IF (REALCLUS(I).NE.0) THEN
+       WRITE(*,*) I, MASA(I),RADIO(I),CLUSRX(I),
+     &            CLUSRY(I),CLUSRZ(I)
        END IF
        END DO
        WRITE(*,*)'=================================='
@@ -1826,17 +1598,17 @@ c_v6: .............
 ************************************************
        KONTA2=0
        NUMPARTBAS=NUMPART
-!$OMP  PARALLEL DO SHARED(NNCLUS,IFI,DMPCLUS,NUMPARTBAS,
+!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,NUMPARTBAS,
 !$OMP+             REALCLUS),PRIVATE(I,KK_ENTERO),
 !$OMP+             REDUCTION(+:KONTA2)
-       DO I=1, NNCLUS(IFI)
+       DO I=1, NCLUS
 
        KK_ENTERO=0
-       KK_ENTERO=DMPCLUS(IFI,I)
+       KK_ENTERO=DMPCLUS(I)
 
        IF (KK_ENTERO.LT.NUMPARTBAS) THEN
 
-       REALCLUS(IFI,I)=0
+       REALCLUS(I)=0
        KONTA2=KONTA2+1
 
        END IF
@@ -1852,46 +1624,46 @@ c_v6: .............
 
        KONTA2=0
 
-       DO I=1, NNCLUS(IFI)
+       DO I=1, NCLUS
 
-       IF (REALCLUS(IFI,I).NE.0) THEN
+       IF (REALCLUS(I).NE.0) THEN
 
-       DO J=1, NNCLUS(IFI)
+       DO J=1, NCLUS
 
 
-       IF (REALCLUS(IFI,J).NE.0.AND.NLEVHAL(IFI,J).GT.
-     &      NLEVHAL(IFI,I)) THEN
+       IF (REALCLUS(J).NE.0.AND.LEVHAL(J).GT.
+     &      LEVHAL(I)) THEN
 
        DIS=0.0
-       DIS=SQRT((NCLUSRX(IFI,I)-NCLUSRX(IFI,J))**2+
-     &          (NCLUSRY(IFI,I)-NCLUSRY(IFI,J))**2+
-     &          (NCLUSRZ(IFI,I)-NCLUSRZ(IFI,J))**2)
+       DIS=SQRT((CLUSRX(I)-CLUSRX(J))**2+
+     &          (CLUSRY(I)-CLUSRY(J))**2+
+     &          (CLUSRZ(I)-CLUSRZ(J))**2)
 
        A1=0.0
-       A1=MIN(NMASA(IFI,I),NMASA(IFI,J))/MAX(NMASA(IFI,I),NMASA(IFI,J))
+       A1=MIN(MASA(I),MASA(J))/MAX(MASA(I),MASA(J))
 
        A2=0.0
-       IF (MIN(ABS(VCM2(IFI,I)),ABS(VCM2(IFI,J))).NE.0.0) THEN
-       A2=(ABS(VCM2(IFI,I)-VCM2(IFI,J)))/
-     &                            MAX(ABS(VCM2(IFI,I)),ABS(VCM2(IFI,J)))
+       IF (MIN(ABS(VCM2(I)),ABS(VCM2(J))).NE.0.0) THEN
+       A2=(ABS(VCM2(I)-VCM2(J)))/
+     &                            MAX(ABS(VCM2(I)),ABS(VCM2(J)))
        END IF
 
        A3=0.0
-       A3=MIN(NR(IFI,I),NR(IFI,J))
+       A3=MIN(RADIO(I),RADIO(J))
 
 *       IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.3.0.OR.A1.GT.0.6) THEN
        IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.3.0) THEN
 *       IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.5.0) THEN
 *       IF (DIS.LT.1.01*A3.AND.A1.GT.0.2) THEN
 
-       IF (NMASA(IFI,I).GT.NMASA(IFI,J)) THEN
+       IF (MASA(I).GT.MASA(J)) THEN
 
-       REALCLUS(IFI,J)=0
+       REALCLUS(J)=0
        KONTA2=KONTA2+1
 
        ELSE
 
-       REALCLUS(IFI,I)=0
+       REALCLUS(I)=0
        KONTA2=KONTA2+1
 
        END IF
@@ -1913,38 +1685,38 @@ c_v6: .............
 
        SUBHALOS=0
        KONTA2=0
-       DO I=1, NNCLUS(IFI)
+       DO I=1, NCLUS
 
-       IF (REALCLUS(IFI,I).EQ.-1) THEN
+       IF (REALCLUS(I).EQ.-1) THEN
 
        CONCEN=0.0
        RS=0.0
        FC=0.0
        VMAX2=0.0
 
-       IF (NMASA(IFI,I).GT.0.0) THEN
-       CONCEN=124.0*((NMASA(IFI,I)*(ACHE/3.66D-3)**(-1))**(-0.084))
-       RS=NR(IFI,I)/CONCEN
+       IF (MASA(I).GT.0.0) THEN
+       CONCEN=124.0*((MASA(I)*(ACHE/3.66D-3)**(-1))**(-0.084))
+       RS=RADIO(I)/CONCEN
        END IF
 
-       CONCENTRA(IFI,I)=CONCEN
+       CONCENTRA(I)=CONCEN
 
        FC=LOG(1.0+CONCEN)-(CONCEN/(1.0+CONCEN))
 
        IF (FC.GT.0.0) THEN
-       VMAX2=(CGR*(NMASA(IFI,I)/9.1717E18)*F2)/(RS*RETE*2.0*FC)
+       VMAX2=(CGR*(MASA(I)/9.1717E18)*F2)/(RS*RETE*2.0*FC)
        END IF
 
 
-       DO J=1, NNCLUS(IFI)
+       DO J=1, NCLUS
 
        DIS=0.0
-       DIS=SQRT((NCLUSRX(IFI,I)-NCLUSRX(IFI,J))**2+
-     &          (NCLUSRY(IFI,I)-NCLUSRY(IFI,J))**2+
-     &          (NCLUSRZ(IFI,I)-NCLUSRZ(IFI,J))**2)
+       DIS=SQRT((CLUSRX(I)-CLUSRX(J))**2+
+     &          (CLUSRY(I)-CLUSRY(J))**2+
+     &          (CLUSRZ(I)-CLUSRZ(J))**2)
 
        VVV2=0.0
-       VVV2=(VCM2(IFI,I)-VCM2(IFI,J))**2
+       VVV2=(VCM2(I)-VCM2(J))**2
 
        VESC2=0.0
        IF (RS.NE.0.AND.DIS*F2/RS.NE.0) THEN
@@ -1952,18 +1724,18 @@ c_v6: .............
        END IF
 
        A1=0.0
-       A1=MIN(NMASA(IFI,I),NMASA(IFI,J))/MAX(NMASA(IFI,I),NMASA(IFI,J))
+       A1=MIN(MASA(I),MASA(J))/MAX(MASA(I),MASA(J))
 
-       IF (REALCLUS(IFI,J)==-1) THEN
+       IF (REALCLUS(J)==-1) THEN
 
-       IF(NLEVHAL(IFI,J).GT.NLEVHAL(IFI,I).AND.
-     &    DIS.LE.1.0*NR(IFI,I).AND.A1.LE.0.2.AND.VVV2.LE.VESC2) THEN
+       IF(LEVHAL(J).GT.LEVHAL(I).AND.
+     &    DIS.LE.1.0*RADIO(I).AND.A1.LE.0.2.AND.VVV2.LE.VESC2) THEN
 
 
-       REALCLUS(IFI,J)=I
+       REALCLUS(J)=I
        SUBHALOS(I)=SUBHALOS(I)+1
        IF (SUBHALOS(I).GT.NMAXSUB) THEN
-       WRITE(*,*)'WARNING: DEMASIASOS SUBHALOS!!', IFI, I, SUBHALOS
+       WRITE(*,*)'WARNING: DEMASIASOS SUBHALOS!!', ITER, I, SUBHALOS
        STOP
        END IF
        KONTA2=KONTA2+1
@@ -1978,7 +1750,7 @@ c_v6: .............
        WRITE(*,*)'CHECKING SUBSTRUCTURE----->', KONTA2
 
        WRITE(*,*)'TOTAL NUMBER OF HALOS=',
-     &            COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
+     &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
 
 
 *********************************************************
@@ -1988,13 +1760,13 @@ c_v6: .............
        WRITE(*,*) 'RE-CHECKING HIERARCHY:'
        WRITE(*,*) '---------------------------------'
        KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
+       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
        WRITE(*,*) 'REAL HALOS----->', KONTA2
        KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.0)
+       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.0)
        WRITE(*,*) 'REMOVED HALOS----->', KONTA2
        KONTA2=0
-       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).GT.0)
+       KONTA2=COUNT(REALCLUS(1:NCLUS).GT.0)
        WRITE(*,*) 'SUBSTRUCTURE----->', KONTA2
        WRITE(*,*) '---------------------------------'
 
@@ -2002,9 +1774,9 @@ c_v6: .............
        WRITE(*,*)'=================================='
        DO I=0,NL
        WRITE(*,*)'Haloes at level ', I,' =',
-     &            COUNT(NLEVHAL(IFI,1:NNCLUS(IFI)).EQ.I.
-     &            AND.REALCLUS(IFI,1:NNCLUS(IFI)).NE.0),
-     &            COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
+     &            COUNT(LEVHAL(1:NCLUS).EQ.I.
+     &            AND.REALCLUS(1:NCLUS).NE.0),
+     &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
        END DO
        WRITE(*,*)'=================================='
 
@@ -2018,8 +1790,8 @@ c_v6: .............
 *************************************************
 *===================Families===============
        KONTA2=0
-c       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
-       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).NE.0)
+c       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
+       KONTA2=COUNT(REALCLUS(1:NCLUS).NE.0)
        CALL NOMFILE3(ITER,FILE3)
        FILERR3='./output_files/'//FILE3
        OPEN(3,FILE=FILERR3,STATUS='UNKNOWN')
@@ -2034,32 +1806,32 @@ c       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
        IF (FLAG_WDM.EQ.1) WRITE(4) KONTA2
 
        WRITE(3,*) '*********************NEW ITER*******************'
-       WRITE(3,*) ITER, NNCLUS(IFI), KONTA2, ZETA
+       WRITE(3,*) ITER, NCLUS, KONTA2, ZETA
        WRITE(3,*) '************************************************'
        KONTA2=0
 
-       DO I=1, NNCLUS(IFI)
+       DO I=1, NCLUS
 
-       IF (REALCLUS(IFI,I).NE.0) THEN
+       IF (REALCLUS(I).NE.0) THEN
 
-         WRITE(3,135) I,NCLUSRX(IFI,I),NCLUSRY(IFI,I),NCLUSRZ(IFI,I),
-     &         NMASA(IFI,I),NR(IFI,I),DMPCLUS(IFI,I),
-     &         REALCLUS(IFI,I), NLEVHAL(IFI,I),SUBHALOS(I),
-     &         EIGENVAL(IFI,1,I),EIGENVAL(IFI,2,I),EIGENVAL(IFI,3,I),
-     &         VCM2(IFI,I)*UV,CONCENTRA(IFI,I),ANGULARM(IFI,I)*1.0E14,
-     &         VCMAX(IFI,I),MCMAX(IFI,I),RCMAX(IFI,I),
-     &         M200(IFI,I),R200(IFI,I),
-     &         VX(IFI,I)*UV,VY(IFI,I)*UV,VZ(IFI,I)*UV
+         WRITE(3,135) I,CLUSRX(I),CLUSRY(I),CLUSRZ(I),
+     &         MASA(I),RADIO(I),DMPCLUS(I),
+     &         REALCLUS(I), LEVHAL(I),SUBHALOS(I),
+     &         EIGENVAL(1,I),EIGENVAL(2,I),EIGENVAL(3,I),
+     &         VCM2(I)*UV,CONCENTRA(I),ANGULARM(I)*1.0E14,
+     &         VCMAX(I),MCMAX(I),RCMAX(I),
+     &         M200(I),R200(I),
+     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 
        IF (FLAG_WDM.EQ.1) THEN
 
-       WRITE(4) I,REALCLUS(IFI,I),DMPCLUS(IFI,I)
+       WRITE(4) I,REALCLUS(I),DMPCLUS(I)
 
        KK2=0
        KKK2=0
-       KK2=SUM(DMPCLUS(IFI,1:I-1))+1
-       KKK2=SUM(DMPCLUS(IFI,1:I))
+       KK2=SUM(DMPCLUS(1:I-1))+1
+       KKK2=SUM(DMPCLUS(1:I))
 
        DO J2=KK2, KKK2
 
@@ -2121,820 +1893,10 @@ c       KONTA2=COUNT(REALCLUS(IFI,1:NNCLUS(IFI)).EQ.-1)
        WRITE(*,*) 'DATE=',DATE(1),'/',DATE(2),'/',DATE(3)
        WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
 
-
-*/////////////////////////////////////////////////
-*      COMPLETE MERGER TREE (WITH % OF MASSES)
-*////////////////////////////////////////////////
-
-       IF (PLOT.EQ.2) THEN
-
-       IF (CONTAITER.EQ.2) THEN
-
-       IF (MARK(IFI2).EQ.1.AND.MARK(IFI2-1).EQ.1)THEN
-
-       WRITE(*,*) 'MERGER TREE CHECKING:', CONTAITER
-       DO I=1,NFILE
-        WRITE(*,*) ZETAS(I),TIEMPO(I),NNCLUS(I),DMPITER(I)
-       END DO
-
-CCCCCCCCCCCCCCCCCCCC
-       WRITE(*,*)'STARTING MERGER TREE', ITER-EVERY,'-',ITER
-       CALL IDATE(DATE)
-       CALL ITIME(TIME)
-       WRITE(*,*) 'DATE=',DATE(1),'/',DATE(2),'/',DATE(3)
-       WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
-CCCCCCCCCCCCCCCCCCCCC
-
-*/////////////CALLING MERGER TREE/////////////////////////*
-         CALL MERGER(NFILE,NMASA,NNCLUS,DMPITER,
-     &              DMPCLUS,REALCLUS)
-*////////////////WRITING MERGER_TREE/////////////////////*
-
-       CALL NOMFILE4(ITER-EVERY,FILE3)
-       FILERR3='./output_files/'//FILE3
-       OPEN(3,FILE=FILERR3,STATUS='UNKNOWN')
-
-       DO I=NFILE, 2, -1
-       WRITE(3,*)'================NEW ITER==================='
-       KONTA2=0
-
-c       KONTA2=COUNT(REALCLUS(I,1:NNCLUS(I)).EQ.-1.AND.
-c     &        NLEVHAL(I,1:NNCLUS(I)).EQ.0)
-
-C      NEW solo de halos reales
-       KONTA2=COUNT(REALCLUS(I,1:NNCLUS(I)).EQ.-1)
-       WRITE(3,*) I, ZETAS(I),TIEMPO(I),KONTA2
-       KONTA2=0
-
-c       KONTA2=COUNT(REALCLUS(I-1,1:NNCLUS(I-1)).EQ.-1.AND.
-c     &        NLEVHAL(I-1,1:NNCLUS(I-1)).EQ.0)
-
-C      NEW solo de halos reales
-       KONTA2=COUNT(REALCLUS(I-1,1:NNCLUS(I-1)).EQ.-1)
-       WRITE(3,*) I-1, ZETAS(I-1),TIEMPO(I-1),KONTA2
-       KONTA2=0
-
-       DO J=1, NNCLUS(I)
-c       IF (REALCLUS(I,J).EQ.-1.AND.NLEVHAL(I,J).EQ.0) THEN
-
-C      NEW solo de halos reales
-       IF (REALCLUS(I,J).EQ.-1) THEN
-       KONTA2=KONTA2+1
-       WRITE(3,*) '---------------new clus----------------------'
-       WRITE(3,*) KONTA2,J,NMASA(I,J),NDAD(I,J),NR(I,J)
-       WRITE(3,*) NCLUSRX(I,J),NCLUSRY(I,J),NCLUSRZ(I,J),NLEVHAL(I,J)
-       DO K=1, NDAD(I,J)
-       WRITE(3,*) DAD(I,K,J),RATIO(I,K,J),NMASA(I-1,DAD(I,K,J)),
-     &            NR(I-1,DAD(I,K,J))
-       WRITE(3,*) NCLUSRX(I-1,DAD(I,K,J)),NCLUSRY(I-1,DAD(I,K,J)),
-     &            NCLUSRZ(I-1,DAD(I,K,J)),NLEVHAL(I-1,DAD(I,K,J))
-       END DO
-       END IF
-       END DO
-
-       END DO
-
-       CLOSE(3)
-
-       CONTAITER=1
-
-*      MACHACAMOS LAS VARIABLES DE ITER 1
-C       WRITE(*,*)'1:',NNCLUS(1),ZETAS(1),TIEMPO(1),DMPITER(1)
-
-cxcx       NMAXNCLUSBAS=NNCLUS(1)
-       NMAXNCLUSBAS=NMAXNCLUS    !dimension original maxima
-!$OMP  PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,CONCENTRA,
-!$OMP+                   ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ,
-!$OMP+                   VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+                   M200,R200,IPLIP,IPLIR,REALCLUS,
-!$OMP+                   NLEVHAL,EIGENVAL),PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-          NMASA(1,I)=0.0
-          NR(1,I)=0.0
-          CONCENTRA(1,I)=0.0
-          ANGULARM(1,I)=0.0
-          NCLUSRX(1,I)=0.0
-          NCLUSRY(1,I)=0.0
-          NCLUSRZ(1,I)=0.0
-          VCM2(1,I)=0.0
-          VMAXCLUS(1,I)=0.0
-          VX(1,I)=0.0
-          VY(1,I)=0.0
-          VZ(1,I)=0.0
-          VCMAX(1,I)=0.0
-          MCMAX(1,I)=0.0
-          RCMAX(1,I)=0.0
-          M200(1,I)=0.0
-          R200(1,I)=0.0
-          IPLIP(1,I)=0
-          IPLIR(1,I)=0
-          DMPCLUS(1,I)=0
-          REALCLUS(1,I)=0
-          NLEVHAL(1,I)=0
-          EIGENVAL(1,:,I)=0.0
-        END DO
-
-        IF (PLOT.GT.1) THEN
-cx      NMAXNCLUSBAS=DMPITER(1)
-        NMAXNCLUSBAS=PARTIRED_PLOT   !dimension original maxima
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,DMLIP,DMLIR,
-!$OMP+                   NEW_MASAP),
-!$OMP+            PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-         DMLIP(1,I)=0
-         DMLIR(1,I)=0
-         NEW_MASAP(1,I)=0.0
-       END DO
-
-       NBASPART_PLOT=PARTIRED
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-      DO I=1,NBASPART_PLOT
-         NHOST(1,:,I)=0
-         HHOST(1,:,:,I)=0
-      END DO
-
-
-       NBASPART_PLOT=NMAXCLUS_PLOT
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-           NDAD(1,I)=0
-           DAD(1,:,I)=0
-       END DO
-
-      IF (PLOT.EQ.2) THEN
-        NBASPART_PLOT=NMAXCLUS_PLOT
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-          RATIO(1,:,I)=0.0
-       END DO
-      END IF
-
-
-      END IF  !PLOT>1
-
-
-       NNCLUS(1)=0
-       ZETAS(1)=0.0
-       TIEMPO(1)=0.0
-       DMPITER(1)=0
-
-*      GUARDAMOS LAS VARIABLES DE ITER 2 EN 1
-C       WRITE(*,*)'1...:',NNCLUS(1),ZETAS(1),TIEMPO(1),DMPITER(1)
-
-       NNCLUS(1)=NNCLUS(2)
-       ZETAS(1)=ZETAS(2)
-       TIEMPO(1)=TIEMPO(2)
-
-
-       NMAXNCLUSBAS=NNCLUS(2)
-!$OMP  PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,CONCENTRA,
-!$OMP+                   ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ,
-!$OMP+                   VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+                   M200,R200,IPLIP,IPLIR,REALCLUS,
-!$OMP+                   NLEVHAL,EIGENVAL),PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-          NMASA(1,I)=NMASA(2,I)
-          NR(1,I)=NR(2,I)
-          CONCENTRA(1,I)=CONCENTRA(2,I)
-          ANGULARM(1,I)=ANGULARM(2,I)
-          NCLUSRX(1,I)=NCLUSRX(2,I)
-          NCLUSRY(1,I)=NCLUSRY(2,I)
-          NCLUSRZ(1,I)=NCLUSRZ(2,I)
-          VCM2(1,I)=VCM2(2,I)
-          VMAXCLUS(1,I)=VMAXCLUS(2,I)
-          VX(1,I)=VX(2,I)
-          VY(1,I)=VY(2,I)
-          VZ(1,I)=VZ(2,I)
-          VCMAX(1,I)=VCMAX(2,I)
-          MCMAX(1,I)=MCMAX(2,I)
-          RCMAX(1,I)=RCMAX(2,I)
-          M200(1,I)=M200(2,I)
-          R200(1,I)=R200(2,I)
-          IPLIP(1,I)=IPLIP(2,I)
-          IPLIR(1,I)=IPLIR(2,I)
-          DMPCLUS(1,I)=DMPCLUS(2,I)
-          REALCLUS(1,I)=REALCLUS(2,I)
-          NLEVHAL(1,I)=NLEVHAL(2,I)
-          EIGENVAL(1,1:3,I)=EIGENVAL(2,1:3,I)
-       END DO
-
-
-       DMPITER(1)=DMPITER(2)
-
-       IF (PLOT.GT.1) THEN
-
-       NMAXNCLUSBAS=DMPITER(2)
-!$OMP  PARALLEL DO SHARED(NMAXNCLUSBAS,DMLIP,DMLIR,
-!$OMP+               NEW_MASAP),PRIVATE(I)
-       DO I=1, NMAXNCLUSBAS
-         DMLIP(1,I)=DMLIP(2,I)
-         DMLIR(1,I)=DMLIR(2,I)
-         NEW_MASAP(1,I)=NEW_MASAP(2,I)
-        END DO
-
-      NBASPART_PLOT=PARTIRED
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-         NHOST(1,:,I)=NHOST(2,:,I)
-         HHOST(1,:,:,I)=HHOST(2,:,:,I)
-       END DO
-
-       NBASPART_PLOT=NNCLUS(2)
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-         NDAD(1,I)=NDAD(2,I)
-c         DAD(1,1:NDAD(1,I),I)=DAD(2,1:NDAD(2,I),I)
-         DAD(1,:,I)=DAD(2,:,I)
-       END DO
-
-       IF (PLOT.EQ.2) THEN
-
-        NBASPART_PLOT=NNCLUS(2)
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-         DO I=1,NBASPART_PLOT
-c           RATIO(1,1:NDAD(1,I),I)=RATIO(2,1:NDAD(2,I),I)
-           RATIO(1,:,I)=RATIO(2,:,I)
-         END DO
-       END IF
-
-
-       END IF
-
-
-C       WRITE(*,*)'AHORA 1 ES 2:',NNCLUS(1),ZETAS(1),TIEMPO(1),
-C     &            DMPITER(1)
-
-*      MACHACAMOS LAS VARIABLES DE ITER 2
-
-cx       NMAXNCLUSBAS=NNCLUS(2)
-        NMAXNCLUSBAS=NMAXNCLUS    !dimension original maxima
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,CONCENTRA,
-!$OMP+                   ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ,
-!$OMP+                   VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+                   M200,R200,IPLIP,IPLIR,REALCLUS,
-!$OMP+                   NLEVHAL,EIGENVAL),PRIVATE(I)
-       DO I=1, NMAXNCLUSBAS
-         NMASA(2,I)=0.0
-         NR(2,I)=0.0
-         NCLUSRX(2,I)=0.0
-         NCLUSRY(2,I)=0.0
-         NCLUSRZ(2,I)=0.0
-         VCM2(2,I)=0.0
-         VMAXCLUS(2,I)=0.0
-         VX(2,I)=0.0
-         VY(2,I)=0.0
-         VZ(2,I)=0.0
-         VCMAX(2,I)=0.0
-         MCMAX(2,I)=0.0
-         RCMAX(2,I)=0.0
-         CONCENTRA(2,I)=0.0
-         ANGULARM(2,I)=0.0
-         IPLIP(2,I)=0
-         IPLIR(2,I)=0
-         M200(2,I)=0.0
-         R200(2,I)=0.0
-         REALCLUS(2,I)=0
-         NLEVHAL(2,I)=0
-         DMPCLUS(2,I)=0
-         EIGENVAL(2,:,I)=0.0
-       END DO
-
-
-       IF (PLOT.GT.1) THEN
-
-cx       NMAXNCLUSBAS=DMPITER(2)
-        NMAXNCLUSBAS=PARTIRED_PLOT   !dimension original maxima
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,DMLIP,DMLIR,
-!$OMP+              NEW_MASAP),PRIVATE(I)
-       DO I=1, NMAXNCLUSBAS
-         DMLIP(2,I)=0
-         DMLIR(2,I)=0
-         NEW_MASAP(2,I)=0.0
-       END DO
-
-       NBASPART_PLOT=PARTIRED
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-      DO I=1,NBASPART_PLOT
-         NHOST(2,:,I)=0
-         HHOST(2,:,:,I)=0
-      END DO
-
-       NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-          NDAD(2,I)=0
-          DAD(2,:,I)=0
-      END DO
-
-      IF (PLOT.EQ.2) THEN
-
-        NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-         DO I=1,NBASPART_PLOT
-          RATIO(2,:,I)=0.0
-         END DO
-      END IF
-
-
-      END IF
-
-
-       NNCLUS(2)=0
-       ZETAS(2)=0.0
-       TIEMPO(2)=0.0
-       DMPITER(2)=0
-
-C       WRITE(*,*)'DE MOMENTO 2 VACIO:',NNCLUS(2),ZETAS(2),TIEMPO(2),
-C     &            DMPITER(2)
-
-CCCCCCCCCCCCCCCCCCCCC
-       WRITE(*,*)'END MERGER TREE', ITER-EVERY,'-',ITER
-       CALL IDATE(DATE)
-       CALL ITIME(TIME)
-       WRITE(*,*) 'DATE=',DATE(1),'/',DATE(2),'/',DATE(3)
-       WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
-CCCCCCCCCCCCCCCCCCCCC
-
-       END IF     !MARK
-       END IF     !CONTAITER
-
-*//////////////////////END WRITING////////////////////////
-
-       END IF   !PLOT.EQ.2
-
-*/////////////////////////////////////////////////
-*      MERGER REDUCIDO (SOLO LINEA PRINCIPAL)
-*////////////////////////////////////////////////
-
-       IF (PLOT.EQ.3) THEN
-
-
-       IF (CONTAITER.EQ.2) THEN
-
-       IF (MARK(IFI2).EQ.1.AND.MARK(IFI2-1).EQ.1)THEN
-
-
-C       WRITE(*,*)'AHORA 2 ES:',NNCLUS(2),ZETAS(2),TIEMPO(2),
-C     &            DMPITER(2)
-
-       WRITE(*,*) '---------------------------------------'
-       WRITE(*,*) 'VAMOS A POR EL MERGER TREE:', CONTAITER
-       DO I=1,NFILE
-       WRITE(*,*) ZETAS(I),TIEMPO(I),NNCLUS(I),DMPITER(I)
-       END DO
-
-CCCCCCCCCCCCCCCCCCCCC
-       WRITE(*,*)'STARTING MERGER TREE', ITER-EVERY,'-',ITER
-       CALL IDATE(DATE)
-       CALL ITIME(TIME)
-       WRITE(*,*) 'DATE=',DATE(1),'/',DATE(2),'/',DATE(3)
-       WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
-CCCCCCCCCCCCCCCCCCCCC
-
-*/////////////CALLING REDUCED MERGER TREE////////////////*
-
-       CALL REDUCED_MERGER(NNCLUS,REALCLUS,IPLIR,IPLIP,
-     &                     NCLUSRX,NCLUSRY,NCLUSRZ)
-
-*////////////////WRITING REDUCED MERGER_TREE/////////////*
-
-       CALL NOMFILE5(ITER-EVERY,FILE3)
-       FILERR3='./output_files/'//FILE3
-       OPEN(3,FILE=FILERR3,STATUS='UNKNOWN')
-
-       DO I=NFILE, 2, -1
-       WRITE(3,*)'================NEW ITER==================='
-       KONTA2=0
-C       KONTA2=COUNT(REALCLUS(I,1:NNCLUS(I)).EQ.-1.AND.
-C     &        NLEVHAL(I,1:NNCLUS(I)).EQ.0)
-C      NEW
-       KONTA2=COUNT(REALCLUS(I,1:NNCLUS(I)).EQ.-1)
-       WRITE(3,*) I, ZETAS(I),TIEMPO(I),KONTA2
-       KONTA2=0
-C       KONTA2=COUNT(REALCLUS(I-1,1:NNCLUS(I-1)).EQ.-1.AND.
-C     &        NLEVHAL(I-1,1:NNCLUS(I-1)).EQ.0)
-C      NEW
-       KONTA2=COUNT(REALCLUS(I-1,1:NNCLUS(I-1)).EQ.-1)
-       WRITE(3,*) I-1, ZETAS(I-1),TIEMPO(I-1),KONTA2
-       KONTA2=0
-       DO J=1, NNCLUS(I)
-C       IF (REALCLUS(I,J).EQ.-1.AND.NLEVHAL(I,J).EQ.0) THEN
-C      NEW
-       IF (REALCLUS(I,J).EQ.-1) THEN
-       KONTA2=KONTA2+1
-       WRITE(3,*) '---------------new clus----------------------'
-       WRITE(3,*) KONTA2,J,NMASA(I,J),NDAD(I,J),NR(I,J)
-       WRITE(3,*) NCLUSRX(I,J),NCLUSRY(I,J),NCLUSRZ(I,J),NLEVHAL(I,J)
-       DO K=1, NDAD(I,J)
-       WRITE(3,*) DAD(I,K,J),NMASA(I-1,DAD(I,K,J)),NR(I-1,DAD(I,K,J))
-       WRITE(3,*) NCLUSRX(I-1,DAD(I,K,J)),NCLUSRY(I-1,DAD(I,K,J)),
-     &            NCLUSRZ(I-1,DAD(I,K,J)),NLEVHAL(I-1,DAD(I,K,J))
-       END DO
-       END IF
-       END DO
-
-       END DO
-
-       CLOSE(3)
-
-       CONTAITER=1
-
-
-*      MACHACAMOS LAS VARIABLES DE ITER 1
-C       WRITE(*,*)'1:',NNCLUS(1),ZETAS(1),TIEMPO(1),DMPITER(1)
-
-
-cx      NMAXNCLUSBAS=NNCLUS(1)
-        NMAXNCLUSBAS=NMAXNCLUS    !dimension original maxima
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,CONCENTRA,
-!$OMP+                   ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ,
-!$OMP+                   VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+                   M200,R200,IPLIP,IPLIR,REALCLUS,
-!$OMP+                   NLEVHAL,EIGENVAL),PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-          NMASA(1,I)=0.0
-          NR(1,I)=0.0
-          NCLUSRX(1,I)=0.0
-          NCLUSRY(1,I)=0.0
-          NCLUSRZ(1,I)=0.0
-          VCM2(1,I)=0.0
-          VMAXCLUS(1,I)=0.0
-          VX(1,I)=0.0
-          VY(1,I)=0.0
-          VZ(1,I)=0.0
-          VCMAX(1,I)=0.0
-          MCMAX(1,I)=0.0
-          RCMAX(1,I)=0.0
-          CONCENTRA(1,I)=0.0
-          ANGULARM(1,I)=0.0
-          IPLIP(1,I)=0
-          IPLIR(1,I)=0
-          M200(1,I)=0.0
-          R200(1,I)=0.0
-          DMPCLUS(1,I)=0
-          REALCLUS(1,I)=0
-          NLEVHAL(1,I)=0
-          EIGENVAL(1,:,I)=0.0
-       END DO
-
-
-       IF (PLOT.GT.1) THEN
-cx       NMAXNCLUSBAS=DMPITER(1)
-         NMAXNCLUSBAS=PARTIRED_PLOT   !dimension original maxima
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,DMLIP,DMLIR,
-!$OMP+              NEW_MASAP),PRIVATE(I)
-       DO I=1, NMAXNCLUSBAS
-         DMLIP(1,I)=0
-         DMLIR(1,I)=0
-         NEW_MASAP(1,I)=0.0
-       END DO
-
-      NBASPART_PLOT=PARTIRED
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-         NHOST(1,:,I)=0
-         HHOST(1,:,:,I)=0
-       END DO
-
-
-      NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-         NDAD(1,I)=0
-         DAD(1,:,I)=0
-       END DO
-
-        IF (PLOT.EQ.2) THEN
-        NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-         DO I=1,NBASPART_PLOT
-            RATIO(1,:,I)=0.0
-         END DO
-        END IF
-
-       END IF
-
-       NNCLUS(1)=0
-       ZETAS(1)=0.0
-       TIEMPO(1)=0.0
-       DMPITER(1)=0
-
-
-*      GUARDAMOS LAS VARIABLES DE ITER 2 EN 1
-
-C       WRITE(*,*)'1...:',NNCLUS(1),ZETAS(1),TIEMPO(1),DMPITER(1)
-
-       NNCLUS(1)=NNCLUS(2)
-       ZETAS(1)=ZETAS(2)
-       TIEMPO(1)=TIEMPO(2)
-
-      NMAXNCLUSBAS=NNCLUS(2)
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,CONCENTRA,
-!$OMP+                   ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ,
-!$OMP+                   VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+                   M200,R200,IPLIP,IPLIR,REALCLUS,
-!$OMP+                   NLEVHAL,EIGENVAL),PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-         NMASA(1,I)=NMASA(2,I)
-         NR(1,I)=NR(2,I)
-         NCLUSRX(1,I)=NCLUSRX(2,I)
-         NCLUSRY(1,I)=NCLUSRY(2,I)
-         NCLUSRZ(1,I)=NCLUSRZ(2,I)
-         VCM2(1,I)=VCM2(2,I)
-         VMAXCLUS(1,I)=VMAXCLUS(2,I)
-         VX(1,I)=VX(2,I)
-         VY(1,I)=VY(2,I)
-         VZ(1,I)=VZ(2,I)
-         VCMAX(1,I)=VCMAX(2,I)
-         MCMAX(1,I)=MCMAX(2,I)
-         RCMAX(1,I)=RCMAX(2,I)
-         CONCENTRA(1,I)=CONCENTRA(2,I)
-         ANGULARM(1,I)=ANGULARM(2,I)
-         IPLIP(1,I)=IPLIP(2,I)
-         IPLIR(1,I)=IPLIR(2,I)
-         M200(1,I)=M200(2,I)
-         R200(1,I)=R200(2,I)
-         REALCLUS(1,I)=REALCLUS(2,I)
-c         NDAD(1,I)=NDAD(2,I)
-         NLEVHAL(1,I)=NLEVHAL(2,I)
-         DMPCLUS(1,I)=DMPCLUS(2,I)
-         EIGENVAL(1,1:3,I)=EIGENVAL(2,1:3,I)
-        END DO
-
-       DMPITER(1)=DMPITER(2)
-
-       IF (PLOT.GT.1) THEN
-
-       NMAXNCLUSBAS=DMPITER(2)
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,DMLIP,DMLIR,
-!$OMP+                 NEW_MASAP),PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-         DMLIP(1,I)=DMLIP(2,I)
-         DMLIR(1,I)=DMLIR(2,I)
-         NEW_MASAP(1,I)=NEW_MASAP(2,I)
-       END DO
-
-      NBASPART_PLOT=PARTIRED
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-      DO I=1,NBASPART_PLOT
-        NHOST(1,:,I)=NHOST(2,:,I)
-        HHOST(1,:,:,I)=HHOST(2,:,:,I)
-      END DO
-
-       NBASPART_PLOT=NNCLUS(2)
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-           NDAD(1,I)=NDAD(2,I)
-c           DAD(1,1:NDAD(1,I),I)=DAD(2,1:NDAD(2,I),I)
-           DAD(1,:,I)=DAD(2,:,I)
-        END DO
-
-      IF(PLOT.EQ.2) THEN
-        NBASPART_PLOT=NNCLUS(1)
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-c           RATIO(1,1:NDAD(1,I),I)=RATIO(2,1:NDAD(2,I),I)
-           RATIO(1,:,I)=RATIO(2,:,I)
-        END DO
-
-      END IF
-
-      END IF
-
-
-C       WRITE(*,*)'AHORA 1 ES 2:',NNCLUS(1),ZETAS(1),TIEMPO(1),
-C     &            DMPITER(1)
-
-*      MACHACAMOS LAS VARIABLES DE ITER 2
-
-cx        NMAXNCLUSBAS=NNCLUS(2)
-         NMAXNCLUSBAS=NMAXNCLUS    !dimension original maxima
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,
-!$OMP+     CONCENTRA,ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+             VCM2,VMAXCLUS,VX,VY,VZ,
-!$OMP+             VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+             M200,R200,IPLIP,IPLIR,REALCLUS,
-!$OMP+             NLEVHAL,EIGENVAL),PRIVATE(I)
-        DO I=1,NMAXNCLUSBAS
-         NMASA(2,I)=0.0
-         NR(2,I)=0.0
-         NCLUSRX(2,I)=0.0
-         NCLUSRY(2,I)=0.0
-         NCLUSRZ(2,I)=0.0
-         VCM2(2,I)=0.0
-         VMAXCLUS(2,I)=0.0
-         VX(2,I)=0.0
-         VY(2,I)=0.0
-         VZ(2,I)=0.0
-         VCMAX(2,I)=0.0
-         MCMAX(2,I)=0.0
-         RCMAX(2,I)=0.0
-         CONCENTRA(2,I)=0.0
-         ANGULARM(2,I)=0.0
-         IPLIP(2,I)=0
-         IPLIR(2,I)=0
-         M200(2,I)=0.0
-         R200(2,I)=0.0
-         REALCLUS(2,I)=0
-         NLEVHAL(2,I)=0
-         DMPCLUS(2,I)=0
-         EIGENVAL(2,:,I)=0.0
-        END DO
-
-
-        IF (PLOT.GT.1) THEN
-
-cx        NMAXNCLUSBAS=DMPITER(2)
-         NMAXNCLUSBAS=PARTIRED_PLOT   !dimension original maxima
-!$OMP  PARALLEL DO SHARED(NMAXNCLUSBAS,DMLIP,DMLIR,
-!$OMP+             NEW_MASAP),PRIVATE(I)
-        DO I=1, NMAXNCLUSBAS
-         DMLIP(2,I)=0
-         DMLIR(2,I)=0
-         NEW_MASAP(2,I)=0.0
-        END DO
-
-
-      NBASPART_PLOT=PARTIRED
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-         NHOST(2,:,I)=0
-         HHOST(2,:,:,I)=0
-       END DO
-
-       NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-         NDAD(2,I)=0
-         DAD(2,:,I)=0
-       END DO
-
-       IF (PLOT.EQ.2) THEN
-        NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-        DO I=1,NBASPART_PLOT
-          RATIO(2,:,I)=0.0
-        END DO
-
-
-       END IF
-
-
-       END IF
-
-       NNCLUS(2)=0
-       ZETAS(2)=0.0
-       TIEMPO(2)=0.0
-       DMPITER(2)=0
-
-C       WRITE(*,*)'DE MOMENTO 2 VACIO:',NNCLUS(2),ZETAS(2),TIEMPO(2),
-C     &            DMPITER(2)
-
-CCCCCCCCCCCCCCCCCCCCC
-       WRITE(*,*)'END MERGER TREE', ITER-EVERY,'-',ITER
-       CALL IDATE(DATE)
-       CALL ITIME(TIME)
-       WRITE(*,*) 'DATE=',DATE(1),'/',DATE(2),'/',DATE(3)
-       WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
-CCCCCCCCCCCCCCCCCCCCC
-
-       END IF   !MARK
-       END IF   !CONTAITER
-
-*//////////////////////END WRITING////////////////////////
-
-       END IF   !PLOT
-
-*/////////////////////////////////////////
-       END IF    !MARK
-
 *      Si no se hace merger_tree hay que inicializar todo lo que depende de ITER!!
-
-       IF (CONTAITER.EQ.2) THEN
-
-        CONTAITER=0
-
-!$OMP PARALLEL DO SHARED(NNCLUS,ZETAS,TIEMPO,NFILE,DMPITER),PRIVATE(I)
-       DO I=1,NFILE
-        NNCLUS(I)=0
-        ZETAS(I)=0.0
-        TIEMPO(I)=0.0
-        DMPITER(I)=0
-       END DO
-
-       NMAXNCLUSBAS=NMAXNCLUS
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,NMASA,NR,CONCENTRA,
-!$OMP+                   ANGULARM,NCLUSRX,NCLUSRY,NCLUSRZ,
-!$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ,IPLIP,IPLIR,
-!$OMP+                   VCMAX,MCMAX,RCMAX,DMPCLUS,M200,R200,
-!$OMP+                   REALCLUS,NLEVHAL,EIGENVAL),
-!$OMP+              PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-        NMASA(:,I)=0.0
-        NR(:,I)=0.0
-        CONCENTRA(:,I)=0.0
-        ANGULARM(:,I)=0.0
-        NCLUSRX(:,I)=0.0
-        NCLUSRY(:,I)=0.0
-        NCLUSRZ(:,I)=0.0
-        VCM2(:,I)=0.0
-        VMAXCLUS(:,I)=0.0
-        VX(:,I)=0.0
-        VY(:,I)=0.0
-        VZ(:,I)=0.0
-        VCMAX(:,I)=0.0
-        MCMAX(:,I)=0.0
-        RCMAX(:,I)=0.0
-        M200(:,I)=0.0
-        R200(:,I)=0.0
-        IPLIP(:,I)=0
-        IPLIR(:,I)=0
-        DMPCLUS(:,I)=0
-        REALCLUS(:,I)=0
-        NLEVHAL(:,I)=0
-        EIGENVAL(:,:,I)=0.0
-        END DO
-
-
-      IF (PLOT.GT.1) THEN
-
-      NBASPART_PLOT=PARTIRED_PLOT
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,DMLIP,DMLIR,
-!$OMP+                   NEW_MASAP),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-         DMLIP(:,I)=0
-         DMLIR(:,I)=0
-         NEW_MASAP(:,I)=0.0
-       END DO
-
-      NBASPART_PLOT=PARTIRED
-!$OMP PARALLEL DO SHARED(NBASPART_PLOT,NHOST,HHOST),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-          NHOST(:,:,I)=0
-          HHOST(:,:,:,I)=0
-       END DO
-
-
-       NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,DAD,NDAD),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-          NDAD(:,I)=0
-          DAD(:,:,I)=0
-       END DO
-
-       IF (PLOT.EQ.2) THEN
-
-       NBASPART_PLOT=NMAXNCLUS
-!$OMP  PARALLEL DO SHARED(NBASPART_PLOT,RATIO),
-!$OMP+            PRIVATE(I)
-       DO I=1,NBASPART_PLOT
-          RATIO(:,:,I)=0.0
-       END DO
-
-
-       END IF
-
-       END IF !PLOT>1
-
-
-       END IF
 
        END DO    !FIN DE ITER
 */////////////////////////////////////////
-
-        IF (PLOT.GT.1) THEN
-         DEALLOCATE(DMLIP,DMLIR,NEW_MASAP)
-         DEALLOCATE(HHOST,NHOST)
-         DEALLOCATE(DAD,NDAD)
-         IF (PLOT.EQ.2) DEALLOCATE(RATIO)
-        END IF
-
 
        END
 

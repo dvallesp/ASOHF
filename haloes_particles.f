@@ -1,5 +1,5 @@
 **********************************************************************
-       SUBROUTINE REORDENAR(KONTA,NCLUSRX,NCLUSRY,NCLUSRZ,
+       SUBROUTINE REORDENAR(KONTA,CMX,CMY,CMZ,
      &                      RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
 **********************************************************************
 *      Sorts the particles with increasing distance to the center of
@@ -14,9 +14,7 @@
 
 
 *      ---HALOS Y SUBHALOS---
-       REAL*4 NCLUSRX
-       REAL*4 NCLUSRY
-       REAL*4 NCLUSRZ
+       REAL*4 CMX,CMY,CMZ
 
 *      ---PARTICULAS E ITERACIONES---
 c       INTEGER LIP(PARTI), LIR(PARTI)
@@ -51,9 +49,9 @@ c       INTEGER CONTADM(PARTI)
          IF (CONTADM(J).EQ.0) THEN
          KONTA2=KONTA2+1
 
-         AADMX(1)=RXPA(LIP(J))-NCLUSRX
-         AADMX(2)=RYPA(LIP(J))-NCLUSRY
-         AADMX(3)=RZPA(LIP(J))-NCLUSRZ
+         AADMX(1)=RXPA(LIP(J))-CMX
+         AADMX(2)=RYPA(LIP(J))-CMY
+         AADMX(3)=RZPA(LIP(J))-CMZ
 
          AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
 
@@ -196,9 +194,9 @@ c       INTEGER LIP(PARTI),CONTADM(PARTI)
 ********************************************************************
 
 ***********************************************************
-       SUBROUTINE UNBINDING4(FAC,IFI,I,REF_MIN,REF_MAX,DISTA,
+       SUBROUTINE UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           NR,NMASA,NCLUSRX,NCLUSRY,NCLUSRZ,
+     &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
      &           LIP,LIR,KONTA,CONTADM,VX,VY,VZ)
 ***********************************************************
 *      Finds and discards the unbound particles (those
@@ -220,15 +218,15 @@ c       INTEGER LIP(PARTI),CONTADM(PARTI)
        REAL*4 REF_MIN,REF_MAX
 
 *      ---HALOS Y SUBHALOS---
-       REAL*4 NR(MAXITER,NMAXNCLUS)
-       REAL*4 NMASA(MAXITER,NMAXNCLUS)
-       REAL*4 NCLUSRX(MAXITER,NMAXNCLUS)
-       REAL*4 NCLUSRY(MAXITER,NMAXNCLUS)
-       REAL*4 NCLUSRZ(MAXITER,NMAXNCLUS)
-       REAL*4 VCM2(MAXITER,NMAXNCLUS)
-       REAL*4 VX(MAXITER,NMAXNCLUS)
-       REAL*4 VY(MAXITER,NMAXNCLUS)
-       REAL*4 VZ(MAXITER,NMAXNCLUS)
+       REAL*4 RADIO(NMAXNCLUS)
+       REAL*4 MASA(NMAXNCLUS)
+       REAL*4 CLUSRX(NMAXNCLUS)
+       REAL*4 CLUSRY(NMAXNCLUS)
+       REAL*4 CLUSRZ(NMAXNCLUS)
+       REAL*4 VCM2(NMAXNCLUS) !!?
+       REAL*4 VX(NMAXNCLUS)
+       REAL*4 VY(NMAXNCLUS)
+       REAL*4 VZ(NMAXNCLUS)
 
 *      ---PARTICULAS E ITERACIONES---
 c       INTEGER LIP(PARTI), LIR(PARTI)
@@ -242,14 +240,14 @@ c       INTEGER LIP(PARTI), LIR(PARTI)
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-       INTEGER KONTA,IFI,KONTA3,KONTA2
+       INTEGER KONTA,KONTA3,KONTA2
 c       INTEGER CONTADM(PARTI)
 
        REAL*4 DISTA(0:PARTIRED)
 
        REAL*4 VVV2,VESC,AADMX(3),AADM,DR, AA, BB, CC
        REAL*4 BAS
-       REAL*4 CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA
+       REAL*4 CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM
        REAL*4 POTOK
 
 *!!!!! ESPECIAL DOBLE PRECISON !!!!!!!!!!!!!!!!!!!!!
@@ -298,9 +296,9 @@ CX       WRITE(*,*) ' ---> factor vesc:',bb
 
         VESC=SQRT(2.0*ABS(POTOK))
 
-        VVV2=(U2DM(LIP(J))-VX(IFI,I))**2
-     &      +(U3DM(LIP(J))-VY(IFI,I))**2
-     &      +(U4DM(LIP(J))-VZ(IFI,I))**2
+        VVV2=(U2DM(LIP(J))-VX(I))**2
+     &      +(U3DM(LIP(J))-VY(I))**2
+     &      +(U4DM(LIP(J))-VZ(I))**2
 
         VVV2=SQRT(VVV2)
 
@@ -314,37 +312,37 @@ CX     &            COUNT(CONTADM(1:KONTA).NE.0)
 *      NEW CENTRO DE MASAS Y VELOCIDAD
        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA)
+     &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM)
 
        KONTA3=COUNT(CONTADM(1:KONTA).EQ.0)
 
        IF (KONTA3.EQ.0) THEN
 
-       NCLUSRX(IFI,I)=0.0
-       NCLUSRY(IFI,I)=0.0
-       NCLUSRZ(IFI,I)=0.0
+       CLUSRX(I)=0.0
+       CLUSRY(I)=0.0
+       CLUSRZ(I)=0.0
 
-       VX(IFI,I)=0.0
-       VY(IFI,I)=0.0
-       VZ(IFI,I)=0.0
+       VX(I)=0.0
+       VY(I)=0.0
+       VZ(I)=0.0
 
-       NMASA(IFI,I)=0.0
+       MASA(I)=0.0
 
 CX       WRITE(*,*) 'PART.LIGADAS_3=', KONTA3
 
-       NR(IFI,I)=0.0
+       RADIO(I)=0.0
 
        ELSE
 
-       NCLUSRX(IFI,I)=CMX
-       NCLUSRY(IFI,I)=CMY
-       NCLUSRZ(IFI,I)=CMZ
+       CLUSRX(I)=CMX
+       CLUSRY(I)=CMY
+       CLUSRZ(I)=CMZ
 
-       VX(IFI,I)=VCMX
-       VY(IFI,I)=VCMY
-       VZ(IFI,I)=VCMZ
+       VX(I)=VCMX
+       VY(I)=VCMY
+       VZ(I)=VCMZ
 
-       NMASA(IFI,I)=MASA*9.1717e+18
+       MASA(I)=MMM*9.1717e+18
 
 
 *      estimacion nuevo radio
@@ -367,8 +365,8 @@ CX       WRITE(*,*) 'PART.LIGADAS_3=', KONTA3
        END DO
 
 
-CX       write(*,*) 'new_r',NR(IFI,I),REF_MAX
-       NR(IFI,I)=REF_MAX
+CX       write(*,*) 'new_r',RADIO(I),REF_MAX
+       RADIO(I)=REF_MAX
 
        END IF
 
