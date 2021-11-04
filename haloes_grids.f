@@ -1379,9 +1379,9 @@ c     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
           N1=PATCHNX(I)
           N2=PATCHNY(I)
           N3=PATCHNZ(I)
-          DO IX=1,N1
+          DO KZ=1,N1
           DO JY=1,N2
-          DO KZ=1,N3
+          DO IX=1,N3
            CONTA1(IX,JY,KZ,I)=1
           END DO
           END DO
@@ -1419,9 +1419,9 @@ c     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
      &         Y1.LE.Y4.AND.Y3.LE.Y2.AND.
      &         Z1.LE.Z4.AND.Z3.LE.Z2) THEN
 c           WRITE(*,*) BASX,BASY,BASZ,BAS
-            DO IX=1,N1
+            DO KZ=1,N1
             DO JY=1,N2
-            DO KZ=1,N3
+            DO IX=1,N3
              AA=SQRT((RX(IX,I)-BASX)**2 +
      &               (RY(JY,I)-BASY)**2 +
      &               (RZ(KZ,I)-BASZ)**2)
@@ -2124,9 +2124,9 @@ c     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
            N1=PATCHNX(I)
            N2=PATCHNY(I)
            N3=PATCHNZ(I)
-           DO IX=1,N1
+           DO KZ=1,N1
            DO JY=1,N2
-           DO KZ=1,N3
+           DO IX=1,N3
             CONTA1(IX,JY,KZ,I)=1
            END DO
            END DO
@@ -2169,9 +2169,9 @@ c     &                        VECINO,NVECI,CR0AMR,CR0AMR11)
      &          Y1.LE.Y4.AND.Y3.LE.Y2.AND.
      &          Z1.LE.Z4.AND.Z3.LE.Z2) THEN
 c           WRITE(*,*) BASX,BASY,BASZ,BAS
-             DO IX=1,N1
+             DO KZ=1,N1
              DO JY=1,N2
-             DO KZ=1,N3
+             DO IX=1,N3
               AA=SQRT((RX(IX,I)-BASX)**2 +
      &                (RY(JY,I)-BASY)**2 +
      &                (RZ(KZ,I)-BASZ)**2)

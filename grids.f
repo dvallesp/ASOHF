@@ -94,9 +94,9 @@
 
 !$OMP PARALLEL DO SHARED(CONTA1,CR0,NX,NY,NZ),PRIVATE(IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
-      DO IX=1,NX
+      DO KZ=1,NX
       DO JY=1,NY
-      DO KZ=1,NZ
+      DO IX=1,NZ
        CONTA1(IX,JY,KZ)=0
        CR0(IX,JY,KZ)=0
       END DO
@@ -129,9 +129,9 @@
 
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,BOR,CONTA1,CR0),
 !$OMP+            PRIVATE(IX,JY,KZ), DEFAULT(NONE)
-      DO IX=1,NX
+      DO KZ=1,NX
       DO JY=1,NY
-      DO KZ=1,NZ
+      DO IX=1,NZ
        IF(IX.LE.BOR.OR.IX.GE.NX-BOR+1.OR.
      &    JY.LE.BOR.OR.JY.GE.NY-BOR+1.OR.
      &    KZ.LE.BOR.OR.KZ.GE.NZ-BOR+1) THEN
@@ -341,9 +341,9 @@ c       write(*,*) '***',REFINE_COUNT
 !$OMP+            PRIVATE(IPATCH,IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
        DO IPATCH=LOW1,LOW2
-        DO IX=1,NAMRX
+        DO KZ=1,NAMRX
         DO JY=1,NAMRY
-        DO KZ=1,NAMRZ
+        DO IX=1,NAMRZ
          CR01(IX,JY,KZ,IPATCH)=0
          CONTA11(IX,JY,KZ,IPATCH)=0
         END DO
@@ -383,9 +383,9 @@ c       write(*,*) '***',REFINE_COUNT
          END IF !*****************************************************
         END DO
 
-        DO IX=1,N1
+        DO KZ=1,N1
         DO JY=1,N2
-        DO KZ=1,N3
+        DO IX=1,N3
          IF(IX.LE.BORAMR.OR.IX.GE.N1-BORAMR+1.OR.
      &      JY.LE.BORAMR.OR.JY.GE.N2-BORAMR+1.OR.
      &      KZ.LE.BORAMR.OR.KZ.GE.N3-BORAMR+1) THEN
@@ -1231,9 +1231,9 @@ C        WRITE(*,*) LVAL(I,IPARE)
       DENBAS=DX*DY*DZ*ROTE*RETE**3
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,DENBAS,U1), PRIVATE(IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
-      DO IX=1,NX
+      DO KZ=1,NX
       DO JY=1,NY
-      DO KZ=1,NZ
+      DO IX=1,NZ
        U1(IX,JY,KZ)=U1(IX,JY,KZ)/DENBAS
       END DO
       END DO
@@ -1270,9 +1270,9 @@ C        WRITE(*,*) LVAL(I,IPARE)
         N1=PATCHNX(IPATCH)
         N2=PATCHNY(IPATCH)
         N3=PATCHNZ(IPATCH)
-        DO IX=1,N1
+        DO KZ=1,N1
         DO JY=1,N2
-        DO KZ=1,N3
+        DO IX=1,N3
          U11(IX,JY,KZ,IPATCH)=0.0
         END DO
         END DO
@@ -1368,9 +1368,9 @@ C        WRITE(*,*) LVAL(I,IPARE)
         N1=PATCHNX(IPATCH)
         N2=PATCHNY(IPATCH)
         N3=PATCHNZ(IPATCH)
-        DO IX=1,N1
+        DO KZ=1,N1
         DO JY=1,N2
-        DO KZ=1,N3
+        DO IX=1,N3
          U11(IX,JY,KZ,IPATCH)=U11(IX,JY,KZ,IPATCH)/DENBAS
         END DO
         END DO
