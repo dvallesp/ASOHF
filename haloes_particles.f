@@ -1,4 +1,58 @@
 **********************************************************************
+        SUBROUTINE HALOES_BORDER(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+     &                           LADO0,HALBORDERS)
+**********************************************************************
+*       Identifies the haloes at the border of the box for special
+*        treatment if necessary
+**********************************************************************
+
+        IMPLICIT NONE
+
+        INCLUDE 'input_files/asohf_parameters.dat'
+
+        INTEGER NCLUS
+        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+        REAL*4 RADIO(MAXNCLUS)
+        REAL LADO0
+        INTEGER HALBORDERS(MAXNCLUS)
+
+        INTEGER I
+        REAL XL,XR,X1,X2,Y1,Y2,Z1,Z2,XC,YC,ZC,RC
+
+        XL=-LADO0/2
+        XR=LADO0/2
+
+!$OMP PARALLEL DO SHARED(NCLUS,HALBORDERS),PRIVATE(I),DEFAULT(NONE)
+        DO I=1,NCLUS
+         HALBORDERS(I)=0
+        END DO
+
+!$OMP PARALLEL DO SHARED(NCLUS,RADIO,CLUSRX,CLUSRY,CLUSRZ,XL,XR,
+!$OMP+                   HALBORDERS),
+!$OMP+            PRIVATE(I,RC,XC,YC,ZC,X1,X2,Y1,Y2,Z1,Z2),
+!$OMP+            DEFAULT(NONE)
+        DO I=1,NCLUS
+         RC=RADIO(I)
+         XC=CLUSRX(I)
+         YC=CLUSRY(I)
+         ZC=CLUSRZ(I)
+         X1=XC-1.25*RC
+         X2=XC+1.25*RC
+         Y1=YC-1.25*RC
+         Y2=YC+1.25*RC
+         Z1=ZC-1.25*RC
+         Z2=ZC+1.25*RC
+         IF (X1.LT.XL.OR.X2.GT.XR.OR.
+     &       Y1.LT.XL.OR.Y2.GT.XR.OR.
+     &       Z1.LT.XL.OR.Z2.GT.XR) THEN
+          HALBORDERS(I)=1
+         END IF
+        END DO
+
+        RETURN
+        END
+
+**********************************************************************
        SUBROUTINE REORDENAR(KONTA,CMX,CMY,CMZ,
      &                      RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
 **********************************************************************

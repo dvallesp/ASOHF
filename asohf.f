@@ -128,7 +128,7 @@
        INTEGER IX1,IX2,N1,N2,N3,NTOT,VAR,IX3
        INTEGER NFILE,FIRST,EVERY,LAST
        REAL*4 PRUEBAX,PRUEBAY,PRUEBAZ,DELTA_PRUEBA
-       REAL*4 ZETA,AA1,AA2,LIM,BAS, BAS1, BAS2
+       REAL*4 ZETA,AA2,LIM,BAS, BAS1, BAS2
        REAL*4 RRRR,R111,R222
 
        CHARACTER*13 FILE1, FILE4
@@ -164,6 +164,7 @@
        INTEGER PATCHCLUS(MAXNCLUS)
 
        INTEGER REALCLUS(MAXNCLUS)
+       INTEGER HALBORDERS(MAXNCLUS)
 
        REAL*4 CONCENTRA(NMAXNCLUS)
        REAL*4 ANGULARM(NMAXNCLUS)
@@ -746,8 +747,6 @@ c     &                     U11)
        end do
        close(55)
 
-       STOP
-
 *******************************************************
 *      SORTING OUT ALL THE CLUSTERS
 *******************************************************
@@ -761,7 +760,7 @@ c     &                     U11)
         CLUSRY(J)=CLUSRY(I)
         CLUSRZ(J)=CLUSRZ(I)
         RADIO(J)=RADIO(I)
-        MASA(J)=MASA(I)
+        MASA(J)=MASA(I)*UM
         LEVHAL(J)=LEVHAL(I)
         PATCHCLUS(J)=PATCHCLUS(I)
         REALCLUS(J)=REALCLUS(I)
@@ -771,56 +770,21 @@ c     &                     U11)
 
        WRITE(*,*)'MASSES: MIN, MAX AND MEAN=', MINVAL(MASA(1:NCLUS)),
      &            MAXVAL(MASA(1:NCLUS)), SUM(MASA(1:NCLUS))/NCLUS
-
-cv7       WRITE(*,*) 'ESTIMATION HALOES_0 (ONLY WITH GRID)'
-cv7       WRITE(*,*)'=================================='
-cv7       DO I=1, NCLUS
-cv7CX       KK_ENTERO=0
-cv7CX       KK_ENTERO=REALCLUS(I)
-cv7CX       IF (KK_ENTERO.NE.0) THEN
-cv7       WRITE(*,*) I, MASA(I),RADIO(I),CLUSRX(I),
-cv7     &            CLUSRY(I),CLUSRZ(I),REALCLUS(I)
-cv7CX       END IF
-cv7       END DO
-cv7       WRITE(*,*)'=================================='
-
-
        WRITE(*,*) 'NCLUS=', NCLUS
-       AA1=AA1/NCLUS
-       WRITE(*,*)'MEAN MASS',AA1
+       WRITE(*,*) 'MEAN MASS',SUM(MASA(1:NCLUS))/NCLUS
 
-
-*****
-*******************************************************
-**     HALOES AT THE EDGES OF THE BOX (JUST FOR CAUTION!)
+***************************************************************
+**     HALOES AT THE EDGES OF THE BOX (JUST FOR CAUTION!)     *
+***************************************************************
 
        IF (BORDES.EQ.1) THEN
-
-       KK_ENTERO=0
-!!!!!paralelizar
-       DO KK1=1, NCLUS
-
-       IF((CLUSRX(KK1)-RADIO(KK1)).GT.(LADO*0.5).OR.
-     &    (CLUSRX(KK1)-RADIO(KK1)).LT. (-LADO*0.5).OR.
-     &    (CLUSRX(KK1)+RADIO(KK1)).GT.(LADO*0.5).OR.
-     &    (CLUSRX(KK1)+RADIO(KK1)).LT. (-LADO*0.5).OR.
-     &    (CLUSRY(KK1)-RADIO(KK1)).GT.(LADO*0.5).OR.
-     &    (CLUSRY(KK1)-RADIO(KK1)).LT. (-LADO*0.5).OR.
-     &    (CLUSRY(KK1)+RADIO(KK1)).GT.(LADO*0.5).OR.
-     &    (CLUSRY(KK1)+RADIO(KK1)).LT. (-LADO*0.5).OR.
-     &    (CLUSRZ(KK1)-RADIO(KK1)).GT.(LADO*0.5).OR.
-     &    (CLUSRZ(KK1)-RADIO(KK1)).LT. (-LADO*0.5).OR.
-     &    (CLUSRZ(KK1)+RADIO(KK1)).GT.(LADO*0.5).OR.
-     &    (CLUSRZ(KK1)+RADIO(KK1)).LT. (-LADO*0.5)) THEN
-
-       KK_ENTERO=KK_ENTERO+1
+        CALL HALOES_BORDER(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,LADO0,
+     &                     HALBORDERS)
+        WRITE(*,*) 'Haloes close to the box borders:',
+     &             SUM(HALBORDERS(1:NCLUS))
        END IF
 
-       END DO
-
-       WRITE(*,*) 'Haloes at the limits of the box?', KK_ENTERO
-
-       END IF
+       STOP
 
 ************************************************************
 **     COMPUTING CM AND PARTICLES FOR ALL THE HALOES
