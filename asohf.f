@@ -121,8 +121,8 @@
        INTEGER CONTA2(NAMRX,NAMRY,NAMRZ,NPALEV) !this will be deleted
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
 
-       INTEGER ORIPA1(PARTIRED),ORIPA2(PARTIRED)
-       COMMON /PUNTEROS/ ORIPA1, ORIPA2
+       INTEGER ORIPA2(PARTIRED)
+       COMMON /PUNTEROS/ ORIPA2
 
        INTEGER II,JJ,KK,KK1,KK2,KKK2,ICEN(3),IR2,III,KK3,KK4
        INTEGER IX1,IX2,N1,N2,N3,NTOT,VAR,IX3
@@ -172,7 +172,6 @@
        REAL*4 VCM2(NMAXNCLUS)
 
        INTEGER IPLIP(NMAXNCLUS)
-       INTEGER IPLIR(NMAXNCLUS)
        REAL*4 VX(NMAXNCLUS)
        REAL*4 VY(NMAXNCLUS)
        REAL*4 VZ(NMAXNCLUS)
@@ -189,7 +188,7 @@
 
 
 *      ---PARTICULAS E ITERACIONES---
-       INTEGER LIP(PARTIRED),LIR(PARTIRED),CONTADM(PARTIRED)
+       INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        INTEGER DMPCLUS(NMAXNCLUS)
 
 *      ---SUBSTRUCTURE---
@@ -450,7 +449,7 @@
        END DO
 
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,VCMAX,MCMAX,RCMAX,DMPCLUS,
-!$OMP+                M200,R200,IPLIP,IPLIR,REALCLUS,LEVHAL,
+!$OMP+                M200,R200,IPLIP,REALCLUS,LEVHAL,
 !$OMP+                EIGENVAL),PRIVATE(I)
        DO I=1,NMAXNCLUSBAS
         VCMAX(I)=0.0
@@ -459,7 +458,6 @@
         M200(I)=0.0
         R200(I)=0.0
         IPLIP(I)=0
-        IPLIR(I)=0
         LEVHAL(I)=0
         DMPCLUS(I)=0
         REALCLUS(I)=0    !de momento no hay halos
@@ -554,7 +552,7 @@
         SUBHALOS=0
 
 !$OMP PARALLEL DO SHARED(PABAS,U2DM,U3DM,U4DM,RXPA,RYPA,RZPA,
-!$OMP+                   MASAP,ORIPA1,ORIPA2,LIP,LIR,CONTADM),
+!$OMP+                   MASAP,ORIPA2,LIP,CONTADM),
 !$OMP+            PRIVATE(I)
         DO I=1,PABAS
          U2DM(I)=0.0
@@ -564,11 +562,9 @@
          RYPA(I)=0.0
          RZPA(I)=0.0
          MASAP(I)=0.0
-         ORIPA1(I)=0
          ORIPA2(I)=0
 
          LIP(I)=0         !si PARTI=PARTIRED!!!!!
-         LIR(I)=0         !si PARTI=PARTIRED!!!!!
          CONTADM(I)=0     !si PARTI=PARTIRED!!!!!
         END DO
 
@@ -760,7 +756,7 @@ c     &                     U11)
         CLUSRY(J)=CLUSRY(I)
         CLUSRZ(J)=CLUSRZ(I)
         RADIO(J)=RADIO(I)
-        MASA(J)=MASA(I)*UM
+        MASA(J)=MASA(I)*UM ! From now on, in Solar Masses
         LEVHAL(J)=LEVHAL(I)
         PATCHCLUS(J)=PATCHCLUS(I)
         REALCLUS(J)=REALCLUS(I)
@@ -800,8 +796,9 @@ c     &                     U11)
 !$OMP+                   RXPA,RYPA,RZPA,MASAP,NL,NPART,DMPCLUS,
 !$OMP+                   VCM2,U2DM,U3DM,U4DM),
 !$OMP+   PRIVATE(I,MASADM,KONTA,BASMAS,MASAKK,VCMX,VCMY,VCMZ,VCM,
-!$OMP+           REF_MIN,REF_MAX,LIP,LIR,BAS,IR,J,AADM,
-!$OMP+           KK_REAL,KK1,KK2,CONTADM,CMX,CMY,CMZ,MASA2)
+!$OMP+           REF_MIN,REF_MAX,LIP,BAS,IR,J,AADM,
+!$OMP+           KK_REAL,KK1,KK2,CONTADM,CMX,CMY,CMZ,MASA2),
+*!$OMP+   DEFAULT(NONE)
 *****************************
        DO I=1, NCLUS
 ****************************
@@ -821,7 +818,6 @@ c     &                     U11)
        REF_MAX=-1.0
 
        LIP=0
-       LIR=0
 
 *****susana
 C       IF (LEVHAL(I).EQ.0) BAS=2.0
@@ -851,7 +847,6 @@ C       IF (LEVHAL(I).GT.2) BAS=1.1
         KONTA=KONTA+1
         MASADM=MASADM+MASAP(J)
         LIP(KONTA)=J
-        LIR(KONTA)=IR
 
        END IF
 
@@ -883,7 +878,6 @@ C       IF (LEVHAL(I).GT.2) BAS=1.1
         KONTA=KONTA+1
         MASADM=MASADM+MASAP(J)
         LIP(KONTA)=J
-        LIR(KONTA)=IR
 
        END IF
 
@@ -1036,11 +1030,11 @@ c_v6: .............
 !$OMP+           NL,MASAP,U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,
 !$OMP+           PI,RETE,ROTE,VCMAX,MCMAX,RCMAX,M200,R200,CONTRASTEC,
 !$OMP+           OMEGAZ,CGR,UM,UV,DMPCLUS,CONCENTRA,
-!$OMP+           ORIPA1,ORIPA2,ANGULARM,PABAS,IPLIP,IPLIR,DIMEN,
+!$OMP+           ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,
 !$OMP+           EIGENVAL,NUMPARTBAS,IP_PARAL,IR_PARAL,MASAP_PARAL,
 !$OMP+           IP,IP2,NH),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
-!$OMP+           BASMAS,MASAKK,DIS,VCM,VVV2,VR,LIP,LIR,CONCEN,RS,FC,
+!$OMP+           BASMAS,MASAKK,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,FC,
 !$OMP+           VMAX2,KONTA2,BAS,IR,J,AADM,KK1,KK2,CONTADM,
 !$OMP+           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,DISTA,FAC,CONTAERR,
 !$OMP+           NORMA,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,FLAG_200,
@@ -1083,7 +1077,6 @@ c_v6:       DO I=1, NCLUS
        VCMZ=0.0
 
        LIP=0
-       LIR=0
 
        CONCEN=0.0       !concentracion perfil NFW
        RS=0.0           !radio de escala perfil NFW
@@ -1115,7 +1108,6 @@ c_v6:       DO I=1, NCLUS
 
          KONTA=KONTA+1
          LIP(KONTA)=J
-         LIR(KONTA)=IR
 
 *        esta masa es solo una aproximacion para evitar divisiones por
 *        cero. Se mantiene pero la correcta esta en CENTROMASAS_PART
@@ -1145,7 +1137,6 @@ c_v6:       DO I=1, NCLUS
 
          KONTA=KONTA+1
          LIP(KONTA)=J
-         LIR(KONTA)=IR
 
          MASADM=MASADM+MASAP(J)
         END IF
@@ -1203,11 +1194,11 @@ cx       IF (MASADM.GT.0.0) THEN
 
 *      reordenar !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 *      devuelve las particulas ordenadas de menor a mayor distancia
-*      al centro (dista es la dist. al centro). Tambien reordena LIR y LIP
+*      al centro (dista es la dist. al centro). Tambien reordena LIP
 
        DISTA=0.0
        CALL REORDENAR(KONTA,CLUSRX(I),CLUSRY(I),
-     &   CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
+     &   CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)
 
        FAC=0
        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
@@ -1218,11 +1209,11 @@ cx       IF (MASADM.GT.0.0) THEN
         CALL UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
-     &           LIP,LIR,KONTA,CONTADM,VX,VY,VZ)
+     &           LIP,KONTA,CONTADM,VX,VY,VZ)
 
 
         CALL REORDENAR(KONTA,CLUSRX(I),CLUSRY(I),
-     &     CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
+     &     CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)
 
         CONTAERR=abs(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
 
@@ -1435,7 +1426,6 @@ CV2
 **        CLOSEST PARTICLE TO THE CENTER OF THE HALO
           IF (AADM.LT.DIS) THEN
            DIS=AADM
-           IPLIR(I)=ORIPA1(LIP(J))
            IPLIP(I)=ORIPA2(LIP(J))
           END IF
 
@@ -1882,4 +1872,4 @@ c       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
 *      Read MASCLET outputs (can be changed for other code outputs)
        INCLUDE 'reader.f'
 *      Merger tree routines
-       INCLUDE 'merger_tree.f'
+       !INCLUDE 'merger_tree.f'

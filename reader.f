@@ -52,8 +52,8 @@
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-       INTEGER ORIPA1(PARTIRED),ORIPA2(PARTIRED)
-       COMMON /PUNTEROS/ ORIPA1, ORIPA2
+       INTEGER ORIPA2(PARTIRED)
+       COMMON /PUNTEROS/ ORIPA2
 
        REAL*4, ALLOCATABLE::SCR(:,:,:)
 
@@ -179,12 +179,9 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
         READ(32) (U2DM(I),I=1,NDXYZ)
         READ(32) (U3DM(I),I=1,NDXYZ)
         READ(32) (U4DM(I),I=1,NDXYZ)
-C        READ(32) (ORIPA1(I),I=1,NDXYZ)   !OJO! las nuevas versioens de MASCLET no lo tienen
         READ(32) (ORIPA2(I),I=1,NDXYZ)    !particle ID
         CONTA=NDXYZ
         MASAP(1:NDXYZ)=MAP
-        WRITE(*,*) 'ORIPA1=',MAXVAL(ORIPA1(1:NDXYZ)),
-     &                       MINVAL(ORIPA1(1:NDXYZ))
         WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:NDXYZ)),
      &                       MINVAL(ORIPA2(1:NDXYZ))
         WRITE(*,*) 'NPART(0)=',IR, NPART(IR),CONTA
@@ -220,16 +217,12 @@ C        READ(32) (ORIPA1(I),I=1,NDXYZ)   !OJO! las nuevas versioens de MASCLET 
         U4DM(CONTA+1:CONTA+NPART(IR))=UBAS(1:NPART(IR))
         READ(32) (UBAS(IX),IX=1,NPART(IR))
         MASAP(CONTA+1:CONTA+NPART(IR))=UBAS(1:NPART(IR))
-c        READ(32) (UBAS2(IX),IX=1,NPART(IR))         !OJO! las nuevas versioens de MASCLET no lo tienen
-c        IF (NPART(IR).GT.0)
-c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
+
         READ(32) (UBAS2(IX),IX=1,NPART(IR))
         IF (NPART(IR).GT.0)
      &   ORIPA2(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
 
         IF (NPART(IR).GT.0) THEN
-        WRITE(*,*) 'ORIPA1=',MAXVAL(ORIPA1(CONTA+1:CONTA+NPART(IR))),
-     &                       MINVAL(ORIPA1(CONTA+1:CONTA+NPART(IR)))
         WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(CONTA+1:CONTA+NPART(IR))),
      &                       MINVAL(ORIPA2(CONTA+1:CONTA+NPART(IR)))
         END IF
@@ -288,8 +281,8 @@ c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-       INTEGER ORIPA1(PARTIRED),ORIPA2(PARTIRED)
-       COMMON /PUNTEROS/ ORIPA1, ORIPA2
+       INTEGER ORIPA2(PARTIRED)
+       COMMON /PUNTEROS/ ORIPA2
 
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
@@ -344,12 +337,10 @@ c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
        READ(32) (U2DM(I),I=1,NDXYZ)
        READ(32) (U3DM(I),I=1,NDXYZ)
        READ(32) (U4DM(I),I=1,NDXYZ)
-C        READ(32) (ORIPA1(I),I=1,NDXYZ)   !OJO! las nuevas versioens de MASCLET no lo tienen
        READ(32) (ORIPA2(I),I=1,NDXYZ)
        CONTA=NDXYZ
        MASAP(1:NDXYZ)=MAP
-C       WRITE(*,*) 'ORIPA1=',MAXVAL(ORIPA1(1:NDXYZ)),
-C     &                      MINVAL(ORIPA1(1:NDXYZ))
+
 C       WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:NDXYZ)),
 C     &                      MINVAL(ORIPA2(1:NDXYZ))
        WRITE(*,*) 'NPART(IR)=',0, NPART(0),CONTA
@@ -378,9 +369,7 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
         U4DM(CONTA+1:CONTA+NPART(IR))=UBAS(1:NPART(IR))
         READ(32) (UBAS(IX),IX=1,NPART(IR))
         MASAP(CONTA+1:CONTA+NPART(IR))=UBAS(1:NPART(IR))
-c        READ(32) (UBAS2(IX),IX=1,NPART(IR))         !OJO! las nuevas versioens de MASCLET no lo tienen
-c        IF (NPART(IR).GT.0)
-c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
+
         READ(32) (UBAS2(IX),IX=1,NPART(IR))
         ORIPA2(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
 
@@ -447,13 +436,11 @@ c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-       INTEGER ORIPA1(PARTIRED),ORIPA2(PARTIRED)
-       COMMON /PUNTEROS/ ORIPA1, ORIPA2
+       INTEGER ORIPA2(PARTIRED)
+       COMMON /PUNTEROS/ ORIPA2
 
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
-
-       ORIPA1(1:N_DM)=0   !todas en nivel 0
 
        OPEN (5,FILE='particle_list.dat',
      &               STATUS='UNKNOWN',ACTION='READ')
@@ -479,8 +466,6 @@ c     &  ORIPA1(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
      &            U2DM(I),U3DM(I),U4DM(I),MASAP(I)
        END DO
 
-       WRITE(*,*) 'ORIPA1=',MAXVAL(ORIPA1(1:N_PARTICLES)),
-     &                      MINVAL(ORIPA1(1:N_PARTICLES))
        WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:N_PARTICLES)),
      &                      MINVAL(ORIPA2(1:N_PARTICLES))
 

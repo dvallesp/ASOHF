@@ -54,7 +54,7 @@
 
 **********************************************************************
        SUBROUTINE REORDENAR(KONTA,CMX,CMY,CMZ,
-     &                      RXPA,RYPA,RZPA,CONTADM,LIP,LIR,DISTA)
+     &                      RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)
 **********************************************************************
 *      Sorts the particles with increasing distance to the center of
 *      the halo
@@ -71,8 +71,7 @@
        REAL*4 CMX,CMY,CMZ
 
 *      ---PARTICULAS E ITERACIONES---
-c       INTEGER LIP(PARTI), LIR(PARTI)
-       INTEGER LIP(PARTIRED),LIR(PARTIRED),CONTADM(PARTIRED)
+       INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
 
        REAL*4 RXPA(PARTIRED)
        REAL*4 RYPA(PARTIRED)
@@ -85,14 +84,12 @@ c       INTEGER CONTADM(PARTI)
        INTEGER INDICE(KONTA)
        REAL*4 DISTA2(0:KONTA)
        INTEGER QUIEN(KONTA)
-       INTEGER QUIEN2(KONTA)
 
        REAL*4 AADMX(3),AADM
 
 *      reordenar !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
        QUIEN=0
-       QUIEN2=0
        DISTA=1.E10
        INDICE=0
        DISTA2=0.0
@@ -111,7 +108,6 @@ c       INTEGER CONTADM(PARTI)
 
          DISTA(KONTA2)=AADM
          QUIEN(KONTA2)=LIP(J)
-         QUIEN2(KONTA2)=LIR(J)
          END IF
        END DO
 
@@ -125,7 +121,6 @@ c       INTEGER CONTADM(PARTI)
 
        DISTA=1.E10
        LIP=0
-       LIR=0
 
        CONTADM=1
        CONTADM(1:KONTA2)=0
@@ -133,7 +128,6 @@ c       INTEGER CONTADM(PARTI)
        DO J=1,KONTA2
         DISTA(J)=DISTA2(J)
         LIP(J)=QUIEN(INDICE(J))
-        LIR(J)=QUIEN2(INDICE(J))
        END DO
 
 *      estan reordenados !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -163,12 +157,11 @@ c       INTEGER CONTADM(PARTI)
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-c       INTEGER LIP(PARTI),CONTADM(PARTI)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
 
        REAL*4 CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA
 
-*      ---- DOBLE PRECISION ------------------------
+*      ---- DOUBLE PRECISION -----------------------
        REAL*8 CMX8,CMY8,CMZ8,VCMX8,VCMY8,VCMZ8,MASA8
        REAL*8 NORMA,BAS
 *      ---------------------------------------------
@@ -251,7 +244,7 @@ c       INTEGER LIP(PARTI),CONTADM(PARTI)
        SUBROUTINE UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
-     &           LIP,LIR,KONTA,CONTADM,VX,VY,VZ)
+     &           LIP,KONTA,CONTADM,VX,VY,VZ)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity)
@@ -283,8 +276,7 @@ c       INTEGER LIP(PARTI),CONTADM(PARTI)
        REAL*4 VZ(NMAXNCLUS)
 
 *      ---PARTICULAS E ITERACIONES---
-c       INTEGER LIP(PARTI), LIR(PARTI)
-       INTEGER LIP(PARTIRED),LIR(PARTIRED),CONTADM(PARTIRED)
+       INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        INTEGER NPART(0:NLEVELS)
        REAL*4 U2DM(PARTIRED)
        REAL*4 U3DM(PARTIRED)
