@@ -52,6 +52,93 @@
         RETURN
         END
 
+
+**********************************************************************
+        SUBROUTINE COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,
+     &                                  CMX,CMY,CMZ,R,NUM_PART_HAL)
+**********************************************************************
+*       Counts number of particles inside a halo
+**********************************************************************
+         IMPLICIT NONE
+         INCLUDE 'input_files/asohf_parameters.dat'
+
+         REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+         INTEGER N_DM
+         REAL CMX,CMY,CMZ,R
+         INTEGER NUM_PART_HAL
+
+         INTEGER I
+         REAL BASR,R2
+
+         NUM_PART_HAL=0
+         R2=R**2
+
+         DO I=1,N_DM
+          BASR=(RXPA(I)-CMX)**2 + (RYPA(I)-CMY)**2 + (RZPA(I)-CMZ)**2
+          IF (BASR.LT.R2) NUM_PART_HAL=NUM_PART_HAL+1
+         END DO
+
+         RETURN
+         END
+
+**********************************************************************
+       SUBROUTINE PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+     &                              REALCLUS,RXPA,RYPA,RZPA,N_DM,
+     &                              NUMPARTBAS,FACRAD)
+**********************************************************************
+*       Removes haloes with too few particles
+**********************************************************************
+
+        IMPLICIT NONE
+        INCLUDE 'input_files/asohf_parameters.dat'
+
+        INTEGER NCLUS
+        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+        REAL*4 RADIO(MAXNCLUS)
+        INTEGER REALCLUS(MAXNCLUS)
+        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+        INTEGER N_DM,NUMPARTBAS
+        REAL FACRAD
+
+        INTEGER I,BASINT,KONTA2
+        REAL CMX,CMY,CMZ,RR
+
+        KONTA2=0
+
+!$OMP PARALLEL DO SHARED(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,N_DM,
+!$OMP+                   NUMPARTBAS,REALCLUS,RXPA,RYPA,RZPA,FACRAD),
+!$OMP+            PRIVATE(I,CMX,CMY,CMZ,RR,BASINT),
+!$OMP+            REDUCTION(+:KONTA2)
+!$OMP+            DEFAULT(NONE)
+*****************************
+        DO I=1,NCLUS
+****************************
+         CMX=CLUSRX(I)
+         CMY=CLUSRY(I)
+         CMZ=CLUSRZ(I)
+         RR=FACRAD*RADIO(I)
+
+         CALL COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CMX,CMY,CMZ,RR,
+     &                             BASINT)
+
+         IF (BASINT.LT.NUMPARTBAS) THEN
+          REALCLUS(I)=0
+          KONTA2=KONTA2+1
+          WRITE(*,*) I,BASINT,RR
+         END IF
+
+*****************************
+        END DO        !I
+*****************************
+
+        WRITE(*,*)'CHECKING POOR HALOS----->', KONTA2
+
+        RETURN
+        END
+
+
+
+
 **********************************************************************
        SUBROUTINE REORDENAR(KONTA,CMX,CMY,CMZ,
      &                      RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)

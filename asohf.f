@@ -145,10 +145,10 @@
        REAL*4 UBAS1(NMAX,NMAY,NMAZ)
        REAL*4 RMIN,VOL,RSHELL,ESP, REF, RANT,VOL1,VOL2
        INTEGER SHELL, NSHELL,CONTA(NMAX,NMAY,NMAZ)
-       INTEGER NSHELL_2
+       INTEGER NSHELL_2,BASINT
        REAL*4 DELTA, AA, VR, AADM, MASADM, MAP
        REAL*4 CONTRASTEC, CONTRASTEX, OMEGAZ
-       REAL*4 VESC2, RS, CONCEN, VMAX2, F2, FC
+       REAL*4 VESC2, RS, CONCEN, VMAX2, F2, FC, RR
 
        INTEGER NCLUS,ICMIN,ICMAX
        INTEGER KONTA3,KONTA,KONTACAPA,KONTA1,KONTA2
@@ -780,170 +780,16 @@ c     &                     U11)
      &             SUM(HALBORDERS(1:NCLUS))
        END IF
 
-       STOP
-
 ************************************************************
 **     COMPUTING CM AND PARTICLES FOR ALL THE HALOES
 **     (We start here to work with partciles for the 1st time)
 ************************************************************
 
-       WRITE(*,*) '============================================='
-       WRITE(*,*) 'COMPUTING CM AND PARTICLES FOR ALL THE HALOES'
-       WRITE(*,*) '============================================='
-
-
-!$OMP  PARALLEL DO SHARED(NCLUS,LEVHAL,CLUSRX,CLUSRY,CLUSRZ,
-!$OMP+                   RXPA,RYPA,RZPA,MASAP,NL,NPART,DMPCLUS,
-!$OMP+                   VCM2,U2DM,U3DM,U4DM),
-!$OMP+   PRIVATE(I,MASADM,KONTA,BASMAS,MASAKK,VCMX,VCMY,VCMZ,VCM,
-!$OMP+           REF_MIN,REF_MAX,LIP,BAS,IR,J,AADM,
-!$OMP+           KK_REAL,KK1,KK2,CONTADM,CMX,CMY,CMZ,MASA2),
-*!$OMP+   DEFAULT(NONE)
-*****************************
-       DO I=1, NCLUS
-****************************
-
-       MASADM=0.0
-       KONTA=0
-       BASMAS=0.0
-       MASAKK=0.0
-
-       VCMX=0.0
-       VCMY=0.0
-       VCMZ=0.0
-       VCM=0.0
-       MASA2=0.0
-
-       REF_MIN=1.0E+10
-       REF_MAX=-1.0
-
-       LIP=0
-
-*****susana
-C       IF (LEVHAL(I).EQ.0) BAS=2.0
-C       IF (LEVHAL(I).EQ.1) BAS=1.25
-C       IF (LEVHAL(I).EQ.2) BAS=1.2
-C       IF (LEVHAL(I).GT.2) BAS=1.1
-        BAS=1.1
-*****
-
-*      NIVEL BASE
-       IR=0
-
-       DO J=1, NPART(0)
-
-       AADM=0.0
-       AADM=SQRT((RXPA(J)-CLUSRX(I))**2+
-     &           (RYPA(J)-CLUSRY(I))**2+
-     &           (RZPA(J)-CLUSRZ(I))**2)
-
-       KK_REAL=0.0
-       KK_REAL=RADIO(I)
-       IF(AADM.LT.BAS*KK_REAL) THEN
-
-        REF_MIN=MIN(REF_MIN,AADM)
-        REF_MAX=MAX(REF_MAX,AADM)
-
-        KONTA=KONTA+1
-        MASADM=MASADM+MASAP(J)
-        LIP(KONTA)=J
-
-       END IF
-
-       END DO
-
-
-*      NIVELES AMR
-       DO IR=1, NL
-
-       KK1=0
-       KK2=0
-       KK1=SUM(NPART(0:IR-1))
-       KK2=SUM(NPART(0:IR))
-
-       DO J=KK1+1, KK2
-
-       AADM=0.0
-       AADM=SQRT((RXPA(J)-CLUSRX(I))**2+
-     &           (RYPA(J)-CLUSRY(I))**2+
-     &           (RZPA(J)-CLUSRZ(I))**2)
-
-       KK_REAL=0.0
-       KK_REAL=RADIO(I)
-       IF(AADM.LT.BAS*KK_REAL) THEN
-
-        REF_MIN=MIN(REF_MIN,AADM)
-        REF_MAX=MAX(REF_MAX,AADM)
-
-        KONTA=KONTA+1
-        MASADM=MASADM+MASAP(J)
-        LIP(KONTA)=J
-
-       END IF
-
-       END DO
-       END DO
-
-       CONTADM(1:KONTA)=0
-
-*      CHECKING BAD MASSES
-       IF (MASADM.GT.0.0) THEN
-
-         CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
-     &          U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &          CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2)
-
-       END IF
-
-*****////OJO: solo me quedo con las veloc. pq las coordenadas
-***** las voy a refinar solo con la malla en PASO 2 si
-***** fuera necesario
-
-       VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
-       VCM2(I)=VCM
-       MASAKK=MASADM*9.1717E18
-       MASA(I)=MASAKK
-       DMPCLUS(I)=KONTA  !esto solo da un num inicial de part. a cada halo
-
-*****************************
-       END DO        !I
-*****************************
-       WRITE(*,*)'END COMPUTING CM AND PARTICLES FOR ALL THE HALOES'
-       WRITE(*,*) '==================================================='
-
-**     FIN VCM
-
-
-
-************************************************
-*     CLEANING THE SAMPLE OF HALOES
-************************************************
-
-*STEP 1) (1)************************************
-************REMOVING POOR HALOES****************
-************************************************
-
-       KONTA2=0
        NUMPARTBAS=NUMPART
-!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,NUMPARTBAS,
-!$OMP+                    REALCLUS),
-!$OMP+             PRIVATE(I,KK_ENTERO)
-!$OMP+             REDUCTION(+:KONTA2)
-       DO I=1, NCLUS
 
-        KK_ENTERO=0
-        KK_ENTERO=DMPCLUS(I)
-        IF (KK_ENTERO.LT.NUMPARTBAS) THEN
-cx_test10        IF (KK_ENTERO.LT.1) THEN
-
-        REALCLUS(I)=0
-        KONTA2=KONTA2+1
-
-       END IF
-
-       END DO
-
-       WRITE(*,*)'CHECKING POOR HALOS----->', KONTA2
+       CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
+     &                        1.0)
 
 
 *********************************************************
@@ -963,6 +809,8 @@ cx_test10        IF (KK_ENTERO.LT.1) THEN
        WRITE(*,*) 'SUBSTRUCTURE----->', KONTA2
        WRITE(*,*) '---------------------------------'
 *********************************************************
+
+       STOP
 
 
 ************************************************************
