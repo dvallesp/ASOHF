@@ -124,7 +124,7 @@
          IF (BASINT.LT.NUMPARTBAS) THEN
           REALCLUS(I)=0
           KONTA2=KONTA2+1
-          WRITE(*,*) I,BASINT,RR
+          !WRITE(*,*) I,BASINT,RR
          END IF
 
 *****************************

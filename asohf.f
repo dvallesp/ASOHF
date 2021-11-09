@@ -781,16 +781,14 @@ c     &                     U11)
        END IF
 
 ************************************************************
-**     COMPUTING CM AND PARTICLES FOR ALL THE HALOES
+**     Eliminating POOR haloes (less than a minimum number of particles)
 **     (We start here to work with partciles for the 1st time)
 ************************************************************
 
        NUMPARTBAS=NUMPART
-
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
      &                        1.0)
-
 
 *********************************************************
 *      CHECKING....
@@ -800,18 +798,15 @@ c     &                     U11)
        WRITE(*,*) '---------------------------------'
        KONTA2=0
        KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
-       WRITE(*,*) 'REAL HALOS----->', KONTA2
+       WRITE(*,*) 'REAL HALOS ------------------>', KONTA2
        KONTA2=0
        KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.0)
-       WRITE(*,*) 'REMOVED HALOS----->', KONTA2
+       WRITE(*,*) 'REMOVED HALOS --------------->', KONTA2
        KONTA2=0
        KONTA2=COUNT(REALCLUS(1:NCLUS).GT.0)
-       WRITE(*,*) 'SUBSTRUCTURE----->', KONTA2
+       WRITE(*,*) 'SUBSTRUCTURE candidates ----->', KONTA2
        WRITE(*,*) '---------------------------------'
 *********************************************************
-
-       STOP
-
 
 ************************************************************
 *      REFINING REAL HALOES WITH THE DM PARTICLES ONLY     *
@@ -849,30 +844,14 @@ CX
        KONTA1=NCLUS
        WRITE(*,*) 'NCLUS=', NCLUS
 
-c_v6: .............
-       NN=NUM*3      !NUMERO DE HALOS POR BUCLE (3/procesador cada vez)
-       NH=NCLUS
-       IP=0
-       IP2=0
-       WRITE(*,*)'NUMBER HALOS/PROCESSOR=', NN
-
-       !+++++!
-       DO
-       !+++++!
-
-       IP=IP+1
-       IP2=IP+NN-1
-       IF (IP2.GT.NH) IP2=NH
-
-       IF (IP.GT.NH) EXIT
-c_v6: .............
-
        KONTA1=0
        KONTA2=0
        PABAS=PARTIRED_PLOT
        NUMPARTBAS=NUMPART
        !!!OJO: a continuacion cambio OMEGA0 por OMEGAZ
 
+       IP=1
+       IP2=NCLUS
 !$OMP  PARALLEL DO SHARED(NCLUS,REALCLUS,
 !$OMP+           LEVHAL,NPART,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,
 !$OMP+           NL,MASAP,U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,
@@ -880,17 +859,17 @@ c_v6: .............
 !$OMP+           OMEGAZ,CGR,UM,UV,DMPCLUS,CONCENTRA,
 !$OMP+           ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,
 !$OMP+           EIGENVAL,NUMPARTBAS,IP_PARAL,IR_PARAL,MASAP_PARAL,
-!$OMP+           IP,IP2,NH),
+!$OMP+           IP,IP2,NH,RADIO,MASA,F2,VMAXCLUS),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,MASAKK,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,FC,
 !$OMP+           VMAX2,KONTA2,BAS,IR,J,AADM,KK1,KK2,CONTADM,
 !$OMP+           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,DISTA,FAC,CONTAERR,
 !$OMP+           NORMA,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,FLAG_200,
 !$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
-!$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL)
+!$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL),
+!$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE)
 
 *****************************
-c_v6:       DO I=1, NCLUS
        DO I=IP, IP2
 ****************************
 
@@ -1330,28 +1309,9 @@ CV2
        END IF   !IF REALCLUS.ne.0 (KK_ENTERO.NE.0)
 
 *****************
-       END DO   !NCLUS I
+       END DO   !I=IP,IP2
 ****************
 
-
-cx---------xc
-       KONTA2=0
-       KONTA2=SUM(DMPCLUS(1:NCLUS))
-       PABAS=KONTA2
-cx       WRITE(*,*) 'MAX. DMPITER(IFI)=', KONTA2
-       IF(IP.EQ.1) WRITE(*,*) 'INITIAL MAX. DMPITER(IFI)=', KONTA2
-C       IF(IP.GT.NH) WRITE(*,*) 'FINAL MAX. DMPITER(IFI)=', KONTA2
-cx--------xc
-
-c_v6: .............
-        IP=IP2 !!! IP
-        IF(IP.GE.NH) WRITE(*,*) 'FINAL MAX. DMPITER(IFI)=', KONTA2
-
-       !+++++
-       END DO
-       !+++++
-
-c_v6: .............
 
 
 *************************************************
@@ -1382,15 +1342,15 @@ c_v6: .............
 *************************************************
 *************************************************
 
-       WRITE(*,*) 'ESTIMATION HALOES_1 (AFTER UNBINDING)'
-       WRITE(*,*)'=================================='
-       DO I=1, NCLUS
-       IF (REALCLUS(I).NE.0) THEN
-       WRITE(*,*) I, MASA(I),RADIO(I),CLUSRX(I),
-     &            CLUSRY(I),CLUSRZ(I)
-       END IF
-       END DO
-       WRITE(*,*)'=================================='
+c       WRITE(*,*) 'ESTIMATION HALOES_1 (AFTER UNBINDING)'
+c       WRITE(*,*)'=================================='
+c       DO I=1, NCLUS
+c       IF (REALCLUS(I).NE.0) THEN
+c       WRITE(*,*) I, MASA(I),RADIO(I),CLUSRX(I),
+c     &            CLUSRY(I),CLUSRZ(I)
+c       END IF
+c       END DO
+c      WRITE(*,*)'=================================='
 
 
 
