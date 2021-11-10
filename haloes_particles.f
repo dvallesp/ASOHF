@@ -184,14 +184,14 @@
 *      Local variables
        INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,FLAG_200,KONTA3,NSHELL_2
-       INTEGER IX,JY,KK1,KK2,FAC
+       INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,IS_SUB
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
-       REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,MASAKK,DIS,VCM
-       REAL VVV2,VR,CONCEN,RS,FC,VMAX2,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY
-       REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL
-       REAL DENSA,DENSB,DENSC,VKK,AA
-       REAL INERTIA(3,3),BASEIGENVAL(3),AADMX(3)
+       REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM
+       REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY
+       REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS
+       REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
+       REAL INERTIA(3,3),BASEIGENVAL(3),AADMX(3),RADII_ITER(7)
        REAL DENSITOT(0:PARTIRED/10),RADIAL(0:PARTIRED/10)
        REAL DISTA(0:PARTIRED)
 
@@ -214,8 +214,12 @@
 
        WRITE(*,*) 'Max num. of part. in a halo=',
      &            MAXVAL(DMPCLUS(1:NCLUS))
-       WRITE(*,*) 'Max num. of part. in a halo=',
-     &            MINVAL(DMPCLUS(1:NCLUS))
+       KONTA1=1000000
+       DO I=1,NCLUS
+        IF (REALCLUS(I).NE.0) KONTA1=MIN(KONTA1,DMPCLUS(I))
+       END DO
+       WRITE(*,*) 'Min num. of part. in a halo=',
+     &            KONTA1
        WRITE(*,*) 'NCLUS=', NCLUS
 
        PABAS=PARTIRED_PLOT
@@ -230,166 +234,208 @@
 !$OMP+           EIGENVAL,NUMPARTBAS,
 !$OMP+           RADIO,MASA,F2,VMAXCLUS,N_DM),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
-!$OMP+           BASMAS,MASAKK,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,FC,
-!$OMP+           VMAX2,KONTA2,BAS,IR,J,AADM,KK1,KK2,CONTADM,
+!$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,
+!$OMP+           KONTA2,BAS,IR,J,AADM,KK1,KK2,CONTADM,
 !$OMP+           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,DISTA,FAC,CONTAERR,
 !$OMP+           NORMA,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,FLAG_200,
 !$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
-!$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL),
-!$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE)
+!$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL,BASX,
+!$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,IS_SUB),
+!$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
 *****************************
        DO I=1,NCLUS
 ****************************
-
-       KONTA1=0
-       KONTA1=DMPCLUS(I)
-       DMPCLUS(I)=0
-
-       KK_ENTERO=0
        KK_ENTERO=REALCLUS(I)
-
        IF (KK_ENTERO.NE.0) THEN
 
-       INERTIA=0.0
-       REF_MIN=10.0e+10
-       REF_MAX=-1.0
+        INERTIA=0.0
+        REF_MIN=10.0e+10
+        REF_MAX=-1.0
+        MASADM=0.0
+        KONTA=0
+        BASMAS=0.0
+        DIS=1.0E+10    !Distance (to the center) of the most central particle
+        VCM=0.0
+        VVV2=0.0    ! v propia de las particulas respecto al CM
+        VR=0.0      ! v radial
+        CMX=0.0
+        CMY=0.0
+        CMZ=0.0
+        VCMX=0.0
+        VCMY=0.0
+        VCMZ=0.0
+        LIP=0
+        CONCEN=0.0       !concentration NFW profile
+        RS=0.0           !scale radius NFW profile
+        KONTA2=0
+        BASX=0.0
+        BASY=0.0
+        BASZ=0.0
 
-       MASADM=0.0
-       KONTA=0
-       BASMAS=0.0
-       MASAKK=0.0
+*********************************************************************
+*       RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
+*********************************************************************
 
-       DIS=1.0E+10    !DIS. DE LA PARTI MAS CERCANA AL CENTRO DEL HALO
+        RADII_ITER=(/2.0,1.8,1.6,1.4,1.2,1.1,1.0/)
+        CMX=CLUSRX(I)
+        CMY=CLUSRY(I)
+        CMZ=CLUSRZ(I)
 
-       VCM=0.0
-       VVV2=0.0    ! v propia de las particulas respecto al CM
-       VR=0.0      ! v radial
-       CMX=0.0     !just added:
-       CMY=0.0
-       CMZ=0.0
-       VCMX=0.0
-       VCMY=0.0
-       VCMZ=0.0
-
-       LIP=0
-
-       CONCEN=0.0       !concentracion perfil NFW
-       RS=0.0           !radio de escala perfil NFW
-       FC=0.0
-       VMAX2=0.0
-       KONTA2=0
-
-
-**     COMPUTING VCM OF HALO I
-
-*       BAS=1.0 + 2./(2.**(LEVHAL(I)+1))
-       IF (LEVHAL(I).EQ.0) BAS=2.0
-       IF (LEVHAL(I).EQ.1) BAS=1.25
-       IF (LEVHAL(I).EQ.2) BAS=1.2
-       IF (LEVHAL(I).GT.2) BAS=1.1
-*       BAS=1.2
-
-*      NIVEL BASE
-       IR=0
-
-       DO J=1,N_DM
-        AADM=SQRT((RXPA(J)-CLUSRX(I))**2+
-     &            (RYPA(J)-CLUSRY(I))**2+
-     &            (RZPA(J)-CLUSRZ(I))**2)
-
-        IF(AADM.LT.BAS*RADIO(I)) THEN
-         REF_MIN=MIN(REF_MIN,AADM)
-         REF_MAX=MAX(REF_MAX,AADM)
-
-         KONTA=KONTA+1
-         LIP(KONTA)=J
-
-*        esta masa es solo una aproximacion para evitar divisiones por
-*        cero. Se mantiene pero la correcta esta en CENTROMASAS_PART
-
-         MASADM=MASADM+MASAP(J)
+        IS_SUB=REALCLUS(I)
+        IF (IS_SUB.EQ.-1) THEN
+         IS_SUB=0
+        ELSE IF (IS_SUB.GT.0) THEN
+         IS_SUB=1
         END IF
-       END DO
 
-       CONTADM(1:KONTA)=0     !en principio todas estas ligadas
+*       First iteration
+        KONTA=0
+        MASADM=0.0
+        BASX=0.0
+        BASY=0.0
+        BASZ=0.0
+        BAS=RADII_ITER(1)
+        RCLUS=BAS*RADIO(I)
+        DO J=1,N_DM
+         XP=RXPA(J)
+         YP=RYPA(J)
+         ZP=RZPA(J)
+         MP=MASAP(J)
+         AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
+         IF(AADM.LT.RCLUS) THEN
+          REF_MIN=MIN(REF_MIN,AADM)
+          REF_MAX=MAX(REF_MAX,AADM)
+          KONTA=KONTA+1
+          LIP(KONTA)=J
+          MASADM=MASADM+MP
 
-*      CHECKING BAD MASSES
-cx       IF (MASADM.GT.0.0) THEN
-       IF (MASADM.GT.0.0.AND.KONTA.GT.0) THEN
+          BASX=BASX+MP*XP
+          BASY=BASY+MP*YP
+          BASZ=BASZ+MP*ZP
+         END IF
+        END DO
 
+        CMX=BASX/MASADM
+        CMY=BASY/MASADM
+        CMZ=BASZ/MASADM
+
+        DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
+        !WRITE(*,*) I,is_sub,1,RCLUS,CMX,CMY,CMZ,DELTA2,CONTRASTEC
+*       Subsequent iterations (shrinking the sphere)
+        IF (DELTA2.LT.CONTRASTEC.OR.IS_SUB.EQ.1) THEN
+         loop_shrink: DO ITER_SHRINK=2,7
+          BAS=RADII_ITER(ITER_SHRINK)
+          RCLUS=BAS*RADIO(I)
+          KONTA2=0
+          MASADM=0.0
+          BASX=0.0
+          BASY=0.0
+          BASZ=0.0
+          DO JJ=1,KONTA
+           J=LIP(JJ)
+           XP=RXPA(J)
+           YP=RYPA(J)
+           ZP=RZPA(J)
+           MP=MASAP(J)
+           AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
+           IF(AADM.LT.RCLUS) THEN
+            REF_MIN=MIN(REF_MIN,AADM)
+            REF_MAX=MAX(REF_MAX,AADM)
+            KONTA2=KONTA2+1
+            LIP(KONTA2)=J
+            MASADM=MASADM+MP
+
+            BASX=BASX+MP*XP
+            BASY=BASY+MP*YP
+            BASZ=BASZ+MP*ZP
+           END IF
+          END DO
+          KONTA=KONTA2
+          CMX=BASX/MASADM
+          CMY=BASY/MASADM
+          CMZ=BASZ/MASADM
+
+          DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
+    !      WRITE(*,*) I,is_sub,ITER_SHRINK,RCLUS,CMX,CMY,CMZ,DELTA2,
+    ! & CONTRASTEC
+          IF (DELTA2.GT.CONTRASTEC.AND.IS_SUB.EQ.0)
+     &     EXIT loop_shrink
+
+         END DO loop_shrink
+        END IF !(DELTA2.LT.CONTRASTEC.OR.REALCLUS(I).GT.0)
+
+        IF (MASADM.LE.0.0.OR.KONTA.EQ.0) THEN
+         REALCLUS(I)=0
+         CYCLE
+        END IF
+
+        CONTADM(1:KONTA)=0     !en principio todas estas ligadas
         CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2)
 
-       END IF
+        VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
 
-       VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
-       VCM2(I)=VCM
-       MASAKK=MASADM*9.1717E18
+        CLUSRX(I)=CMX
+        CLUSRY(I)=CMY
+        CLUSRZ(I)=CMZ
+        VX(I)=VCMX
+        VY(I)=VCMY
+        VZ(I)=VCMZ
+        VCM2(I)=VCM
+        RADIO(I)=RCLUS
+        MASA(I)=MASADM*UM
+        !write(*,*) '**',vcmx,vcmy,vcmz,vcm
 
-*      ASIGNACION CM
-       CLUSRX(I)=CMX
-       CLUSRY(I)=CMY
-       CLUSRZ(I)=CMZ
-       VX(I)=VCMX
-       VY(I)=VCMY
-       VZ(I)=VCMZ
+*       Last, find the particles a more generous radius
+        BAS=1.5
+        RCLUS=BAS*RADIO(I)
+        KONTA=0
+        DO J=1,N_DM
+         XP=RXPA(J)
+         YP=RYPA(J)
+         ZP=RZPA(J)
+         AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
+         IF(AADM.LT.RCLUS) THEN
+          KONTA=KONTA+1
+          LIP(KONTA)=J
+         END IF
+        END DO
+        DMPCLUS(I)=KONTA
+        CONTADM(1:KONTA)=0
 
-**     FIN VCM
+*********************************************************************
+*       END RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
+*********************************************************************
 
 ********************************************************************
 *      UNBINDING:SCAPE VELOCITY
 ********************************************************************
+        CONTAERR=KONTA
+        DISTA=0.0
 
-       CONCEN=0.0
-       RS=0.0
-       FC=0.0
-       VMAX2=0.0
+        CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+     &                 DISTA)
 
-       IF (MASADM.GT.0.0) THEN
-        CONCEN=124.0*((MASADM*9.1717E18*(ACHE/3.66D-3)**(-1))**(-0.084))
-        RS=RADIO(I)/CONCEN
-       END IF
+        FAC=0
+        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
 
-       CONCENTRA(I)=CONCEN
+         FAC=FAC+1
+         KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
-       FC=LOG(1.0+CONCEN)-(CONCEN/(1.0+CONCEN))
-       IF (FC.GT.0.0) VMAX2=(CGR*MASADM*F2)/(RS*RETE*2.0*FC)
-
-*       WRITE(*,*) 'PART.LIGADAS=', COUNT(CONTADM(1:KONTA).EQ.0)
-       CONTAERR=0
-       CONTAERR=COUNT(CONTADM(1:KONTA).EQ.0)
-
-*      reordenar !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-*      devuelve las particulas ordenadas de menor a mayor distancia
-*      al centro (dista es la dist. al centro). Tambien reordena LIP
-
-       DISTA=0.0
-       CALL REORDENAR(KONTA,CLUSRX(I),CLUSRY(I),
-     &   CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)
-
-       FAC=0
-       DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
-
-        FAC=FAC+1
-        KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
-
-        CALL UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
+         CALL UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
      &           LIP,KONTA,CONTADM,VX,VY,VZ)
 
 
-        CALL REORDENAR(KONTA,CLUSRX(I),CLUSRY(I),
-     &     CLUSRZ(I),RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)
+         CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+     &                  DISTA)
 
-        CONTAERR=abs(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
-
-
-       END DO
+         CONTAERR=abs(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
 
 
-       RADIO(I)=REF_MAX
+        END DO
 
 *      AQUI: las particulas estan ordenadar de menor a mayor
 *      distancia al centro!!!!!
@@ -399,146 +445,146 @@ cx       IF (MASADM.GT.0.0) THEN
 *      DENSITY PROFILE
 **************************************************************
 
-       KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
+        KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
-       REF_MIN=DISTA(1)
-       REF_MAX=DISTA(KONTA2)
+        REF_MIN=DISTA(1)
+        REF_MAX=DISTA(KONTA2)
 
-       NORMA=MAXVAL(MASAP)
+        NORMA=MAXVAL(MASAP)
 
-       JJ=0
-       DENSITOT=0.0
-       RADIAL=0.0
+        JJ=0
+        DENSITOT=0.0
+        RADIAL=0.0
 
 *      perfil acumulado de masa
 
 ******************
-       SALIDA=0
+        SALIDA=0
 ******************
 
 *      SALIDA POR DENSIDAD MEDIA MENOR QUE THRESHOLD
-       BAS=0.0
-       BAS1=-1.0
-       BAS2=0.0
+        BAS=0.0
+        BAS1=-1.0
+        BAS2=0.0
 *       VCMAX=-1.0
 
-       FLAG_200=0
+        FLAG_200=0
 
-       DO J=1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
+        DO J=1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
 
-         VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
+          VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
 
-         BAS=BAS+(MASAP(LIP(J))/NORMA)
+          BAS=BAS+(MASAP(LIP(J))/NORMA)
 
-         DELTA2=NORMA*BAS/VOL/ROTE
+          DELTA2=NORMA*BAS/VOL/ROTE
 
-         BAS2=BAS/DISTA(J)
-         IF (BAS2.GT.BAS1) THEN
-          VCMAX(I)=BAS2
-          MCMAX(I)=BAS
-          RCMAX(I)=DISTA(J)
-          BAS1=BAS2
-         END IF
+          BAS2=BAS/DISTA(J)
+          IF (BAS2.GT.BAS1) THEN
+           VCMAX(I)=BAS2
+           MCMAX(I)=BAS
+           RCMAX(I)=DISTA(J)
+           BAS1=BAS2
+          END IF
 
 CV2         IF (DELTA2.LE.200.0/OMEGA0.AND.FLAG_200.EQ.0) THEN
 c_v8         IF (DELTA2.LE.200.0/OMEGA0) THEN
-          IF (DELTA2.LE.200.0/OMEGAZ) THEN
-          M200(I)=DELTA2*VOL*ROTE
-          R200(I)=DISTA(J)
-          FLAG_200=1
+           IF (DELTA2.LE.200.0/OMEGAZ) THEN
+           M200(I)=DELTA2*VOL*ROTE
+           R200(I)=DISTA(J)
+           FLAG_200=1
+          END IF
+
+
+        IF (DELTA2.LE.CONTRASTEC.AND.J.GT.INT(0.1*KONTA2)) THEN
+           SALIDA=1
+           EXIT
+          END IF
+        END DO            !!!!!!!!!!!!!!!
+
+        IF (SALIDA.EQ.1) THEN
+         NCAPAS(I)=J
+         IF (J.EQ.KONTA2) THEN
+          RSHELL=DISTA(J)
+         ELSE
+          RSHELL=DISTA(J+1)
          END IF
 
-
-       IF (DELTA2.LE.CONTRASTEC.AND.J.GT.INT(0.1*KONTA2)) THEN
-          SALIDA=1
-          EXIT
-         END IF
-       END DO            !!!!!!!!!!!!!!!
-
-       IF (SALIDA.EQ.1) THEN
-        NCAPAS(I)=J
-        IF (J.EQ.KONTA2) THEN
-         RSHELL=DISTA(J)
-        ELSE
-         RSHELL=DISTA(J+1)
         END IF
 
-       END IF
-
-       VCMAX(I)=VCMAX(I)*NORMA*CGR/RETE
-       VCMAX(I)=SQRT(VCMAX(I))*UV
-       MCMAX(I)=MCMAX(I)*NORMA*UM
-       RCMAX(I)=RCMAX(I)   !*RETE
-       M200(I)=M200(I)*UM
-       R200(I)=R200(I)     !*RETE
+        VCMAX(I)=VCMAX(I)*NORMA*CGR/RETE
+        VCMAX(I)=SQRT(VCMAX(I))*UV
+        MCMAX(I)=MCMAX(I)*NORMA*UM
+        RCMAX(I)=RCMAX(I)   !*RETE
+        M200(I)=M200(I)*UM
+        R200(I)=R200(I)     !*RETE
 
 
-       IF (SALIDA.NE.1.AND.KONTA2.NE.0) THEN   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        IF (SALIDA.NE.1.AND.KONTA2.NE.0) THEN   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ***    !!! DENSITOT TIENE QUE ESTAR DIMENSIONADO 0:KONTA2
-       BAS=0.0
-       FAC=INT(0.1*KONTA2)
-       KONTA3=INT(REAL(KONTA2)/FAC)*FAC
-       DO J=1,KONTA3
-         BAS=BAS+(MASAP(LIP(J))/NORMA)
-         IF (MOD(J,FAC).EQ.0) THEN
-          JJ=JJ+1
-          DENSITOT(JJ)=BAS
-          RADIAL(JJ)=DISTA(J)
-         END IF
-       END DO
-       DO J=KONTA3+1,KONTA2
-         BAS=BAS+(MASAP(LIP(J))/NORMA)
-       END DO
-       JJ=JJ+1
-       DENSITOT(JJ)=BAS
-       RADIAL(JJ)=DISTA(KONTA2)
+        BAS=0.0
+        FAC=INT(0.1*KONTA2)
+        KONTA3=INT(REAL(KONTA2)/FAC)*FAC
+        DO J=1,KONTA3
+          BAS=BAS+(MASAP(LIP(J))/NORMA)
+          IF (MOD(J,FAC).EQ.0) THEN
+           JJ=JJ+1
+           DENSITOT(JJ)=BAS
+           RADIAL(JJ)=DISTA(J)
+          END IF
+        END DO
+        DO J=KONTA3+1,KONTA2
+          BAS=BAS+(MASAP(LIP(J))/NORMA)
+        END DO
+        JJ=JJ+1
+        DENSITOT(JJ)=BAS
+        RADIAL(JJ)=DISTA(KONTA2)
 
 *      hasta aqui masa acumulada en bins de 10 particulas
-       NSHELL_2=0
-       NSHELL_2=JJ
+        NSHELL_2=0
+        NSHELL_2=JJ
 
 COJO!!
-       IF (NSHELL_2.GT.4) THEN
+        IF (NSHELL_2.GT.4) THEN
 COJO!!
-       DO J=INT(0.8*NSHELL_2),NSHELL_2       !!!!! DEJO 80 por cient de BINS DE SEGURIDA
+        DO J=INT(0.8*NSHELL_2),NSHELL_2       !!!!! DEJO 80 por cient de BINS DE SEGURIDA
 
-         BAS=0.5*(RADIAL(J)+RADIAL(J-1))  !radio medio
-         DENSA=(DENSITOT(J)-DENSITOT(J-1))/(RADIAL(J)-RADIAL(J-1))
-         DENSA=DENSA/BAS/BAS
+          BAS=0.5*(RADIAL(J)+RADIAL(J-1))  !radio medio
+          DENSA=(DENSITOT(J)-DENSITOT(J-1))/(RADIAL(J)-RADIAL(J-1))
+          DENSA=DENSA/BAS/BAS
 
-         BAS=0.5*(RADIAL(J+1)+RADIAL(J))  !radio medio
-         DENSB=(DENSITOT(J+1)-DENSITOT(J))/(RADIAL(J+1)-RADIAL(J))
-         DENSB=DENSB/BAS/BAS
+          BAS=0.5*(RADIAL(J+1)+RADIAL(J))  !radio medio
+          DENSB=(DENSITOT(J+1)-DENSITOT(J))/(RADIAL(J+1)-RADIAL(J))
+          DENSB=DENSB/BAS/BAS
 
 
-         BAS=0.5*(RADIAL(J+2)+RADIAL(J+1))  !radio medio
-         DENSC=(DENSITOT(J+2)-DENSITOT(J+1))/(RADIAL(J+2)-RADIAL(J+1))
-         DENSC=DENSC/BAS/BAS
+          BAS=0.5*(RADIAL(J+2)+RADIAL(J+1))  !radio medio
+          DENSC=(DENSITOT(J+2)-DENSITOT(J+1))/(RADIAL(J+2)-RADIAL(J+1))
+          DENSC=DENSC/BAS/BAS
 
-         IF (DENSC.GT.DENSB.AND.DENSB.GT.DENSA) THEN
-           SALIDA=2
-           EXIT
-         END IF
-       END DO            !!!!!!!!!!!!!!!
+          IF (DENSC.GT.DENSB.AND.DENSB.GT.DENSA) THEN
+            SALIDA=2
+            EXIT
+          END IF
+        END DO            !!!!!!!!!!!!!!!
 
 COJO!!
-       END IF
+        END IF
 COJO!!
 
 *      SALIDA POR CAMBIO DE PENDIENTE DE LA DENSIDAD
-       IF (SALIDA.EQ.2) THEN
-        RSHELL=RADIAL(J+1)
-        NCAPAS(I)=J
-       END IF
+        IF (SALIDA.EQ.2) THEN
+         RSHELL=RADIAL(J+1)
+         NCAPAS(I)=J
+        END IF
 
-       END IF       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        END IF       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 *      SIN CORTE
-       IF (SALIDA.EQ.0.AND.KONTA2.NE.0) THEN
-        J=J-1
-        NCAPAS(I)=J
-        RSHELL=REF_MAX
-       END IF
+        IF (SALIDA.EQ.0.AND.KONTA2.NE.0) THEN
+         J=J-1
+         NCAPAS(I)=J
+         RSHELL=REF_MAX
+        END IF
 
 
 *      YA CORTADO   !---------------------
@@ -548,97 +594,98 @@ COJO!!
 *      GUARDAMOS LAS PARTICULAS LIGADAS  DEL HALO I
 ***********************************************************
 
-       KONTA2=0
-       BASMAS=0.0
-       DO J=1,KONTA
-        IF (CONTADM(J).EQ.0) THEN
+        KONTA2=0
+        BASMAS=0.0
+        DMPCLUS(I)=0
+        DO J=1,KONTA
+         IF (CONTADM(J).EQ.0) THEN
 
-         AADMX(1)=RXPA(LIP(J))-CLUSRX(I)
-         AADMX(2)=RYPA(LIP(J))-CLUSRY(I)
-         AADMX(3)=RZPA(LIP(J))-CLUSRZ(I)
-         AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
+          AADMX(1)=RXPA(LIP(J))-CLUSRX(I)
+          AADMX(2)=RYPA(LIP(J))-CLUSRY(I)
+          AADMX(3)=RZPA(LIP(J))-CLUSRZ(I)
+          AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
 
 CV2
-        VVV2=0.0
-        VVV2=(U2DM(LIP(J))-VX(I))**2
+         VVV2=0.0
+         VVV2=(U2DM(LIP(J))-VX(I))**2
      &      +(U3DM(LIP(J))-VY(I))**2
      &      +(U4DM(LIP(J))-VZ(I))**2
 CV2
 
 
-         IF (AADM.LE.RSHELL) THEN
-          KONTA2=KONTA2+1
-          BASMAS=BASMAS+(MASAP(LIP(J))/NORMA)
+          IF (AADM.LE.RSHELL) THEN
+           KONTA2=KONTA2+1
+           BASMAS=BASMAS+(MASAP(LIP(J))/NORMA)
 
 *********anyadido susana
-          DMPCLUS(I)=DMPCLUS(I)+1
+           DMPCLUS(I)=DMPCLUS(I)+1
 
-          ANGULARM(I)=ANGULARM(I)+MASAP(LIP(J))*AADM*SQRT(VVV2)
+           ANGULARM(I)=ANGULARM(I)+MASAP(LIP(J))*AADM*SQRT(VVV2)
 
 **        INERTIA TENSOR
-          DO JY=1, 3
-          DO IX=1, 3
-           INERTIA(IX,JY)=INERTIA(IX,JY)+AADMX(IX)*AADMX(JY)
-          END DO
-          END DO
+           DO JY=1, 3
+           DO IX=1, 3
+            INERTIA(IX,JY)=INERTIA(IX,JY)+AADMX(IX)*AADMX(JY)
+           END DO
+           END DO
 
 **        VELOCITY OF THE FASTEST PARTICLE IN THE HALO
-          VKK=0.0
-          VKK=SQRT(U2DM(LIP(J))**2+U3DM(LIP(J))**2+
+           VKK=0.0
+           VKK=SQRT(U2DM(LIP(J))**2+U3DM(LIP(J))**2+
      &             U4DM(LIP(J))**2)
 
-          IF (VKK.GT.VMAXCLUS(I)) THEN
-           VMAXCLUS(I)=VKK
-          END IF
+           IF (VKK.GT.VMAXCLUS(I)) THEN
+            VMAXCLUS(I)=VKK
+           END IF
 
 **        CLOSEST PARTICLE TO THE CENTER OF THE HALO
-          IF (AADM.LT.DIS) THEN
-           DIS=AADM
-           IPLIP(I)=ORIPA2(LIP(J))
-          END IF
+           IF (AADM.LT.DIS) THEN
+            DIS=AADM
+            IPLIP(I)=ORIPA2(LIP(J))
+           END IF
 
-          IF(AADM.NE.0.0) THEN
-           AA=0.0
-           AA=((RXPA(LIP(J))-CLUSRX(I))/AADM)*U2DM(LIP(J))+
+           IF(AADM.NE.0.0) THEN
+            AA=0.0
+            AA=((RXPA(LIP(J))-CLUSRX(I))/AADM)*U2DM(LIP(J))+
      &        ((RYPA(LIP(J))-CLUSRY(I))/AADM)*U3DM(LIP(J))+
      &        ((RZPA(LIP(J))-CLUSRZ(I))/AADM)*U4DM(LIP(J))
-           VR=VR+AA*MASAP(LIP(J))
-          END IF
+            VR=VR+AA*MASAP(LIP(J))
+           END IF
 
 
 *********fin anyadido susana
-         END IF    !AADM.LT.RSHELL
-        END IF     !CONTADM
-       END DO      !KONTA
+          END IF    !AADM.LT.RSHELL
+         END IF     !CONTADM
+        END DO      !KONTA
 
 
 *      CONTROL DE SEGURIDAD
-       IF(DMPCLUS(I).NE.KONTA2) THEN
-         WRITE(*,*) 'WARNING!', DMPCLUS(I),KONTA2
-         STOP
-       ENDIF
+        IF(DMPCLUS(I).NE.KONTA2) THEN
+          WRITE(*,*) 'WARNING!', DMPCLUS(I),KONTA2
+          STOP
+        ENDIF
 
 
 *******************************************************
 *      SAVING MASSES, RADII, PROFILES AND SHAPES...
 *******************************************************
 
-       MASA(I)=BASMAS*NORMA*9.1717E18    !!MASA2
-       ANGULARM(I)=ANGULARM(I)/BASMAS
-       RADIO(I)=RSHELL
+        MASA(I)=BASMAS*NORMA*9.1717E18    !!MASA2
+        ANGULARM(I)=ANGULARM(I)/BASMAS
+        RADIO(I)=RSHELL
 
-       INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/DMPCLUS(I)
-       BASEIGENVAL(1:3)=0.0
+        INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/DMPCLUS(I)
+        BASEIGENVAL(1:3)=0.0
 
-       IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
-        CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
-        CALL SORT(BASEIGENVAL,DIMEN,DIMEN)
-       END IF
+        IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
+         CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
+         CALL SORT(BASEIGENVAL,DIMEN,DIMEN)
+        END IF
 
-       DO II=1, DIMEN
-        EIGENVAL(II,I)=BASEIGENVAL(II)
-        EIGENVAL(II,I)=SQRT(EIGENVAL(II,I))
-       END DO
+        DO II=1, DIMEN
+         EIGENVAL(II,I)=BASEIGENVAL(II)
+         EIGENVAL(II,I)=SQRT(EIGENVAL(II,I))
+        END DO
 
 ******************************************
 ************ FIN HALO I ******************
@@ -647,7 +694,7 @@ CV2
 *       IF (MASA(I).EQ.0.0) KKKONTA=KKKONTA+1
 
 
-       END IF   !IF REALCLUS.ne.0 (KK_ENTERO.NE.0)
+        END IF ! (realclus(i).ne.0)
 
 *****************
        END DO   !I=IP,IP2
