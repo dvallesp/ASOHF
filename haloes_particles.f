@@ -421,25 +421,42 @@
      &                 DISTA)
 
         FAC=0
-        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
+        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
          FAC=FAC+1
-
          KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
-
          CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
      &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRX,CLUSRY,
      &                   CLUSRZ,LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS)
-
          CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA)
-
          CONTAERR=ABS(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
-
         END DO
 
         write(*,*) 'Unbinding',i,'. ',konta,'-->',konta2,'. Pruned:',
      &             konta-konta2,'. Iters:', FAC
-c        write(*,*) 'mindistance',MINVAL(DISTA)
+
+********************************************************************
+*      UNBINDING: PHASE SPACE
+********************************************************************
+
+        FAC=0
+        CONTAERR=KONTA2
+        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
+         FAC=FAC+1
+         KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
+         CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,RXPA,
+     &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRX,CLUSRY,
+     &                        CLUSRZ,LIP,KONTA,CONTADM,VX,VY,VZ,
+     &                        REALCLUS)
+         CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+     &                  DISTA)
+         CONTAERR=ABS(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
+         write(*,*) 'sigma unbinding: iter,unbound',fac,contaerr
+        END DO
+
+        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
+     &             '. Pruned:',konta-konta2,'. Iters:', FAC
+
 
 **************************************************************
 *      DENSITY PROFILE
@@ -1072,6 +1089,134 @@ CX       write(*,*) 'new_r',RADIO(I),REF_MAX
         RADIO(I)=REF_MAX
 
        END IF
+
+       RETURN
+       END
+
+
+***********************************************************
+       SUBROUTINE UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,
+     &                            RXPA,RYPA,RZPA,MASAP,RADIO,MASA,
+     &                            CLUSRX,CLUSRY,CLUSRZ,LIP,KONTA,
+     &                            CONTADM,VX,VY,VZ,REALCLUS)
+***********************************************************
+*      Finds and discards the unbound particles (those
+*      with speed larger than the scape velocity).
+*      Potential is computed in double precision.
+***********************************************************
+
+       IMPLICIT NONE
+
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER FAC
+       INTEGER I
+       REAL REF_MIN,REF_MAX
+       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
+       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       REAL*4 MASAP(PARTIRED)
+       REAL*4 RADIO(NMAXNCLUS),MASA(NMAXNCLUS)
+       REAL*4 CLUSRX(NMAXNCLUS),CLUSRY(NMAXNCLUS),CLUSRZ(NMAXNCLUS)
+       INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
+       INTEGER KONTA
+       REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
+       INTEGER REALCLUS(MAXNCLUS)
+
+       REAL CMX,CMY,CMZ,VXCM,VYCM,VZCM,BAS,SIGMA2,BB,AADM,AADMX,AADMY
+       REAL AADMZ,MMM
+       INTEGER J,JJ,KONTA2,KONTA3
+       REAL,ALLOCATABLE::DESV2(:)
+
+       BB=MAX(6.0-1.0*(FAC-1), 3.0)
+       BB=BB**2 ! This is because we compare velocities squared
+
+       CMX=CLUSRX(I)
+       CMY=CLUSRY(I)
+       CMZ=CLUSRZ(I)
+       VXCM=VX(I)
+       VYCM=VY(I)
+       VZCM=VZ(I)
+
+       KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
+
+       ALLOCATE(DESV2(1:KONTA2))
+
+       IF (KONTA2.GT.0) THEN
+        SIGMA2=0.0
+        DO J=1,KONTA2
+         JJ=LIP(J)
+         BAS=(U2DM(JJ)-VXCM)**2+(U3DM(JJ)-VYCM)**2+(U4DM(JJ)-VZCM)**2
+         DESV2(J)=BAS
+         SIGMA2=SIGMA2+BAS
+        END DO
+
+        IF (KONTA2.GT.1) SIGMA2=SIGMA2/(KONTA2-1)
+
+*       Find particles with too large relative velocity
+        DO J=1,KONTA2
+         IF (DESV2(J).GT.BB*SIGMA2) CONTADM(J)=1
+        END DO
+
+*       NEW CENTER OF MASS AND ITS VELOCITY
+        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
+     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
+     &           CMX,CMY,CMZ,VXCM,VYCM,VZCM,MMM)
+
+       END IF
+
+       KONTA3=COUNT(CONTADM(1:KONTA2).EQ.0)
+
+       IF (KONTA3.EQ.0) THEN
+
+        CLUSRX(I)=0.0
+        CLUSRY(I)=0.0
+        CLUSRZ(I)=0.0
+
+        VX(I)=0.0
+        VY(I)=0.0
+        VZ(I)=0.0
+
+        MASA(I)=0.0
+        RADIO(I)=0.0
+
+        REALCLUS(I)=0
+
+       ELSE
+
+        CLUSRX(I)=CMX
+        CLUSRY(I)=CMY
+        CLUSRZ(I)=CMZ
+
+        VX(I)=VXCM
+        VY(I)=VYCM
+        VZ(I)=VZCM
+
+        MASA(I)=MMM*9.1717e+18
+
+*       estimacion nuevo radio
+
+        REF_MIN=10.0E+10
+        REF_MAX=-1.0
+
+        DO J=1,KONTA2
+         IF (CONTADM(J).EQ.0) THEN
+           AADMX=RXPA(LIP(J))-CMX
+           AADMY=RYPA(LIP(J))-CMY
+           AADMZ=RZPA(LIP(J))-CMZ
+
+           AADM=SQRT(AADMX**2+AADMY**2+AADMZ**2)
+
+           REF_MIN=MIN(REF_MIN,AADM)
+           REF_MAX=MAX(REF_MAX,AADM)
+         END IF
+        END DO
+
+        RADIO(I)=REF_MAX
+
+       END IF
+
+       DEALLOCATE(DESV2)
+
 
        RETURN
        END
