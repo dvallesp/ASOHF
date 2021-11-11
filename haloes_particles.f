@@ -185,6 +185,7 @@
        INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,FLAG_200,KONTA3,NSHELL_2
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,IS_SUB,COUNT_1,COUNT_2
+       INTEGER KONTA2PREV
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM
@@ -241,7 +242,7 @@
 !$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
 !$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL,BASX,
 !$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,IS_SUB,COUNT_1,
-!$OMP+           COUNT_2),
+!$OMP+           COUNT_2,KONTA2PREV),
 !$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
 *****************************
        DO I=1,NCLUS
@@ -417,20 +418,20 @@
 
         CONTAERR=KONTA
         DISTA=0.0
-
+        KONTA2=0
         CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                 DISTA)
+     &                 DISTA,KONTA2)
 
         FAC=0
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
          FAC=FAC+1
-         KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
+         KONTA2PREV=KONTA2
          CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
      &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRX,CLUSRY,
      &                   CLUSRZ,LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS)
          CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA)
-         CONTAERR=ABS(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
+     &                  DISTA,KONTA2)
+         CONTAERR=KONTA2PREV-KONTA2
         END DO
 
         count_1=konta-konta2
@@ -446,14 +447,14 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
         CONTAERR=KONTA2
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
          FAC=FAC+1
-         KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
+         KONTA2PREV=KONTA2
          CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,RXPA,
      &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRX,CLUSRY,
      &                        CLUSRZ,LIP,KONTA,CONTADM,VX,VY,VZ,
      &                        REALCLUS)
          CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA)
-         CONTAERR=ABS(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
+     &                  DISTA,KONTA2)
+         CONTAERR=KONTA2PREV-KONTA2
          !write(*,*) 'sigma unbinding: iter,unbound',fac,contaerr
         END DO
 
@@ -731,7 +732,7 @@ CV2
 
 **********************************************************************
        SUBROUTINE REORDENAR(KONTA,CMX,CMY,CMZ,
-     &                      RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)
+     &                      RXPA,RYPA,RZPA,CONTADM,LIP,DISTA,KONTA2)
 **********************************************************************
 *      Sorts the particles with increasing distance to the center of
 *      the halo. Only particles with CONTADM=0 are sorted (the others
