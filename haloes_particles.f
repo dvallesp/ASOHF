@@ -184,7 +184,7 @@
 *      Local variables
        INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,FLAG_200,KONTA3,NSHELL_2
-       INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,IS_SUB
+       INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,IS_SUB,COUNT_1,COUNT_2
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM
@@ -240,7 +240,8 @@
 !$OMP+           NORMA,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,FLAG_200,
 !$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
 !$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL,BASX,
-!$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,IS_SUB),
+!$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,IS_SUB,COUNT_1,
+!$OMP+           COUNT_2),
 !$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
 *****************************
        DO I=1,NCLUS
@@ -432,8 +433,10 @@
          CONTAERR=ABS(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
         END DO
 
-        write(*,*) 'Unbinding',i,'. ',konta,'-->',konta2,'. Pruned:',
-     &             konta-konta2,'. Iters:', FAC
+        count_1=konta-konta2
+        count_2=konta2 !backup
+c        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
+c     &             '. Pruned:',count_1,'. Iters:', FAC
 
 ********************************************************************
 *      UNBINDING: PHASE SPACE
@@ -451,11 +454,13 @@
          CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA)
          CONTAERR=ABS(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
-         write(*,*) 'sigma unbinding: iter,unbound',fac,contaerr
+         !write(*,*) 'sigma unbinding: iter,unbound',fac,contaerr
         END DO
 
-        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
-     &             '. Pruned:',konta-konta2,'. Iters:', FAC
+        count_2=count_2-konta2
+c        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
+c     &             '. Pruned:',count_2,'. Iters:', FAC
+c        write(*,*) '--'
 
 
 **************************************************************
