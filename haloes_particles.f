@@ -411,6 +411,7 @@
 ********************************************************************
 *      UNBINDING:SCAPE VELOCITY
 ********************************************************************
+
         CONTAERR=KONTA
         DISTA=0.0
 
@@ -419,27 +420,24 @@
 
         FAC=0
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
-
          FAC=FAC+1
+
          KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
-         CALL UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
-     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
-     &           LIP,KONTA,CONTADM,VX,VY,VZ)
-
+         CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
+     &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRX,CLUSRY,
+     &                   CLUSRZ,LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS)
 
          CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA)
 
-         CONTAERR=abs(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
-
+         CONTAERR=ABS(COUNT(CONTADM(1:KONTA).EQ.0)-KONTA2)
 
         END DO
 
-*      AQUI: las particulas estan ordenadar de menor a mayor
-*      distancia al centro!!!!!
-
+        write(*,*) 'Unbinding',i,'. ',konta,'-->',konta2,'. Pruned:',
+     &             konta-konta2,'. Iters:', FAC
+        write(*,*) 'mindistance',MINVAL(DISTA)
 
 **************************************************************
 *      DENSITY PROFILE
@@ -712,15 +710,15 @@ CV2
      &                      RXPA,RYPA,RZPA,CONTADM,LIP,DISTA)
 **********************************************************************
 *      Sorts the particles with increasing distance to the center of
-*      the halo
+*      the halo. Only particles with CONTADM=0 are sorted (the others
+*      are already pruned particles and therefore they are ignored)
 **********************************************************************
 
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER I,J,K,KONTA,KONTA2
-
+       INTEGER I,J,K,KONTA,KONTA2,JJ
 
 *      ---HALOS Y SUBHALOS---
        REAL*4 CMX,CMY,CMZ
@@ -740,52 +738,46 @@ c       INTEGER CONTADM(PARTI)
        REAL*4 DISTA2(0:KONTA)
        INTEGER QUIEN(KONTA)
 
-       REAL*4 AADMX(3),AADM
-
-*      reordenar !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       REAL*4 AADMX,AADMY,AADMZ,AADM
 
        QUIEN=0
        DISTA=1.E10
        INDICE=0
        DISTA2=0.0
 
-
        KONTA2=0
-       DO J=1, KONTA
-         IF (CONTADM(J).EQ.0) THEN
+       DO J=1,KONTA
+        IF (CONTADM(J).EQ.0) THEN
          KONTA2=KONTA2+1
-
-         AADMX(1)=RXPA(LIP(J))-CMX
-         AADMX(2)=RYPA(LIP(J))-CMY
-         AADMX(3)=RZPA(LIP(J))-CMZ
-
-         AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
+         JJ=LIP(J)
+         AADMX=RXPA(JJ)-CMX
+         AADMY=RYPA(JJ)-CMY
+         AADMZ=RZPA(JJ)-CMZ
+         AADM=SQRT(AADMX**2+AADMY**2+AADMZ**2)
 
          DISTA(KONTA2)=AADM
-         QUIEN(KONTA2)=LIP(J)
-         END IF
+         QUIEN(KONTA2)=JJ
+        END IF
        END DO
 
-       CALL INDEXX(KONTA2,DISTA(1:KONTA2),INDICE(1:KONTA2)) !las ordena todas
-                   !no solo las seleccionadas
-
+       CALL INDEXX(KONTA2,DISTA(1:KONTA2),INDICE(1:KONTA2))
 
        DO J=1,KONTA2
-        DISTA2(J)=DISTA(INDICE(J))
+        DISTA2(J)=DISTA(J)
        END DO
 
        DISTA=1.E10
        LIP=0
 
+       DO J=1,KONTA2
+        JJ=INDICE(J)
+        DISTA(J)=DISTA2(JJ)
+        LIP(J)=QUIEN(JJ)
+       END DO
+
        CONTADM=1
        CONTADM(1:KONTA2)=0
 
-       DO J=1,KONTA2
-        DISTA(J)=DISTA2(J)
-        LIP(J)=QUIEN(INDICE(J))
-       END DO
-
-*      estan reordenados !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        RETURN
        END
 
@@ -896,13 +888,14 @@ c       INTEGER CONTADM(PARTI)
 ********************************************************************
 
 ***********************************************************
-       SUBROUTINE UNBINDING4(FAC,I,REF_MIN,REF_MAX,DISTA,
+       SUBROUTINE UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
-     &           LIP,KONTA,CONTADM,VX,VY,VZ)
+     &           LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS)
 ***********************************************************
 *      Finds and discards the unbound particles (those
-*      with speed larger than the scape velocity)
+*      with speed larger than the scape velocity).
+*      Potential is computed in double precision.
 ***********************************************************
 
        IMPLICIT NONE
@@ -929,6 +922,7 @@ c       INTEGER CONTADM(PARTI)
        REAL*4 VX(NMAXNCLUS)
        REAL*4 VY(NMAXNCLUS)
        REAL*4 VZ(NMAXNCLUS)
+       INTEGER REALCLUS(MAXNCLUS)
 
 *      ---PARTICULAS E ITERACIONES---
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
@@ -946,7 +940,7 @@ c       INTEGER CONTADM(PARTI)
 
        REAL*4 DISTA(0:PARTIRED)
 
-       REAL*4 VVV2,VESC,AADMX(3),AADM,DR, AA, BB, CC
+       REAL*4 VVV2,VESC2,AADMX(3),AADM,DR, AA, BB, CC
        REAL*4 BAS
        REAL*4 CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM
        REAL*4 POTOK
@@ -962,55 +956,46 @@ COJO       REAL*8 POT(KONTA)
 
        POT=0.D0
 
-*      particulas ya ordenada!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-*      SOLO LAS PARTICULAS DE 1 A KONTA2 CONTRIBUYEN
        KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
-*      masa maxima
-       NORMA=MAXVAL(DBLE(MASAP))
-
-       MASA8=0.D0
-*      calculo del potencial en doble precision
-COJO       MASA8=DBLE(MASAP(LIP(1)))/NORMA
+*      Max mass
+       NORMA=DBLE(MAXVAL(MASAP))
        MASA8=DBLE(MASAP(1))/NORMA
+
        POT(1)=MASA8/DBLE(DISTA(1))
 
        DO J=2,KONTA2
-         MASA8=MASA8+ DBLE(MASAP(LIP(J)))/NORMA
+         MASA8=MASA8+DBLE(MASAP(LIP(J)))/NORMA
          BAS8=DISTA(J)-DISTA(J-1)
-         POT(J)=POT(J-1)+ MASA8*BAS8/(DBLE(DISTA(J))**2)
+         POT(J)=POT(J-1)+MASA8*BAS8/(DBLE(DISTA(J))**2)
        END DO
 
-       POT1=POT(KONTA2) + MASA8/REF_MAX  ! INTEGRAL DE 0 A Rmax + CONSTANTE
+       POT1=POT(KONTA2) + MASA8/REF_MAX
+       !POT1 is the constant to be subtracted to the computed potential
+       !so that the potential origin is located at infinity
+
        AA8=NORMA*DBLE(CGR/RETE)
 
-       BB=2.0   !1.8
+       BB=2.0
        IF (FAC.EQ.1) BB=8.0
        IF (FAC.EQ.2) BB=4.0
-       IF (FAC.EQ.3) BB=2.0
-CX       WRITE(*,*) ' ---> factor vesc:',bb
 
-*      desligando particulas !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       BB=BB**2 !(we compare the squared velocities)
+
+*      Find particles able to escape the potential well
        DO J=1,KONTA2
 
-        POTOK=(POT(J) - POT1)*AA8
-
-        VESC=SQRT(2.0*ABS(POTOK))
+        POTOK=(POT(J)-POT1)*AA8
+        VESC2=2.0*ABS(POTOK)
 
         VVV2=(U2DM(LIP(J))-VX(I))**2
      &      +(U3DM(LIP(J))-VY(I))**2
      &      +(U4DM(LIP(J))-VZ(I))**2
 
-        VVV2=SQRT(VVV2)
-
-        IF (VVV2.GT.BB*VESC)  CONTADM(J)=1
+        IF (VVV2.GT.BB*VESC2)  CONTADM(J)=1
        END DO
 
-CX       WRITE(*,*)'PARTICULAS NO LIGADAS=',
-CX     &            COUNT(CONTADM(1:KONTA).NE.0)
-
-
-*      NEW CENTRO DE MASAS Y VELOCIDAD
+*      NEW CENTER OF MASS AND ITS VELOCITY
        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM)
@@ -1028,10 +1013,9 @@ CX     &            COUNT(CONTADM(1:KONTA).NE.0)
        VZ(I)=0.0
 
        MASA(I)=0.0
-
-CX       WRITE(*,*) 'PART.LIGADAS_3=', KONTA3
-
        RADIO(I)=0.0
+
+       REALCLUS(I)=0
 
        ELSE
 
