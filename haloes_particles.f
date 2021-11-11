@@ -303,8 +303,6 @@
          MP=MASAP(J)
          AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
          IF(AADM.LT.RCLUS) THEN
-          REF_MIN=MIN(REF_MIN,AADM)
-          REF_MAX=MAX(REF_MAX,AADM)
           KONTA=KONTA+1
           LIP(KONTA)=J
           MASADM=MASADM+MP
@@ -391,12 +389,16 @@
         BAS=1.5
         RCLUS=BAS*RADIO(I)
         KONTA=0
+        REF_MIN=10.0e+10
+        REF_MAX=-1.0
         DO J=1,N_DM
          XP=RXPA(J)
          YP=RYPA(J)
          ZP=RZPA(J)
          AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
          IF(AADM.LT.RCLUS) THEN
+          REF_MIN=MIN(REF_MIN,AADM)
+          REF_MAX=MAX(REF_MAX,AADM)
           KONTA=KONTA+1
           LIP(KONTA)=J
          END IF
@@ -437,7 +439,7 @@
 
         write(*,*) 'Unbinding',i,'. ',konta,'-->',konta2,'. Pruned:',
      &             konta-konta2,'. Iters:', FAC
-        write(*,*) 'mindistance',MINVAL(DISTA)
+c        write(*,*) 'mindistance',MINVAL(DISTA)
 
 **************************************************************
 *      DENSITY PROFILE
@@ -958,100 +960,116 @@ COJO       REAL*8 POT(KONTA)
 
        KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
+       IF (KONTA2.GT.0) THEN
 *      Max mass
-       NORMA=DBLE(MAXVAL(MASAP))
-       MASA8=DBLE(MASAP(1))/NORMA
+        NORMA=DBLE(MAXVAL(MASAP))
+        MASA8=DBLE(MASAP(1))/NORMA
 
-       POT(1)=MASA8/DBLE(DISTA(1))
-
-       DO J=2,KONTA2
+        !POT(1)=MASA8/DBLE(DISTA(1))
+        !WRITE(*,*) 'IN UNBINDING, KONTA2=',KONTA2
+        DO J=1,KONTA2
+         IF (DISTA(J).GT.0.01*REF_MAX) EXIT
+        END DO
+        JJ=J
+        MASA8=0.D0
+        DO J=1,JJ
          MASA8=MASA8+DBLE(MASAP(LIP(J)))/NORMA
-         BAS8=DISTA(J)-DISTA(J-1)
-         POT(J)=POT(J-1)+MASA8*BAS8/(DBLE(DISTA(J))**2)
-       END DO
+        END DO
+        DO J=1,JJ
+         POT(J)=MASA8/DISTA(JJ)
+        END DO
 
-       POT1=POT(KONTA2) + MASA8/REF_MAX
-       !POT1 is the constant to be subtracted to the computed potential
-       !so that the potential origin is located at infinity
+        !WRITE(*,*) 'KONTA2,JJ=',konta2,jj
 
-       AA8=NORMA*DBLE(CGR/RETE)
+        DO J=JJ+1,KONTA2
+          MASA8=MASA8+DBLE(MASAP(LIP(J)))/NORMA
+          BAS8=DISTA(J)-DISTA(J-1)
+          POT(J)=POT(J-1)+MASA8*BAS8/(DBLE(DISTA(J))**2)
+        END DO
 
-       BB=2.0
-       IF (FAC.EQ.1) BB=8.0
-       IF (FAC.EQ.2) BB=4.0
+        POT1=POT(KONTA2) + MASA8/REF_MAX
+        !POT1 is the constant to be subtracted to the computed potential
+        !so that the potential origin is located at infinity
 
-       BB=BB**2 !(we compare the squared velocities)
+        AA8=NORMA*DBLE(CGR/RETE)
+
+        BB=2.0
+        IF (FAC.EQ.1) BB=8.0
+        IF (FAC.EQ.2) BB=4.0
+
+        BB=BB**2 !(we compare the squared velocities)
 
 *      Find particles able to escape the potential well
-       DO J=1,KONTA2
+        DO J=1,KONTA2
 
-        POTOK=(POT(J)-POT1)*AA8
-        VESC2=2.0*ABS(POTOK)
+         POTOK=(POT(J)-POT1)*AA8
+         VESC2=2.0*ABS(POTOK)
 
-        VVV2=(U2DM(LIP(J))-VX(I))**2
-     &      +(U3DM(LIP(J))-VY(I))**2
-     &      +(U4DM(LIP(J))-VZ(I))**2
+         VVV2=(U2DM(LIP(J))-VX(I))**2
+     &       +(U3DM(LIP(J))-VY(I))**2
+     &       +(U4DM(LIP(J))-VZ(I))**2
 
-        IF (VVV2.GT.BB*VESC2)  CONTADM(J)=1
-       END DO
+         IF (VVV2.GT.BB*VESC2)  CONTADM(J)=1
+        END DO
 
 *      NEW CENTER OF MASS AND ITS VELOCITY
-       CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
+        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM)
+
+       END IF
 
        KONTA3=COUNT(CONTADM(1:KONTA).EQ.0)
 
        IF (KONTA3.EQ.0) THEN
 
-       CLUSRX(I)=0.0
-       CLUSRY(I)=0.0
-       CLUSRZ(I)=0.0
+        CLUSRX(I)=0.0
+        CLUSRY(I)=0.0
+        CLUSRZ(I)=0.0
 
-       VX(I)=0.0
-       VY(I)=0.0
-       VZ(I)=0.0
+        VX(I)=0.0
+        VY(I)=0.0
+        VZ(I)=0.0
 
-       MASA(I)=0.0
-       RADIO(I)=0.0
+        MASA(I)=0.0
+        RADIO(I)=0.0
 
-       REALCLUS(I)=0
+        REALCLUS(I)=0
 
        ELSE
 
-       CLUSRX(I)=CMX
-       CLUSRY(I)=CMY
-       CLUSRZ(I)=CMZ
+        CLUSRX(I)=CMX
+        CLUSRY(I)=CMY
+        CLUSRZ(I)=CMZ
 
-       VX(I)=VCMX
-       VY(I)=VCMY
-       VZ(I)=VCMZ
+        VX(I)=VCMX
+        VY(I)=VCMY
+        VZ(I)=VCMZ
 
-       MASA(I)=MMM*9.1717e+18
+        MASA(I)=MMM*9.1717e+18
 
 
-*      estimacion nuevo radio
+*       estimacion nuevo radio
 
-       REF_MIN=10.0E+10
-       REF_MAX=-1.0
+        REF_MIN=10.0E+10
+        REF_MAX=-1.0
 
-       DO J=1,KONTA
-       IF (CONTADM(J).EQ.0) THEN
+        DO J=1,KONTA
+         IF (CONTADM(J).EQ.0) THEN
+           AADMX(1)=RXPA(LIP(J))-CMX
+           AADMX(2)=RYPA(LIP(J))-CMY
+           AADMX(3)=RZPA(LIP(J))-CMZ
 
-        AADMX(1)=RXPA(LIP(J))-CMX
-        AADMX(2)=RYPA(LIP(J))-CMY
-        AADMX(3)=RZPA(LIP(J))-CMZ
+           AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
 
-        AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
-
-        REF_MIN=MIN(REF_MIN,AADM)
-        REF_MAX=MAX(REF_MAX,AADM)
-       END IF
-       END DO
+           REF_MIN=MIN(REF_MIN,AADM)
+           REF_MAX=MAX(REF_MAX,AADM)
+         END IF
+        END DO
 
 
 CX       write(*,*) 'new_r',RADIO(I),REF_MAX
-       RADIO(I)=REF_MAX
+        RADIO(I)=REF_MAX
 
        END IF
 
