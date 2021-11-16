@@ -565,7 +565,8 @@ c        write(*,*) '--'
             DENSB=DENSB/BAS/BAS
 
             BAS=0.5*(RADIAL(J+2)+RADIAL(J+1))  !radio medio
-            DENSC=(DENSITOT(J+2)-DENSITOT(J+1))/(RADIAL(J+2)-RADIAL(J+1))
+            DENSC=(DENSITOT(J+2)-DENSITOT(J+1))/
+     &                                       (RADIAL(J+2)-RADIAL(J+1))
             DENSC=DENSC/BAS/BAS
 
             IF (DENSC.GT.DENSB.AND.DENSB.GT.DENSA) THEN
