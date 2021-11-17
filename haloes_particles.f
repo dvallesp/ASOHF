@@ -144,9 +144,10 @@
 **********************************************************************
        SUBROUTINE HALOFIND_PARTICLES(NL,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
      &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,VCM2,IPLIP,
-     &      VX,VCMAX,MCMAX,RCMAX,M200,R200,DMPCLUS,LEVHAL,EIGENVAL,
-     &      N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,ORIPA2,CONTRASTEC,
-     &      OMEGAZ,UM,UV,F2)
+     &      VX,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
+     &      R200C,R500C,R2500C,R200M,R500M,R2500M,DMPCLUS,LEVHAL,
+     &      EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,ORIPA2,
+     &      CONTRASTEC,OMEGAZ,UM,UV,F2)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -162,7 +163,12 @@
        INTEGER IPLIP(NMAXNCLUS)
        REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
        REAL*4 VCMAX(NMAXNCLUS),MCMAX(NMAXNCLUS),RCMAX(NMAXNCLUS)
-       REAL*4 M200(NMAXNCLUS),R200(NMAXNCLUS)
+       REAL*4 M200C(NMAXNCLUS),R200C(NMAXNCLUS)
+       REAL*4 M500C(NMAXNCLUS),R500C(NMAXNCLUS)
+       REAL*4 M2500C(NMAXNCLUS),R2500C(NMAXNCLUS)
+       REAL*4 M200M(NMAXNCLUS),R200M(NMAXNCLUS)
+       REAL*4 M500M(NMAXNCLUS),R500M(NMAXNCLUS)
+       REAL*4 M2500M(NMAXNCLUS),R2500M(NMAXNCLUS)
        INTEGER DMPCLUS(NMAXNCLUS),LEVHAL(MAXNCLUS)
        REAL*4 EIGENVAL(3,NMAXNCLUS)
        INTEGER N_DM
@@ -183,12 +189,13 @@
 
 *      Local variables
        INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
-       INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,FLAG_200,KONTA3,NSHELL_2
+       INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,KONTA3,NSHELL_2,KONTA2PREV
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,IS_SUB,COUNT_1,COUNT_2
-       INTEGER KONTA2PREV
+       INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
+       INTEGER FLAGVIR
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
-       REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM
+       REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
        REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS
        REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
@@ -204,6 +211,8 @@
        REF=0.0
        KONTA1=0
        KONTA2=0
+
+       MINOVERDENS=200.0
 
        DO I=0,NL
        WRITE(*,*)'Halos at level ', I,' =',
@@ -228,22 +237,22 @@
        NORMA=MAXVAL(MASAP)
 
 !$OMP  PARALLEL DO SHARED(NCLUS,REALCLUS,
-!$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,
-!$OMP+           NL,MASAP,U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,
-!$OMP+           PI,RETE,ROTE,VCMAX,MCMAX,RCMAX,M200,R200,CONTRASTEC,
-!$OMP+           OMEGAZ,CGR,UM,UV,DMPCLUS,CONCENTRA,
-!$OMP+           ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,
-!$OMP+           EIGENVAL,NUMPARTBAS,
-!$OMP+           RADIO,MASA,F2,VMAXCLUS,N_DM,NORMA),
+!$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,NL,MASAP,
+!$OMP+           U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
+!$OMP+           MCMAX,RCMAX,CONTRASTEC,OMEGAZ,CGR,UM,UV,DMPCLUS,
+!$OMP+           CONCENTRA,ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
+!$OMP+           NUMPARTBAS,RADIO,MASA,F2,VMAXCLUS,N_DM,NORMA,R200M,
+!$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
+!$OMP+           M200C,M500C,M2500C),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
-!$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,
-!$OMP+           KONTA2,BAS,IR,J,AADM,KK1,KK2,CONTADM,
-!$OMP+           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,DISTA,FAC,CONTAERR,
-!$OMP+           JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,FLAG_200,
+!$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
+!$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
+!$OMP+           DISTA,FAC,CONTAERR,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,
 !$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
 !$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL,BASX,
 !$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,IS_SUB,COUNT_1,
-!$OMP+           COUNT_2,KONTA2PREV),
+!$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
+!$OMP+           FLAG2500C,FLAG2500M,FLAGVIR),
 !$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
 *****************************
        DO I=1,NCLUS
@@ -485,15 +494,25 @@ c        write(*,*) '--'
          BAS1=-1.0 ! to store vcmax
          BAS2=0.0 ! to store vc(r)
 *        VCMAX=-1.0
-         FLAG_200=0 ! whether r200c has been found
+         ! Initialise flags (whether each overdensity has been found)
+         FLAG200C=0
+         FLAG500C=0
+         FLAG2500C=0
+         FLAG200M=0
+         FLAG500M=0
+         FLAG2500M=0
+         FLAGVIR=0
 
+         FAC=MAX(100,INT(0.02*KONTA2))
+         KONTA3=INT(REAL(KONTA2)/FAC)*FAC
+         NSHELL_2=0
          DO J=1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
           VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
           BAS=BAS+(MASAP(LIP(J))/NORMA)
 
-          DELTA2=NORMA*BAS/VOL/ROTE
-          BAS2=BAS/DISTA(J) ! vc(r)
+          DELTA2=NORMA*BAS/VOL/ROTE ! overdensity
 
+          BAS2=BAS/DISTA(J) ! vc(r)
           IF (BAS2.GT.BAS1) THEN
            VCMAX(I)=BAS2
            MCMAX(I)=BAS
@@ -501,35 +520,95 @@ c        write(*,*) '--'
            BAS1=BAS2
           END IF
 
-          IF (FLAG_200.EQ.0) THEN
-           IF (DELTA2.LE.200.0/OMEGAZ) THEN
-            M200(I)=DELTA2*VOL*ROTE
-            R200(I)=DISTA(J)
-            FLAG_200=1
+          IF (FLAG2500C.EQ.0) THEN
+           IF (DELTA2.LE.2500.0/OMEGAZ) THEN
+            M2500C(I)=DELTA2*VOL*ROTE*UM
+            R2500C(I)=DISTA(J)
+            FLAG2500C=1
            END IF
           END IF
 
-          IF (DELTA2.LE.CONTRASTEC.AND.J.GT.INT(0.1*KONTA2)) THEN
-           SALIDA=1
-           EXIT
+          IF (FLAG500C.EQ.0) THEN
+           IF (DELTA2.LE.500.0/OMEGAZ) THEN
+            M500C(I)=DELTA2*VOL*ROTE*UM
+            R500C(I)=DISTA(J)
+            FLAG500C=1
+           END IF
           END IF
+
+          IF (FLAG200C.EQ.0) THEN
+           IF (DELTA2.LE.200.0/OMEGAZ) THEN
+            M200C(I)=DELTA2*VOL*ROTE*UM
+            R200C(I)=DISTA(J)
+            FLAG200C=1
+           END IF
+          END IF
+
+          IF (FLAG2500M.EQ.0) THEN
+           IF (DELTA2.LE.2500.0) THEN
+            M2500M(I)=DELTA2*VOL*ROTE*UM
+            R2500M(I)=DISTA(J)
+            FLAG2500M=1
+           END IF
+          END IF
+
+          IF (FLAG500M.EQ.0) THEN
+           IF (DELTA2.LE.500.0) THEN
+            M500M(I)=DELTA2*VOL*ROTE*UM
+            R500M(I)=DISTA(J)
+            FLAG500M=1
+           END IF
+          END IF
+
+          IF (FLAG200M.EQ.0) THEN
+           IF (DELTA2.LE.200.0) THEN
+            M200M(I)=DELTA2*VOL*ROTE*UM
+            R200M(I)=DISTA(J)
+            FLAG200M=1
+           END IF
+          END IF
+
+          ! STOPPING CONDITIONS
+          ! 1. Below virial overdensity
+          IF (FLAGVIR.EQ.0) THEN
+           IF (DELTA2.LE.CONTRASTEC.AND.J.GT.INT(0.1*KONTA2)) THEN
+            SALIDA=1 ! this means we've found the virial radius
+                     ! but we don't exit straightaway because we still
+                     ! want to find 200m
+            FLAGVIR=1
+            MASA(I)=DELTA2*VOL*ROTE*UM
+            RADIO(I)=DISTA(J)
+
+            NCAPAS(I)=J
+            IF (J.EQ.KONTA2) THEN
+             RSHELL=DISTA(J)
+            ELSE
+             RSHELL=DISTA(J+1)
+            END IF
+
+           END IF
+          END IF
+
+          ! profile
+          IF (MOD(J,FAC).EQ.0) THEN
+           NSHELL_2=NSHELL_2+1
+           DENSITOT(NSHELL_2)=BAS
+           RADIAL(NSHELL_2)=DISTA(J)
+          END IF
+
+          IF (SALIDA.EQ.1.AND.FLAG200M.EQ.1) EXIT
          END DO ! J=1,KONTA2
+
+         WRITE(*,*) 'HALO I=',I
+         WRITE(*,*) R2500C(I),R500C(I),R200C(I),R2500M(I),R500M(I),
+     &              R200M(I),RADIO(I)
+         WRITE(*,*) M2500C(I),M500C(I),M200C(I),M2500M(I),M500M(I),
+     &              M200M(I),MASA(I)
 
          VCMAX(I)=VCMAX(I)*NORMA*CGR/RETE
          VCMAX(I)=SQRT(VCMAX(I))*UV
          MCMAX(I)=MCMAX(I)*NORMA*UM
          RCMAX(I)=RCMAX(I)   !*RETE
-         M200(I)=M200(I)*UM
-         R200(I)=R200(I)     !*RETE
-
-         IF (SALIDA.EQ.1) THEN
-          NCAPAS(I)=J
-          IF (J.EQ.KONTA2) THEN
-           RSHELL=DISTA(J)
-          ELSE
-           RSHELL=DISTA(J+1)
-          END IF
-         END IF
 
          IF (SALIDA.NE.1.AND.KONTA2.NE.0) THEN   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           BAS=0.0
