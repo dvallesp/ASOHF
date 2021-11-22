@@ -145,9 +145,9 @@
        SUBROUTINE HALOFIND_PARTICLES(NL,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
      &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,VCM2,IPLIP,
      &      VX,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
-     &      R200C,R500C,R2500C,R200M,R500M,R2500M,DMPCLUS,LEVHAL,
-     &      EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,ORIPA2,
-     &      CONTRASTEC,OMEGAZ,UM,UV,F2)
+     &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
+     &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
+     &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,F2)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -169,6 +169,7 @@
        REAL*4 M200M(NMAXNCLUS),R200M(NMAXNCLUS)
        REAL*4 M500M(NMAXNCLUS),R500M(NMAXNCLUS)
        REAL*4 M2500M(NMAXNCLUS),R2500M(NMAXNCLUS)
+       REAL*4 MSUB(NMAXNCLUS),RSUB(NMAXNCLUS)
        INTEGER DMPCLUS(NMAXNCLUS),LEVHAL(MAXNCLUS)
        REAL*4 EIGENVAL(3,NMAXNCLUS)
        INTEGER N_DM
@@ -192,7 +193,7 @@
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,KONTA3,NSHELL_2,KONTA2PREV
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,IS_SUB,COUNT_1,COUNT_2
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
-       INTEGER FLAGVIR
+       INTEGER FLAGVIR,JMINPROF
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
@@ -200,7 +201,8 @@
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS
        REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
        REAL INERTIA(3,3),BASEIGENVAL(3),AADMX(3),RADII_ITER(7)
-       REAL DENSITOT(0:PARTIRED/10),RADIAL(0:PARTIRED/10)
+       REAL DENSITOT(0:1000),RADIAL(0:1000),DENSR(0:1000)
+       REAL LOGDERIV(0:1000)
        REAL DISTA(0:PARTIRED)
 
        PI=DACOS(-1.D0)
@@ -224,7 +226,7 @@
 
        WRITE(*,*) 'Max num. of part. in a halo=',
      &            MAXVAL(DMPCLUS(1:NCLUS))
-       KONTA1=1000000
+       KONTA1=100000000
        DO I=1,NCLUS
         IF (REALCLUS(I).NE.0) KONTA1=MIN(KONTA1,DMPCLUS(I))
        END DO
@@ -243,7 +245,7 @@
 !$OMP+           CONCENTRA,ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
 !$OMP+           NUMPARTBAS,RADIO,MASA,F2,VMAXCLUS,N_DM,NORMA,R200M,
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
-!$OMP+           M200C,M500C,M2500C),
+!$OMP+           M200C,M500C,M2500C,RSUB,MSUB),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -252,7 +254,7 @@
 !$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL,BASX,
 !$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,IS_SUB,COUNT_1,
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
-!$OMP+           FLAG2500C,FLAG2500M,FLAGVIR),
+!$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,JMINPROF,DENSR,LOGDERIV),
 !$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
 *****************************
        DO I=1,NCLUS
@@ -288,7 +290,6 @@
 *       RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
 *********************************************************************
 
-        RADII_ITER=(/2.0,1.8,1.6,1.4,1.2,1.1,1.0/)
         CMX=CLUSRX(I)
         CMY=CLUSRY(I)
         CMZ=CLUSRZ(I)
@@ -296,8 +297,10 @@
         IS_SUB=REALCLUS(I)
         IF (IS_SUB.EQ.-1) THEN
          IS_SUB=0
+         RADII_ITER=(/2.0,1.8,1.6,1.4,1.2,1.1,1.0/)
         ELSE IF (IS_SUB.GT.0) THEN
          IS_SUB=1
+         RADII_ITER=(/1.5,1.42,1.34,1.26,1.18,1.1,1.0/)
         END IF
 
 *       First iteration
@@ -483,7 +486,7 @@ c        write(*,*) '--'
 *      DENSITY PROFILE
 **************************************************************
          REF_MIN=DISTA(1)
-         REF_MAX=DISTA(KONTA2)
+         REF_MAX=DISTA(KONTA2) ! DISTANCE TO THE FURTHERST BOUND PARTICLE
          JJ=0
          DENSITOT=0.0
          RADIAL=0.0
@@ -503,7 +506,7 @@ c        write(*,*) '--'
          FLAG2500M=0
          FLAGVIR=0
 
-         FAC=MAX(100,INT(0.02*KONTA2))
+         FAC=MAX(100,INT(0.05*KONTA2))
          KONTA3=INT(REAL(KONTA2)/FAC)*FAC
          NSHELL_2=0
          DO J=1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
@@ -592,83 +595,106 @@ c        write(*,*) '--'
           ! profile
           IF (MOD(J,FAC).EQ.0) THEN
            NSHELL_2=NSHELL_2+1
-           DENSITOT(NSHELL_2)=BAS
+           DENSITOT(NSHELL_2)=NORMA*BAS*UM
            RADIAL(NSHELL_2)=DISTA(J)
           END IF
 
           IF (SALIDA.EQ.1.AND.FLAG200M.EQ.1) EXIT
          END DO ! J=1,KONTA2
 
-         WRITE(*,*) 'HALO I=',I
-         WRITE(*,*) R2500C(I),R500C(I),R200C(I),R2500M(I),R500M(I),
-     &              R200M(I),RADIO(I)
-         WRITE(*,*) M2500C(I),M500C(I),M200C(I),M2500M(I),M500M(I),
-     &              M200M(I),MASA(I)
+         !WRITE(*,*) RADIAL(1:NSHELL_2)
+         !WRITE(*,*) DENSITOT(1:NSHELL_2)
 
-         VCMAX(I)=VCMAX(I)*NORMA*CGR/RETE
-         VCMAX(I)=SQRT(VCMAX(I))*UV
+         IF (MOD(J,FAC).NE.0) THEN
+          NSHELL_2=NSHELL_2+1
+          DENSITOT(NSHELL_2)=NORMA*BAS*UM
+          RADIAL(NSHELL_2)=DISTA(J)
+         END IF
+
+         WRITE(*,*) 'HALO I,KONTA2,NSHELL_2,KK_ENTERO=',
+     &               I,KONTA2,NSHELL_2,KK_ENTERO
+C         WRITE(*,*) CLUSRX(I),CLUSRY(I),CLUSRZ(I)
+C         WRITE(*,*) R2500C(I),R500C(I),R200C(I),R2500M(I),R500M(I),
+C     &              R200M(I),RADIO(I)
+C         WRITE(*,*) M2500C(I),M500C(I),M200C(I),M2500M(I),M500M(I),
+C     &              M200M(I),MASA(I)
+
+         BAS=VCMAX(I)*NORMA*CGR/RETE
+         VCMAX(I)=SQRT(BAS)*UV
          MCMAX(I)=MCMAX(I)*NORMA*UM
          RCMAX(I)=RCMAX(I)   !*RETE
 
-         IF (SALIDA.NE.1.AND.KONTA2.NE.0) THEN   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-          BAS=0.0
-          FAC=INT(0.1*KONTA2)
-          KONTA3=INT(REAL(KONTA2)/FAC)*FAC
-          DO J=1,KONTA3
-           BAS=BAS+(MASAP(LIP(J))/NORMA)
-           IF (MOD(J,FAC).EQ.0) THEN
-            JJ=JJ+1
-            DENSITOT(JJ)=BAS
-            RADIAL(JJ)=DISTA(J)
-           END IF
-          END DO
-          DO J=KONTA3+1,KONTA2
-           BAS=BAS+(MASAP(LIP(J))/NORMA)
-          END DO
-          JJ=JJ+1
-          DENSITOT(JJ)=BAS
-          RADIAL(JJ)=DISTA(KONTA2)
+         IF (KK_ENTERO.EQ.-1.AND.SALIDA.NE.1) THEN
+          WRITE(*,*) 'PROBLEM WITH HALO',I
+         END IF
 
-*         hasta aqui masa acumulada en bins de 10 particulas
-          NSHELL_2=JJ
-          write(*,*) 'nshell2=',nshell_2
+         IF (KK_ENTERO.GT.0) THEN
+         ! If the virial threshold has not been achieved, or if the halo
+         ! is substructure
+          JMINPROF=5
+          RADIAL(0)=0.0
+          DENSITOT(0)=0.0
+          IF (NSHELL_2.GE.JMINPROF) THEN
+           DO J=1,NSHELL_2
+            !BAS=0.5*(RADIAL(J)+RADIAL(J-1))  ! mean radius
+            !DENSA=(DENSITOT(J)-DENSITOT(J-1))/(RADIAL(J)-RADIAL(J-1))
+            !DENSR(J)=DENSA/BAS/BAS ! proportional to rho(r)
+            BAS=DENSITOT(J)-DENSITOT(J-1)
+            DENSR(J)=BAS/(4.0*PI/3.0*(RADIAL(J)**3-RADIAL(J-1)**3))
+           END DO            !!!!!!!!!!!!!!!
+           DO J=3,NSHELL_2-2
+            !BAS= (RADIAL(J+1)+RADIAL(J)) / (RADIAL(J)+RADIAL(J-1))
+            !LOGDERIV(J)=LOG(DENSR(J+1)/DENSR(J)) / LOG(BAS)
+            BAS=(LOG(DENSR(J-2))-8.0*LOG(DENSR(J-1))+
+     &           8.0*LOG(DENSR(J+1))-LOG(DENSR(J+2))) /
+     &           (12.0)
+            BAS1=(LOG(RADIAL(J-2))-8.0*LOG(RADIAL(J-1))+
+     &            8.0*LOG(RADIAL(J+1))-LOG(RADIAL(J+2))) /
+     &            (12.0)
+            LOGDERIV(J)=BAS/BAS1
+           END DO
+           DO J=2,NSHELL_2-1,NSHELL_2-3
+            BAS=(LOG(DENSR(J+1)))-(LOG(DENSR(J-1)))
+            BAS1=(LOG(RADIAL(J+1)))-(LOG(RADIAL(J-1)))
+            LOGDERIV(J)=BAS/BAS1
+           END DO
+           J=NSHELL_2
+           BAS=(LOG(DENSR(J)))-(LOG(DENSR(J-1)))
+           BAS1=(LOG(RADIAL(J)))-(LOG(RADIAL(J-1)))
+           LOGDERIV(J)=BAS/BAS1
+           !WRITE(*,*) 'DENSITY PROFILE'
+           !DO J=JMINPROF,NSHELL_2
+           ! WRITE(*,*) J,RADIAL(J),DENSR(J),LOGDERIV(J)
+           !END DO
 
-          IF (NSHELL_2.GT.4) THEN
-           DO J=INT(0.8*NSHELL_2),NSHELL_2       !!!!! DEJO 80 por cient de BINS DE SEGURIDA
-            BAS=0.5*(RADIAL(J)+RADIAL(J-1))  !radio medio
-            DENSA=(DENSITOT(J)-DENSITOT(J-1))/(RADIAL(J)-RADIAL(J-1))
-            DENSA=DENSA/BAS/BAS
-
-            BAS=0.5*(RADIAL(J+1)+RADIAL(J))  !radio medio
-            DENSB=(DENSITOT(J+1)-DENSITOT(J))/(RADIAL(J+1)-RADIAL(J))
-            DENSB=DENSB/BAS/BAS
-
-            BAS=0.5*(RADIAL(J+2)+RADIAL(J+1))  !radio medio
-            DENSC=(DENSITOT(J+2)-DENSITOT(J+1))/
-     &                                       (RADIAL(J+2)-RADIAL(J+1))
-            DENSC=DENSC/BAS/BAS
-
-            IF (DENSC.GT.DENSB.AND.DENSB.GT.DENSA) THEN
+           DO J=JMINPROF,NSHELL_2-1
+            IF (LOGDERIV(J).GE.0.0) THEN
              SALIDA=2
              EXIT
             END IF
-           END DO            !!!!!!!!!!!!!!!
+           END DO
           END IF ! NSHELL_2
 
-*      SALIDA POR CAMBIO DE PENDIENTE DE LA DENSIDAD
+*         CUT BY CHANGE OF DENSITY GRADIENT SIGN
           IF (SALIDA.EQ.2) THEN
            RSHELL=RADIAL(J+1)
            NCAPAS(I)=J
+           RSUB(I)=RADIAL(J+1)
+           MSUB(I)=DENSITOT(J+1)
+           WRITE(*,*) 'SALIDA=2',rshell,msub(i),j
+          ELSE
+           J=INT(0.95*KONTA2)
+           RSUB(I)=DISTA(J)
+           RSHELL=DISTA(J)
+           ! APPROXIMATE THE MASS BY INTERPOLATION
+           DO JJ=1,NSHELL_2
+            IF (RADIAL(JJ).GT.DISTA(J)) EXIT
+           END DO
+           MSUB(I)=DENSITOT(JJ-1) + (DENSITOT(JJ)-DENSITOT(JJ-1))
+     &              *(DISTA(J)-RADIAL(JJ-1)) / (RADIAL(JJ)-RADIAL(JJ-1))
+           WRITE(*,*) 'SALIDA=0',RSUB(I),msub(i),j
           END IF
-
-         END IF       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-*      SIN CORTE
-         IF (SALIDA.EQ.0.AND.KONTA2.NE.0) THEN
-          J=J-1
-          NCAPAS(I)=J
-          RSHELL=REF_MAX
-         END IF
+         END IF  ! (KK_ENTERO.GT.0)
 
 
 *      YA CORTADO   !---------------------
@@ -677,31 +703,37 @@ c        write(*,*) '--'
 ***********************************************************
 *      GUARDAMOS LAS PARTICULAS LIGADAS  DEL HALO I
 ***********************************************************
-
+         KONTA=KONTA2
          KONTA2=0
          BASMAS=0.0
          DMPCLUS(I)=0
+
+         CMX=CLUSRX(I)
+         CMY=CLUSRY(I)
+         CMZ=CLUSRZ(I)
+         VCMX=VX(I)
+         VCMY=VY(I)
+         VCMZ=VZ(I)
+
+         DIS=1000000.0
+         VMAXCLUS(I)=-1.0
          DO J=1,KONTA
           IF (CONTADM(J).EQ.0) THEN
-
-           AADMX(1)=RXPA(LIP(J))-CLUSRX(I)
-           AADMX(2)=RYPA(LIP(J))-CLUSRY(I)
-           AADMX(3)=RZPA(LIP(J))-CLUSRZ(I)
+           AADMX(1)=RXPA(LIP(J))-CMX
+           AADMX(2)=RYPA(LIP(J))-CMY
+           AADMX(3)=RZPA(LIP(J))-CMZ
            AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
 
 CV2
            VVV2=0.0
-           VVV2=(U2DM(LIP(J))-VX(I))**2
-     &         +(U3DM(LIP(J))-VY(I))**2
-     &         +(U4DM(LIP(J))-VZ(I))**2
+           VVV2=(U2DM(LIP(J))-VCMX)**2
+     &         +(U3DM(LIP(J))-VCMY)**2
+     &         +(U4DM(LIP(J))-VCMZ)**2
 CV2
 
            IF (AADM.LE.RSHELL) THEN
             KONTA2=KONTA2+1
             BASMAS=BASMAS+(MASAP(LIP(J))/NORMA)
-
-*********anyadido susana
-            DMPCLUS(I)=DMPCLUS(I)+1
 
             ANGULARM(I)=ANGULARM(I)+MASAP(LIP(J))*AADM*SQRT(VVV2)
 
@@ -738,13 +770,7 @@ CV2
           END IF     !CONTADM
          END DO      !KONTA
 
-
-*       CONTROL DE SEGURIDAD
-         IF(DMPCLUS(I).NE.KONTA2) THEN
-          WRITE(*,*) 'WARNING!', DMPCLUS(I),KONTA2
-          STOP
-         ENDIF
-
+         DMPCLUS(I)=KONTA2
 
 *******************************************************
 *      SAVING MASSES, RADII, PROFILES AND SHAPES...
@@ -756,13 +782,12 @@ CV2
 
          INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/DMPCLUS(I)
          BASEIGENVAL(1:3)=0.0
-
          IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
           CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
           CALL SORT(BASEIGENVAL,DIMEN,DIMEN)
          END IF
 
-         DO II=1, DIMEN
+         DO II=1,DIMEN
           EIGENVAL(II,I)=BASEIGENVAL(II)
           EIGENVAL(II,I)=SQRT(EIGENVAL(II,I))
          END DO
