@@ -1056,13 +1056,13 @@ C        WRITE(*,*) LVAL(I,IPARE)
       END
 
 ************************************************************************
-      SUBROUTINE INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_MESH,NPATCH,PARE,
-     &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
+      SUBROUTINE INTERPOLATE_DENSITY_TSC(NX,NY,NZ,NL_MESH,NPATCH,
+     &           PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
-     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
+     &           N_PARTICLES,N_DM,LADO0,U1,U11)
 ************************************************************************
 *     Interpolates density field (TSC)
-*     Old (deprecated now)
+*     Used only for solving Poisson equation
 ************************************************************************
 
       IMPLICIT NONE
@@ -1070,15 +1070,18 @@ C        WRITE(*,*) LVAL(I,IPARE)
       INCLUDE 'input_files/asohf_parameters.dat'
 
 *     function parameters
-      INTEGER ITER,NX,NY,NZ,NL_MESH,N_PARTICLES,N_DM,N_GAS
+      INTEGER ITER,NX,NY,NZ,NL_MESH,N_PARTICLES,N_DM
       INTEGER NPATCH(0:NLEVELS),PARE(NPALEV)
       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
       INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
      &       MASAP(PARTIRED)
-      REAL LADO0,T,ZETA
-      INTEGER NPART_ESP(0:N_ESP-1)
+      REAL LADO0
+!     Not the COMMON one !!!!!!!!
+      REAL*4 U1(NMAX,NMAY,NMAZ)
+      REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
+!     !!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 *     COMMON VARIABLES
       REAL DX,DY,DZ
@@ -1090,15 +1093,8 @@ C        WRITE(*,*) LVAL(I,IPARE)
       REAL*4 RETE,HTE,ROTE
       COMMON /BACK/ RETE,HTE,ROTE
 
-      REAL*4 U1(NMAX,NMAY,NMAZ)
-      REAL*4 U1G(NMAX,NMAY,NMAZ)
-      REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
-      REAL*4 U11G(NAMRX,NAMRY,NAMRZ,NPALEV)
-      COMMON /VARIA/ U1,U11,U1G,U11G
-
 *     LOCAL VARIABLES
-      INTEGER PLEV(PARTIRED) ! This variable has now a different content:
-      ! Now it will store the maximum mesh level of a particle.
+      INTEGER PLEV(PARTIRED) ! Maximum mesh level of a particle.
       REAL XL,YL,ZL,DXPA,DYPA,DZPA,XR,YR,ZR,XP,YP,ZP,BAS,DENBAS
       INTEGER I,IX,JY,KZ,II,JJ,KK,N1,N2,N3,I1,I2,J1,J2,K1,K2,IR,IPATCH
       INTEGER BUF,LOW1,LOW2,NBAS,LOWP1,LOWP2
