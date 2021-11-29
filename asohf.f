@@ -438,14 +438,18 @@
 
        NMAXNCLUSBAS=NMAXNCLUS
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,CONCENTRA,
-!$OMP+                   ANGULARM,CLUSRX,CLUSRY,CLUSRZ,
-!$OMP+                   VCM2,VMAXCLUS,VX,VY,VZ),PRIVATE(I)
+!$OMP+                   ANGULARM,CLUSRX,CLUSRY,CLUSRZ,VCM2,VMAXCLUS,VX,
+!$OMP+                   VY,VZ,CLUSRXCM,CLUSRYCM,CLUSRZCM),
+!$OMP+            PRIVATE(I)
        DO I=1,NMAXNCLUSBAS
         CONCENTRA(I)=0.0
         ANGULARM(I)=0.0
         CLUSRX(I)=0.0
         CLUSRY(I)=0.0
         CLUSRZ(I)=0.0
+        CLUSRXCM(I)=0.0
+        CLUSRYCM(I)=0.0
+        CLUSRZCM(I)=0.0
         VCM2(I)=0.0
         VMAXCLUS(I)=0.0
 
@@ -708,7 +712,7 @@ c       END DO
 *            we work within each level independentely
 **************************************************************
 
-       ! CONTA2: overlaps at level IR; (=1, keep), (=0, overlapped)
+       ! SOLAP: overlaps at level IR; (=1, keep), (=0, overlapped)
        DO IR=1,NL
         CALL VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
      &                 PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
@@ -719,6 +723,10 @@ c       END DO
        CALL COMPUTE_CR0AMR(NL,NX,NY,NZ,NPATCH,PARE,PATCHNX,PATCHNY,
      &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &                     PATCHRY,PATCHRZ,CR0AMR,CR0AMR11,LADO0)
+
+
+       CALL RENORM_DENSITY(NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
+     &                     CR0AMR,CR0AMR11,SOLAP,U1,U11,LADO0,RODO,RE0)
 c
        OPEN(99,FILE='output_files/density_asohf',STATUS='UNKNOWN',
      &      FORM='UNFORMATTED')
@@ -733,7 +741,6 @@ c
           write(99) (((solap(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
          end do
        CLOSE(99)
-       stop
 *********************************************************************
 
 c       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,SOLAP,
@@ -758,7 +765,7 @@ c     &                     U11)
      &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                    NHALLEV,BOUND,CONTRASTEC,RODO,
      &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS,
-     &                    VOL_SOLAP_LOW)
+     &                    VOL_SOLAP_LOW,CLUSRXCM,CLUSRYCM,CLUSRZCM)
 
        open(55, file='./output_files/haloesgrids.res', status='unknown')
        do i=1,nclus
@@ -766,6 +773,7 @@ c     &                     U11)
      &              levhal(i), realclus(i), patchclus(i)
        end do
        close(55)
+       STOP
 
 *******************************************************
 *      SORTING OUT ALL THE CLUSTERS

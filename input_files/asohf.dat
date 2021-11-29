@@ -44,7 +44,7 @@ Variable for mesh halo finding: 1(gas), 2(dm), 0(gas+dm) ------------->
 Max. reach around halos (Mpc), excluded cells in boundaries ---------->
 8.0, 1
 Minimum fraction of shared volume to merge (in grid search) ---------->
-0.4
+0.6
 FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
 0
 ***********************************************************************
