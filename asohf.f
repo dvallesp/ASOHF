@@ -773,7 +773,6 @@ c     &                     U11)
      &              levhal(i), realclus(i), patchclus(i)
        end do
        close(55)
-       STOP
 
 *******************************************************
 *      SORTING OUT ALL THE CLUSTERS
@@ -861,6 +860,8 @@ c     &                     U11)
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
      &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,F2)
+
+       stop
 
 
 *************************************************

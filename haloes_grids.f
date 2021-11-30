@@ -555,9 +555,9 @@ C     &                            (CLUSRZ(NCLUS)-CLUSRZCM(NCLUS))**2)
           N1=PATCHNX(I)
           N2=PATCHNY(I)
           N3=PATCHNZ(I)
-          DO KZ=1,N1
+          DO KZ=1,N3
           DO JY=1,N2
-          DO IX=1,N3
+          DO IX=1,N1
            CONTA1(IX,JY,KZ,I)=1
           END DO
           END DO
@@ -595,9 +595,9 @@ C     &                            (CLUSRZ(NCLUS)-CLUSRZCM(NCLUS))**2)
      &         Y1.LE.Y4.AND.Y3.LE.Y2.AND.
      &         Z1.LE.Z4.AND.Z3.LE.Z2) THEN
 c           WRITE(*,*) BASX,BASY,BASZ,BAS
-            DO KZ=1,N1
+            DO KZ=1,N3
             DO JY=1,N2
-            DO IX=1,N3
+            DO IX=1,N1
              AA=SQRT((RX(IX,I)-BASX)**2 +
      &               (RY(JY,I)-BASY)**2 +
      &               (RZ(KZ,I)-BASZ)**2)
@@ -632,7 +632,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
          ESP=0.2*DXPA
          ESP_LOG=1.05
          BORAMR=1
-         BOUNDIR=BOUND/1.75**IR
+         BOUNDIR=MAX(BOUND/1.5**IR,2.0)
 
 *        estimation to allocate
          KK_ENTERO=0
@@ -793,7 +793,7 @@ c           END DO
            BASVOL=0.0     !TOTAL VOLUME OF THE CLUSTER (sphere)
 
            R_INT=0.0
-           R_EXT=0.8*DXPA
+           R_EXT=0.87*DXPA ! major semidiagonal of a cube (max distance to a cell)
 
 *          increase the radius until density falls below the virial value
            DELTA=10.0*CONTRASTEC*ROTE ! this is to ensure we enter the loop
@@ -810,7 +810,8 @@ c           END DO
               R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
              ELSE
               WRITE(*,*) 'WARNING: growing not converged', r_int, r_ext,
-     &                    boundir,iter_grow,delta/rote,kk_entero
+     &                    boundir,iter_grow,delta/rote,kk_entero,
+     &                    xcen,ycen,zcen
               STOP
              END IF
             END IF
@@ -966,6 +967,7 @@ c     &                RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
          IF (IR.LT.NL) THEN
           LOW1=SUM(NPATCH(0:IR))+1
           LOW2=SUM(NPATCH(0:IR+1))
+          write(*,*) 'masking halos for',ir,nl,low1,low2
 
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA1,LOW1,
 !$OMP+                   LOW2),
@@ -975,9 +977,9 @@ c     &                RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
            N1=PATCHNX(I)
            N2=PATCHNY(I)
            N3=PATCHNZ(I)
-           DO KZ=1,N1
+           DO KZ=1,N3
            DO JY=1,N2
-           DO IX=1,N3
+           DO IX=1,N1
             CONTA1(IX,JY,KZ,I)=1
            END DO
            END DO
@@ -1020,9 +1022,9 @@ c     &                RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
      &          Y1.LE.Y4.AND.Y3.LE.Y2.AND.
      &          Z1.LE.Z4.AND.Z3.LE.Z2) THEN
 c           WRITE(*,*) BASX,BASY,BASZ,BAS
-             DO KZ=1,N1
+             DO KZ=1,N3
              DO JY=1,N2
-             DO IX=1,N3
+             DO IX=1,N1
               AA=SQRT((RX(IX,I)-BASX)**2 +
      &                (RY(JY,I)-BASY)**2 +
      &                (RZ(KZ,I)-BASZ)**2)
