@@ -345,7 +345,7 @@ C     &              IX,JY,KZ
 *      Local variables
        INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,KONTA3,NSHELL_2,KONTA2PREV
-       INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2
+       INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2,JJCORE
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
        INTEGER FLAGVIR,JMINPROF
        INTEGER NCAPAS(NMAXNCLUS)
@@ -409,7 +409,7 @@ C     &              IX,JY,KZ
 !$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,COUNT_1,
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,JMINPROF,DENSR,LOGDERIV,
-!$OMP+           CX,CY,CZ),
+!$OMP+           CX,CY,CZ,JJCORE),
 !$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
 *****************************
        DO I=1,NCLUS
@@ -569,7 +569,7 @@ C     &              IX,JY,KZ
         count_2=count_2-konta2
         write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
      &             '. Pruned:',count_2,'. Iters:', FAC
-        write(*,*) '--'
+c        write(*,*) '--'
 
 ********************************************************************
 *      DISCARD POOR HALOES
@@ -604,7 +604,11 @@ C     &              IX,JY,KZ
          FAC=MAX(100,INT(0.05*KONTA2))
          KONTA3=INT(REAL(KONTA2)/FAC)*FAC
          NSHELL_2=0
-         DO J=1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
+         JJCORE=INT(MAX(10.0,KONTA2/100.0))
+         DO J=1,JJCORE
+          BAS=BAS+(MASAP(LIP(J))/NORMA)
+         END DO
+         DO J=JJCORE+1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
           VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
           BAS=BAS+(MASAP(LIP(J))/NORMA)
 
@@ -623,6 +627,10 @@ C     &              IX,JY,KZ
             M2500C(I)=DELTA2*VOL*ROTE*UM
             R2500C(I)=DISTA(J)
             FLAG2500C=1
+            IF (J.EQ.JJCORE+1) THEN
+             M2500C(I)=-1.0
+             R2500C(I)=-1.0
+            END IF
            END IF
           END IF
 
@@ -631,6 +639,10 @@ C     &              IX,JY,KZ
             M500C(I)=DELTA2*VOL*ROTE*UM
             R500C(I)=DISTA(J)
             FLAG500C=1
+            IF (J.EQ.JJCORE+1) THEN
+             M500C(I)=-1.0
+             R500C(I)=-1.0
+            END IF
            END IF
           END IF
 
@@ -639,6 +651,10 @@ C     &              IX,JY,KZ
             M200C(I)=DELTA2*VOL*ROTE*UM
             R200C(I)=DISTA(J)
             FLAG200C=1
+            IF (J.EQ.JJCORE+1) THEN
+             M200C(I)=-1.0
+             R200C(I)=-1.0
+            END IF
            END IF
           END IF
 
@@ -647,6 +663,10 @@ C     &              IX,JY,KZ
             M2500M(I)=DELTA2*VOL*ROTE*UM
             R2500M(I)=DISTA(J)
             FLAG2500M=1
+            IF (J.EQ.JJCORE+1) THEN
+             M2500M(I)=-1.0
+             R2500M(I)=-1.0
+            END IF
            END IF
           END IF
 
@@ -655,6 +675,10 @@ C     &              IX,JY,KZ
             M500M(I)=DELTA2*VOL*ROTE*UM
             R500M(I)=DISTA(J)
             FLAG500M=1
+            IF (J.EQ.JJCORE+1) THEN
+             M500M(I)=-1.0
+             R500M(I)=-1.0
+            END IF
            END IF
           END IF
 
@@ -663,6 +687,10 @@ C     &              IX,JY,KZ
             M200M(I)=DELTA2*VOL*ROTE*UM
             R200M(I)=DISTA(J)
             FLAG200M=1
+            IF (J.EQ.JJCORE+1) THEN
+             M200M(I)=-1.0
+             R200M(I)=-1.0
+            END IF
            END IF
           END IF
 
@@ -708,11 +736,12 @@ C     &              IX,JY,KZ
 
          WRITE(*,*) 'HALO I,KONTA2,NSHELL_2,KK_ENTERO=',
      &               I,KONTA2,NSHELL_2,KK_ENTERO
-C         WRITE(*,*) CLUSRX(I),CLUSRY(I),CLUSRZ(I)
-C         WRITE(*,*) R2500C(I),R500C(I),R200C(I),R2500M(I),R500M(I),
-C     &              R200M(I),RADIO(I)
-C         WRITE(*,*) M2500C(I),M500C(I),M200C(I),M2500M(I),M500M(I),
-C     &              M200M(I),MASA(I)
+         WRITE(*,*) CLUSRX(I),CLUSRY(I),CLUSRZ(I)
+         WRITE(*,*) R2500C(I),R500C(I),R200C(I),R2500M(I),R500M(I),
+     &              R200M(I),RADIO(I)
+         WRITE(*,*) M2500C(I),M500C(I),M200C(I),M2500M(I),M500M(I),
+     &              M200M(I),MASA(I)
+         WRITE(*,*) '---'
 
          BAS=VCMAX(I)*NORMA*CGR/RETE
          VCMAX(I)=SQRT(BAS)*UV
@@ -723,78 +752,6 @@ C     &              M200M(I),MASA(I)
           WRITE(*,*) 'PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
      &               NSHELL_2,RADIAL(NSHELL_2)
          END IF
-
-         IF (KK_ENTERO.GT.0) THEN
-         ! If the virial threshold has not been achieved, or if the halo
-         ! is substructure
-          JMINPROF=5
-          RADIAL(0)=0.0
-          DENSITOT(0)=0.0
-          IF (NSHELL_2.GE.JMINPROF) THEN
-           DO J=1,NSHELL_2
-            !BAS=0.5*(RADIAL(J)+RADIAL(J-1))  ! mean radius
-            !DENSA=(DENSITOT(J)-DENSITOT(J-1))/(RADIAL(J)-RADIAL(J-1))
-            !DENSR(J)=DENSA/BAS/BAS ! proportional to rho(r)
-            BAS=DENSITOT(J)-DENSITOT(J-1)
-            DENSR(J)=BAS/(4.0*PI/3.0*(RADIAL(J)**3-RADIAL(J-1)**3))
-           END DO            !!!!!!!!!!!!!!!
-           DO J=3,NSHELL_2-2
-            !BAS= (RADIAL(J+1)+RADIAL(J)) / (RADIAL(J)+RADIAL(J-1))
-            !LOGDERIV(J)=LOG(DENSR(J+1)/DENSR(J)) / LOG(BAS)
-            BAS=(LOG(DENSR(J-2))-8.0*LOG(DENSR(J-1))+
-     &           8.0*LOG(DENSR(J+1))-LOG(DENSR(J+2))) /
-     &           (12.0)
-            BAS1=(LOG(RADIAL(J-2))-8.0*LOG(RADIAL(J-1))+
-     &            8.0*LOG(RADIAL(J+1))-LOG(RADIAL(J+2))) /
-     &            (12.0)
-            LOGDERIV(J)=BAS/BAS1
-           END DO
-           DO J=2,NSHELL_2-1,NSHELL_2-3
-            BAS=(LOG(DENSR(J+1)))-(LOG(DENSR(J-1)))
-            BAS1=(LOG(RADIAL(J+1)))-(LOG(RADIAL(J-1)))
-            LOGDERIV(J)=BAS/BAS1
-           END DO
-           J=NSHELL_2
-           BAS=(LOG(DENSR(J)))-(LOG(DENSR(J-1)))
-           BAS1=(LOG(RADIAL(J)))-(LOG(RADIAL(J-1)))
-           LOGDERIV(J)=BAS/BAS1
-           !WRITE(*,*) 'DENSITY PROFILE'
-           !DO J=JMINPROF,NSHELL_2
-           ! WRITE(*,*) J,RADIAL(J),DENSR(J),LOGDERIV(J)
-           !END DO
-
-           DO J=JMINPROF,NSHELL_2-1
-            IF (LOGDERIV(J).GE.0.0) THEN
-             SALIDA=2
-             EXIT
-            END IF
-           END DO
-          END IF ! NSHELL_2
-
-*         CUT BY CHANGE OF DENSITY GRADIENT SIGN
-          IF (SALIDA.EQ.2) THEN
-           RSHELL=RADIAL(J+1)
-           NCAPAS(I)=J
-           RSUB(I)=RADIAL(J+1)
-           MSUB(I)=DENSITOT(J+1)
-           WRITE(*,*) 'SALIDA=2',rshell,msub(i),j
-          ELSE
-           J=INT(0.95*KONTA2)
-           RSUB(I)=DISTA(J)
-           RSHELL=DISTA(J)
-           ! APPROXIMATE THE MASS BY INTERPOLATION
-           DO JJ=1,NSHELL_2
-            IF (RADIAL(JJ).GT.DISTA(J)) EXIT
-           END DO
-           MSUB(I)=DENSITOT(JJ-1) + (DENSITOT(JJ)-DENSITOT(JJ-1))
-     &              *(DISTA(J)-RADIAL(JJ-1)) / (RADIAL(JJ)-RADIAL(JJ-1))
-           WRITE(*,*) 'SALIDA=0',RSUB(I),msub(i),j
-          END IF
-         END IF  ! (KK_ENTERO.GT.0)
-
-
-*      YA CORTADO   !---------------------
-
 
 ***********************************************************
 *      GUARDAMOS LAS PARTICULAS LIGADAS  DEL HALO I
