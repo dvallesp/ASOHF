@@ -778,29 +778,8 @@ c     &                     U11)
 *      SORTING OUT ALL THE CLUSTERS
 *******************************************************
 
-       NHALLEV(:)=0
-       J=0
-       ALLOCATE(RESORT(NCLUS))
-       DO I=1,NCLUS
-        IF (REALCLUS(I).EQ.0) CYCLE
-        J=J+1
-        RESORT(I)=J
-        CLUSRX(J)=CLUSRX(I)
-        CLUSRY(J)=CLUSRY(I)
-        CLUSRZ(J)=CLUSRZ(I)
-        RADIO(J)=RADIO(I)
-        MASA(J)=MASA(I)*UM ! From now on, in Solar Masses
-        LEVHAL(J)=LEVHAL(I)
-        PATCHCLUS(J)=PATCHCLUS(I)
-        IF (REALCLUS(I).LE.0) THEN
-         REALCLUS(J)=REALCLUS(I)
-        ELSE
-         REALCLUS(J)=RESORT(REALCLUS(I))
-        END IF
-        NHALLEV(LEVHAL(J))=NHALLEV(LEVHAL(J))+1
-       END DO
-       NCLUS=J
-       DEALLOCATE(RESORT)
+       CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
+     &                     RADIO,MASA,LEVHAL,PATCHCLUS)
 
        WRITE(*,*)'MASSES: MIN, MAX AND MEAN=', MINVAL(MASA(1:NCLUS)),
      &            MAXVAL(MASA(1:NCLUS)), SUM(MASA(1:NCLUS))/NCLUS
@@ -827,6 +806,8 @@ c     &                     U11)
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
      &                        DMPCLUS,1.0)
+       CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
+     &                     RADIO,MASA,LEVHAL,PATCHCLUS)
 
 *********************************************************
 *      CHECKING....
@@ -859,7 +840,8 @@ c     &                     U11)
      &      VX,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
-     &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,F2)
+     &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
+     &      CLUSRZCM)
 
        stop
 

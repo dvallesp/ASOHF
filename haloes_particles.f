@@ -1,4 +1,52 @@
 **********************************************************************
+       SUBROUTINE RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,
+     &                           CLUSRZ,RADIO,MASA,LEVHAL,PATCHCLUS)
+**********************************************************************
+*      Resorts the clusters, getting rid of REALCLUS=0 ones
+**********************************************************************
+        IMPLICIT NONE
+        INCLUDE 'input_files/asohf_parameters.dat'
+
+        INTEGER NCLUS
+        INTEGER NHALLEV(0:NLEVELS)
+        INTEGER REALCLUS(MAXNCLUS)
+        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+        REAL*4 MASA(MAXNCLUS), RADIO(MAXNCLUS)
+        INTEGER LEVHAL(MAXNCLUS),PATCHCLUS(MAXNCLUS)
+
+        INTEGER I,J
+        INTEGER,ALLOCATABLE::RESORT(:)
+
+        NHALLEV(:)=0
+        J=0
+        ALLOCATE(RESORT(NCLUS))
+        DO I=1,NCLUS
+         IF (REALCLUS(I).EQ.0) CYCLE
+         J=J+1
+         RESORT(I)=J
+         CLUSRX(J)=CLUSRX(I)
+         CLUSRY(J)=CLUSRY(I)
+         CLUSRZ(J)=CLUSRZ(I)
+         RADIO(J)=RADIO(I)
+         MASA(J)=MASA(I)
+         LEVHAL(J)=LEVHAL(I)
+         PATCHCLUS(J)=PATCHCLUS(I)
+         IF (REALCLUS(I).LE.0) THEN
+          REALCLUS(J)=REALCLUS(I)
+         ELSE
+          REALCLUS(J)=RESORT(REALCLUS(I))
+         END IF
+         NHALLEV(LEVHAL(J))=NHALLEV(LEVHAL(J))+1
+        END DO
+
+        NCLUS=J
+        DEALLOCATE(RESORT)
+
+        RETURN
+        END
+
+
+**********************************************************************
         SUBROUTINE HALOES_BORDER(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                           LADO0,HALBORDERS)
 **********************************************************************
@@ -140,6 +188,110 @@
         RETURN
         END
 
+**********************************************************************
+        SUBROUTINE RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,R,RXPA,RYPA,
+     &                                             RZPA,MASAP,N_DM)
+**********************************************************************
+*       Recenters density peak using particles
+**********************************************************************
+        IMPLICIT NONE
+        INCLUDE 'input_files/asohf_parameters.dat'
+
+        REAL CX,CY,CZ,R
+        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
+     &         MASAP(PARTIRED)
+        INTEGER N_DM
+
+        INTEGER LIP(PARTIRED),KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP
+        INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN
+        REAL RADIO,BAS,XL,YL,ZL,DDXX
+        REAL,ALLOCATABLE::DENS(:,:,:)
+
+        NUMPARTMIN=32 !4**3/2
+
+
+        FLAG_LARGER=1
+        RADIO=0.05*R
+        DO WHILE(FLAG_LARGER.EQ.1)
+         KONTA=0
+         DO I=1,N_DM
+          IF (CX-RADIO.LT.RXPA(I).AND.RXPA(I).LT.CX+RADIO.AND.
+     &        CY-RADIO.LT.RYPA(I).AND.RYPA(I).LT.CY+RADIO.AND.
+     &        CZ-RADIO.LT.RZPA(I).AND.RZPA(I).LT.CZ+RADIO) THEN
+           KONTA=KONTA+1
+           LIP(KONTA)=I
+          END IF
+         END DO
+         IF (KONTA.GT.NUMPARTMIN) THEN
+          FLAG_LARGER=0
+         ELSE
+          RADIO=RADIO*1.5
+         END IF
+        END DO
+
+        NN=4
+
+        ALLOCATE(DENS(NN,NN,NN))
+        DDXX=2.0*RADIO/FLOAT(NN)
+        XL=CX-RADIO
+        YL=CY-RADIO
+        ZL=CZ-RADIO
+        FLAG_ITER=1
+        DO WHILE (FLAG_ITER.EQ.1)
+         DO KZ=1,NN
+         DO JY=1,NN
+         DO IX=1,NN
+          DENS(IX,JY,KZ)=0.0
+         END DO
+         END DO
+         END DO
+
+         DO I=1,KONTA
+          IP=LIP(I)
+          IX=INT((RXPA(IP)-XL)/DDXX)+1
+          JY=INT((RYPA(IP)-YL)/DDXX)+1
+          KZ=INT((RZPA(IP)-ZL)/DDXX)+1
+          !IF (JY.EQ.0) WRITE(*,*) (RYPA(IP)-YL)/DDXX
+          DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(IP)
+         END DO
+
+         INMAX=MAXLOC(DENS)
+         IX=INMAX(1)
+         JY=INMAX(2)
+         KZ=INMAX(3)
+         CX=XL+(IX-0.5)*DDXX
+         CY=YL+(JY-0.5)*DDXX
+         CZ=ZL+(KZ-0.5)*DDXX
+         RADIO=RADIO/2.0
+         XL=CX-RADIO
+         YL=CY-RADIO
+         ZL=CZ-RADIO
+         DDXX=DDXX/2.0
+
+         KONTA2=0
+         DO I=1,KONTA
+          IP=LIP(I)
+          IF (CX-RADIO.LT.RXPA(IP).AND.RXPA(IP).LT.CX+RADIO.AND.
+     &        CY-RADIO.LT.RYPA(IP).AND.RYPA(IP).LT.CY+RADIO.AND.
+     &        CZ-RADIO.LT.RZPA(IP).AND.RZPA(IP).LT.CZ+RADIO) THEN
+           KONTA2=KONTA2+1
+           LIP(KONTA2)=IP
+          END IF
+         END DO
+
+         KONTA=KONTA2
+
+         IF (KONTA2.LT.NUMPARTMIN) FLAG_ITER=0
+
+C         WRITE(*,*) RADIO,KONTA2,CX,CY,CZ,DENS(IX,JY,KZ)/DDXX**3,
+C     &              IX,JY,KZ
+        END DO
+
+        DEALLOCATE(DENS)
+
+        RETURN
+        END
+
 
 **********************************************************************
        SUBROUTINE HALOFIND_PARTICLES(NL,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
@@ -147,7 +299,8 @@
      &      VX,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
-     &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,F2)
+     &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
+     &      CLUSRZCM)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -177,11 +330,12 @@
        REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
        REAL*4 MASAP(PARTIRED)
        INTEGER ORIPA2(PARTIRED)
-       REAL*4 CONTRASTEC,OMEGAZ,UM,UV,F2
+       REAL*4 CONTRASTEC,OMEGAZ,UM,UV,LADO0
+       REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),CLUSRZCM(MAXNCLUS)
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
-       REAL*4 UNTERCIO,CGR,CGR2,ZI,RODO,ROI,REI,LADO,LADO0
+       REAL*4 UNTERCIO,CGR,CGR2,ZI,RODO,ROI,REI
        COMMON /CONS/PI4ROD,REI,CGR,PI
        REAL*4 OMEGA0
 
@@ -191,13 +345,13 @@
 *      Local variables
        INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,KONTA3,NSHELL_2,KONTA2PREV
-       INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,IS_SUB,COUNT_1,COUNT_2
+       INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
        INTEGER FLAGVIR,JMINPROF
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
-       REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY
+       REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS
        REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
        REAL INERTIA(3,3),BASEIGENVAL(3),AADMX(3),RADII_ITER(7)
@@ -230,8 +384,7 @@
        DO I=1,NCLUS
         IF (REALCLUS(I).NE.0) KONTA1=MIN(KONTA1,DMPCLUS(I))
        END DO
-       WRITE(*,*) 'Min num. of part. in a halo=',
-     &            KONTA1
+       WRITE(*,*) 'Min num. of part. in a halo=',KONTA1
        WRITE(*,*) 'NCLUS=', NCLUS
 
        PABAS=PARTIRED_PLOT
@@ -243,18 +396,20 @@
 !$OMP+           U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
 !$OMP+           MCMAX,RCMAX,CONTRASTEC,OMEGAZ,CGR,UM,UV,DMPCLUS,
 !$OMP+           CONCENTRA,ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
-!$OMP+           NUMPARTBAS,RADIO,MASA,F2,VMAXCLUS,N_DM,NORMA,R200M,
+!$OMP+           NUMPARTBAS,RADIO,MASA,VMAXCLUS,N_DM,NORMA,R200M,
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
-!$OMP+           M200C,M500C,M2500C,RSUB,MSUB),
+!$OMP+           M200C,M500C,M2500C,RSUB,MSUB,MINOVERDENS,CLUSRXCM,
+!$OMP+           CLUSRYCM,CLUSRZCM),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
 !$OMP+           DISTA,FAC,CONTAERR,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,
 !$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
 !$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL,BASX,
-!$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,IS_SUB,COUNT_1,
+!$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,COUNT_1,
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
-!$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,JMINPROF,DENSR,LOGDERIV),
+!$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,JMINPROF,DENSR,LOGDERIV,
+!$OMP+           CX,CY,CZ),
 !$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
 *****************************
        DO I=1,NCLUS
@@ -275,6 +430,9 @@
         CMX=0.0
         CMY=0.0
         CMZ=0.0
+        CX=0.0
+        CY=0.0
+        CZ=0.0
         VCMX=0.0
         VCMY=0.0
         VCMZ=0.0
@@ -290,92 +448,47 @@
 *       RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
 *********************************************************************
 
-        CMX=CLUSRX(I)
-        CMY=CLUSRY(I)
-        CMZ=CLUSRZ(I)
+        CX=CLUSRX(I)
+        CY=CLUSRY(I)
+        CZ=CLUSRZ(I)
+        BAS=RADIO(I)
+        ! Find level used for recentering
+        CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
+     &                                       RZPA,MASAP,N_DM)
 
-        IS_SUB=REALCLUS(I)
-        IF (IS_SUB.EQ.-1) THEN
-         IS_SUB=0
-         RADII_ITER=(/2.0,1.8,1.6,1.4,1.2,1.1,1.0/)
-        ELSE IF (IS_SUB.GT.0) THEN
-         IS_SUB=1
-         RADII_ITER=(/1.5,1.42,1.34,1.26,1.18,1.1,1.0/)
-        END IF
+        BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
+        BAS=SQRT(BAS)
+        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
 
-*       First iteration
-        KONTA=0
-        MASADM=0.0
-        BASX=0.0
-        BASY=0.0
-        BASZ=0.0
-        BAS=RADII_ITER(1)
-        RCLUS=BAS*RADIO(I)
-        DO J=1,N_DM
-         XP=RXPA(J)
-         YP=RYPA(J)
-         ZP=RZPA(J)
-         MP=MASAP(J)
-         AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
-         IF(AADM.LT.RCLUS) THEN
-          KONTA=KONTA+1
-          LIP(KONTA)=J
-          MASADM=MASADM+MP
+        CLUSRX(I)=CX
+        CLUSRY(I)=CY
+        CLUSRZ(I)=CZ
 
-          BASX=BASX+MP*XP
-          BASY=BASY+MP*YP
-          BASZ=BASZ+MP*ZP
-         END IF
+        DELTA2=100.0*MINOVERDENS ! just to ensure it enters the loop
+        RCLUS=RADIO(I)
+        DO WHILE (DELTA2.GT.0.9*MINOVERDENS)
+         KONTA=0
+         MASADM=0.0
+
+         DO J=1,N_DM
+          XP=RXPA(J)
+          YP=RYPA(J)
+          ZP=RZPA(J)
+          MP=MASAP(J)
+          AADM=SQRT((XP-CX)**2+(YP-CY)**2+(ZP-CZ)**2)
+          IF(AADM.LT.RCLUS) THEN
+           KONTA=KONTA+1
+           LIP(KONTA)=J
+           MASADM=MASADM+MP
+          END IF
+         END DO
+
+         DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
+
+         IF (DELTA2.GT.0.9*MINOVERDENS) RCLUS=1.05*RCLUS
         END DO
 
-        CMX=BASX/MASADM
-        CMY=BASY/MASADM
-        CMZ=BASZ/MASADM
-
-        DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
-        !WRITE(*,*) I,is_sub,1,RCLUS,CMX,CMY,CMZ,DELTA2,CONTRASTEC
-*       Subsequent iterations (shrinking the sphere)
-        IF (DELTA2.LT.CONTRASTEC.OR.IS_SUB.EQ.1) THEN
-         loop_shrink: DO ITER_SHRINK=2,7
-          BAS=RADII_ITER(ITER_SHRINK)
-          RCLUS=BAS*RADIO(I)
-          KONTA2=0
-          MASADM=0.0
-          BASX=0.0
-          BASY=0.0
-          BASZ=0.0
-          DO JJ=1,KONTA
-           J=LIP(JJ)
-           XP=RXPA(J)
-           YP=RYPA(J)
-           ZP=RZPA(J)
-           MP=MASAP(J)
-           AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
-           IF(AADM.LT.RCLUS) THEN
-            REF_MIN=MIN(REF_MIN,AADM)
-            REF_MAX=MAX(REF_MAX,AADM)
-            KONTA2=KONTA2+1
-            LIP(KONTA2)=J
-            MASADM=MASADM+MP
-
-            BASX=BASX+MP*XP
-            BASY=BASY+MP*YP
-            BASZ=BASZ+MP*ZP
-           END IF
-          END DO
-          KONTA=KONTA2
-          CMX=BASX/MASADM
-          CMY=BASY/MASADM
-          CMZ=BASZ/MASADM
-
-          DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
-    !      WRITE(*,*) I,is_sub,ITER_SHRINK,RCLUS,CMX,CMY,CMZ,DELTA2,
-    ! & CONTRASTEC
-          IF (DELTA2.GT.CONTRASTEC.AND.IS_SUB.EQ.0)
-     &     EXIT loop_shrink
-
-         END DO loop_shrink
-        END IF !(DELTA2.LT.CONTRASTEC.OR.REALCLUS(I).GT.0)
+        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 
         IF (MASADM.LE.0.0.OR.KONTA.EQ.0) THEN
          REALCLUS(I)=0
@@ -383,43 +496,24 @@
         END IF
 
         CONTADM(1:KONTA)=0     !en principio todas estas ligadas
-        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
-     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2)
+        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
+     &                        RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
+     &                        MASA2)
 
         VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
 
-        CLUSRX(I)=CMX
-        CLUSRY(I)=CMY
-        CLUSRZ(I)=CMZ
+        CLUSRXCM(I)=CMX
+        CLUSRYCM(I)=CMY
+        CLUSRZCM(I)=CMZ
         VX(I)=VCMX
         VY(I)=VCMY
         VZ(I)=VCMZ
         VCM2(I)=VCM
         RADIO(I)=RCLUS
         MASA(I)=MASADM*UM
-        !write(*,*) '**',vcmx,vcmy,vcmz,vcm
-
-*       Last, find the particles a more generous radius
-        BAS=1.5
-        RCLUS=BAS*RADIO(I)
-        KONTA=0
-        REF_MIN=10.0e+10
-        REF_MAX=-1.0
-        DO J=1,N_DM
-         XP=RXPA(J)
-         YP=RYPA(J)
-         ZP=RZPA(J)
-         AADM=SQRT((XP-CMX)**2+(YP-CMY)**2+(ZP-CMZ)**2)
-         IF(AADM.LT.RCLUS) THEN
-          REF_MIN=MIN(REF_MIN,AADM)
-          REF_MAX=MAX(REF_MAX,AADM)
-          KONTA=KONTA+1
-          LIP(KONTA)=J
-         END IF
-        END DO
         DMPCLUS(I)=KONTA
-        CONTADM(1:KONTA)=0
+        WRITE(*,*) '*',sqrt((cmx-cx)**2+(cmy-cy)**2+(cmz-cz)**2)
+        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 
 *********************************************************************
 *       END RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
@@ -432,25 +526,26 @@
         CONTAERR=KONTA
         DISTA=0.0
         KONTA2=0
-        CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                 DISTA,KONTA2)
+        CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+     &                 DISTA,KONTA2,1)
 
         FAC=0
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
          FAC=FAC+1
          KONTA2PREV=KONTA2
          CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
-     &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRX,CLUSRY,
-     &                   CLUSRZ,LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS)
+     &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRXCM,
+     &                   CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,VY,VZ,
+     &                   REALCLUS,KONTA2)
          CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA,KONTA2)
+     &                  DISTA,KONTA2,0)
          CONTAERR=KONTA2PREV-KONTA2
         END DO
 
         count_1=konta-konta2
         count_2=konta2 !backup
-c        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
-c     &             '. Pruned:',count_1,'. Iters:', FAC
+        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
+     &             '. Pruned:',count_1,'. Iters:', FAC
 
 ********************************************************************
 *      UNBINDING: PHASE SPACE
@@ -462,19 +557,19 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
          FAC=FAC+1
          KONTA2PREV=KONTA2
          CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,RXPA,
-     &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRX,CLUSRY,
-     &                        CLUSRZ,LIP,KONTA,CONTADM,VX,VY,VZ,
-     &                        REALCLUS)
+     &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRXCM,
+     &                        CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,
+     &                        VY,VZ,REALCLUS,KONTA2)
          CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA,KONTA2)
+     &                  DISTA,KONTA2,0)
          CONTAERR=KONTA2PREV-KONTA2
          !write(*,*) 'sigma unbinding: iter,unbound',fac,contaerr
         END DO
 
         count_2=count_2-konta2
-c        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
-c     &             '. Pruned:',count_2,'. Iters:', FAC
-c        write(*,*) '--'
+        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
+     &             '. Pruned:',count_2,'. Iters:', FAC
+        write(*,*) '--'
 
 ********************************************************************
 *      DISCARD POOR HALOES
@@ -625,7 +720,8 @@ C     &              M200M(I),MASA(I)
          RCMAX(I)=RCMAX(I)   !*RETE
 
          IF (KK_ENTERO.EQ.-1.AND.SALIDA.NE.1) THEN
-          WRITE(*,*) 'PROBLEM WITH HALO',I
+          WRITE(*,*) 'PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
+     &               NSHELL_2,RADIAL(NSHELL_2)
          END IF
 
          IF (KK_ENTERO.GT.0) THEN
@@ -810,22 +906,24 @@ CV2
 
 
 **********************************************************************
-       SUBROUTINE REORDENAR(KONTA,CMX,CMY,CMZ,
-     &                      RXPA,RYPA,RZPA,CONTADM,LIP,DISTA,KONTA2)
+       SUBROUTINE REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+     &                      DISTA,KONTA2,DO_SORT)
 **********************************************************************
 *      Sorts the particles with increasing distance to the center of
 *      the halo. Only particles with CONTADM=0 are sorted (the others
 *      are already pruned particles and therefore they are ignored)
+*      Do_sort=1: particles are sorted by distance
+*      Do_sort=0: particles are assumed to be sorted; just prune unbound
 **********************************************************************
 
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER I,J,K,KONTA,KONTA2,JJ
+       INTEGER I,J,K,KONTA,KONTA2,JJ,DO_SORT
 
 *      ---HALOS Y SUBHALOS---
-       REAL*4 CMX,CMY,CMZ
+       REAL*4 CX,CY,CZ
 
 *      ---PARTICULAS E ITERACIONES---
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
@@ -844,40 +942,51 @@ c       INTEGER CONTADM(PARTI)
 
        REAL*4 AADMX,AADMY,AADMZ,AADM
 
-       QUIEN=0
-       DISTA=1.E10
-       INDICE=0
-       DISTA2=0.0
+       IF (DO_SORT.EQ.1) THEN ! we have to sort the particles
+        QUIEN=0
+        DISTA=1.E10
+        INDICE=0
+        DISTA2=0.0
 
-       KONTA2=0
-       DO J=1,KONTA
-        IF (CONTADM(J).EQ.0) THEN
-         KONTA2=KONTA2+1
-         JJ=LIP(J)
-         AADMX=RXPA(JJ)-CMX
-         AADMY=RYPA(JJ)-CMY
-         AADMZ=RZPA(JJ)-CMZ
-         AADM=SQRT(AADMX**2+AADMY**2+AADMZ**2)
+        KONTA2=0
+        DO J=1,KONTA
+         IF (CONTADM(J).EQ.0) THEN
+          KONTA2=KONTA2+1
+          JJ=LIP(J)
+          AADMX=RXPA(JJ)-CX
+          AADMY=RYPA(JJ)-CY
+          AADMZ=RZPA(JJ)-CZ
+          AADM=SQRT(AADMX**2+AADMY**2+AADMZ**2)
 
-         DISTA(KONTA2)=AADM
-         QUIEN(KONTA2)=JJ
-        END IF
-       END DO
+          DISTA(KONTA2)=AADM
+          QUIEN(KONTA2)=JJ
+         END IF
+        END DO
 
-       CALL INDEXX(KONTA2,DISTA(1:KONTA2),INDICE(1:KONTA2))
+        CALL INDEXX(KONTA2,DISTA(1:KONTA2),INDICE(1:KONTA2))
 
-       DO J=1,KONTA2
-        DISTA2(J)=DISTA(J)
-       END DO
+        DO J=1,KONTA2
+         DISTA2(J)=DISTA(J)
+        END DO
 
-       DISTA=1.E10
-       LIP=0
+        DISTA=1.E10
+        LIP=0
 
-       DO J=1,KONTA2
-        JJ=INDICE(J)
-        DISTA(J)=DISTA2(JJ)
-        LIP(J)=QUIEN(JJ)
-       END DO
+        DO J=1,KONTA2
+         JJ=INDICE(J)
+         DISTA(J)=DISTA2(JJ)
+         LIP(J)=QUIEN(JJ)
+        END DO
+       ELSE ! they are already sorted (since the center does not change)
+        KONTA2=0
+        DO J=1,KONTA
+         IF (CONTADM(J).EQ.0) THEN
+          KONTA2=KONTA2+1
+          DISTA(KONTA2)=DISTA(J)
+          LIP(KONTA2)=LIP(J)
+         END IF
+        END DO
+       END IF
 
        CONTADM=1
        CONTADM(1:KONTA2)=0
@@ -994,8 +1103,8 @@ c       INTEGER CONTADM(PARTI)
 ***********************************************************
        SUBROUTINE UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           RADIO,MASA,CLUSRX,CLUSRY,CLUSRZ,
-     &           LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS)
+     &           RADIO,MASA,CLUSRXCM,CLUSRYCM,CLUSRZCM,
+     &           LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS,KONTA2)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -1017,11 +1126,11 @@ c       INTEGER CONTADM(PARTI)
        REAL*4 REF_MIN,REF_MAX
 
 *      ---HALOS Y SUBHALOS---
-       REAL*4 RADIO(NMAXNCLUS)
-       REAL*4 MASA(NMAXNCLUS)
-       REAL*4 CLUSRX(NMAXNCLUS)
-       REAL*4 CLUSRY(NMAXNCLUS)
-       REAL*4 CLUSRZ(NMAXNCLUS)
+       REAL*4 RADIO(MAXNCLUS)
+       REAL*4 MASA(MAXNCLUS)
+       REAL*4 CLUSRXCM(MAXNCLUS)
+       REAL*4 CLUSRYCM(MAXNCLUS)
+       REAL*4 CLUSRZCM(MAXNCLUS)
        REAL*4 VCM2(NMAXNCLUS) !!?
        REAL*4 VX(NMAXNCLUS)
        REAL*4 VY(NMAXNCLUS)
@@ -1059,8 +1168,6 @@ COJO       REAL*8 POT(KONTA)
 ***********************************************
 
        POT=0.D0
-
-       KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
        IF (KONTA2.GT.0) THEN
 *      Max mass
@@ -1125,9 +1232,9 @@ COJO       REAL*8 POT(KONTA)
 
        IF (KONTA3.EQ.0) THEN
 
-        CLUSRX(I)=0.0
-        CLUSRY(I)=0.0
-        CLUSRZ(I)=0.0
+        CLUSRXCM(I)=0.0
+        CLUSRYCM(I)=0.0
+        CLUSRZCM(I)=0.0
 
         VX(I)=0.0
         VY(I)=0.0
@@ -1140,9 +1247,9 @@ COJO       REAL*8 POT(KONTA)
 
        ELSE
 
-        CLUSRX(I)=CMX
-        CLUSRY(I)=CMY
-        CLUSRZ(I)=CMZ
+        CLUSRXCM(I)=CMX
+        CLUSRYCM(I)=CMY
+        CLUSRZCM(I)=CMZ
 
         VX(I)=VCMX
         VY(I)=VCMY
@@ -1182,8 +1289,8 @@ CX       write(*,*) 'new_r',RADIO(I),REF_MAX
 ***********************************************************
        SUBROUTINE UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,
      &                            RXPA,RYPA,RZPA,MASAP,RADIO,MASA,
-     &                            CLUSRX,CLUSRY,CLUSRZ,LIP,KONTA,
-     &                            CONTADM,VX,VY,VZ,REALCLUS)
+     &                            CLUSRXCM,CLUSRYCM,CLUSRZCM,LIP,KONTA,
+     &                            CONTADM,VX,VY,VZ,REALCLUS,KONTA2)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -1200,8 +1307,9 @@ CX       write(*,*) 'new_r',RADIO(I),REF_MAX
        REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
        REAL*4 MASAP(PARTIRED)
-       REAL*4 RADIO(NMAXNCLUS),MASA(NMAXNCLUS)
-       REAL*4 CLUSRX(NMAXNCLUS),CLUSRY(NMAXNCLUS),CLUSRZ(NMAXNCLUS)
+       REAL*4 RADIO(MAXNCLUS),MASA(MAXNCLUS)
+       REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),
+     &        CLUSRZCM(MAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        INTEGER KONTA
        REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
@@ -1215,14 +1323,12 @@ CX       write(*,*) 'new_r',RADIO(I),REF_MAX
        BB=MAX(6.0-1.0*(FAC-1), 3.0)
        BB=BB**2 ! This is because we compare velocities squared
 
-       CMX=CLUSRX(I)
-       CMY=CLUSRY(I)
-       CMZ=CLUSRZ(I)
+       CMX=CLUSRXCM(I)
+       CMY=CLUSRYCM(I)
+       CMZ=CLUSRZCM(I)
        VXCM=VX(I)
        VYCM=VY(I)
        VZCM=VZ(I)
-
-       KONTA2=COUNT(CONTADM(1:KONTA).EQ.0)
 
        ALLOCATE(DESV2(1:KONTA2))
 
@@ -1253,9 +1359,9 @@ CX       write(*,*) 'new_r',RADIO(I),REF_MAX
 
        IF (KONTA3.EQ.0) THEN
 
-        CLUSRX(I)=0.0
-        CLUSRY(I)=0.0
-        CLUSRZ(I)=0.0
+        CLUSRXCM(I)=0.0
+        CLUSRYCM(I)=0.0
+        CLUSRZCM(I)=0.0
 
         VX(I)=0.0
         VY(I)=0.0
@@ -1268,9 +1374,9 @@ CX       write(*,*) 'new_r',RADIO(I),REF_MAX
 
        ELSE
 
-        CLUSRX(I)=CMX
-        CLUSRY(I)=CMY
-        CLUSRZ(I)=CMZ
+        CLUSRXCM(I)=CMX
+        CLUSRYCM(I)=CMY
+        CLUSRZCM(I)=CMZ
 
         VX(I)=VXCM
         VY(I)=VYCM
