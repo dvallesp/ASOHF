@@ -1,6 +1,7 @@
 **********************************************************************
        SUBROUTINE RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,
-     &                           CLUSRZ,RADIO,MASA,LEVHAL,PATCHCLUS)
+     &                           CLUSRZ,RADIO,MASA,LEVHAL,PATCHCLUS,
+     &                           DMPCLUS)
 **********************************************************************
 *      Resorts the clusters, getting rid of REALCLUS=0 ones
 **********************************************************************
@@ -13,6 +14,7 @@
         REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
         REAL*4 MASA(MAXNCLUS), RADIO(MAXNCLUS)
         INTEGER LEVHAL(MAXNCLUS),PATCHCLUS(MAXNCLUS)
+        INTEGER DMPCLUS(NMAXNCLUS)
 
         INTEGER I,J
         INTEGER,ALLOCATABLE::RESORT(:)
@@ -31,6 +33,7 @@
          MASA(J)=MASA(I)
          LEVHAL(J)=LEVHAL(I)
          PATCHCLUS(J)=PATCHCLUS(I)
+         DMPCLUS(J)=DMPCLUS(I)
          IF (REALCLUS(I).LE.0) THEN
           REALCLUS(J)=REALCLUS(I)
          ELSE
@@ -190,7 +193,8 @@
 
 **********************************************************************
         SUBROUTINE RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,R,RXPA,RYPA,
-     &                                             RZPA,MASAP,N_DM)
+     &                                             RZPA,MASAP,N_DM,
+     &                                             DXPAMIN)
 **********************************************************************
 *       Recenters density peak using particles
 **********************************************************************
@@ -199,7 +203,7 @@
 
         REAL CX,CY,CZ,R
         REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
-     &         MASAP(PARTIRED)
+     &         MASAP(PARTIRED),DXPAMIN
         INTEGER N_DM
 
         INTEGER LIP(PARTIRED),KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP
@@ -209,9 +213,10 @@
 
         NUMPARTMIN=32 !4**3/2
 
+c        WRITE(*,*) CX,CY,CZ
 
         FLAG_LARGER=1
-        RADIO=0.05*R
+        RADIO=MAX(0.05*R,DXPAMIN)
         DO WHILE(FLAG_LARGER.EQ.1)
          KONTA=0
          DO I=1,N_DM
@@ -225,10 +230,11 @@
          IF (KONTA.GT.NUMPARTMIN) THEN
           FLAG_LARGER=0
          ELSE
-          RADIO=RADIO*1.5
+          RADIO=RADIO*1.2
          END IF
         END DO
 
+c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
         NN=4
 
         ALLOCATE(DENS(NN,NN,NN))
@@ -283,8 +289,8 @@
 
          IF (KONTA2.LT.NUMPARTMIN) FLAG_ITER=0
 
-C         WRITE(*,*) RADIO,KONTA2,CX,CY,CZ,DENS(IX,JY,KZ)/DDXX**3,
-C     &              IX,JY,KZ
+c         WRITE(*,*) RADIO,KONTA2,CX,CY,CZ,DENS(IX,JY,KZ)/DDXX**3,
+c     &              IX,JY,KZ,FLAG_ITER
         END DO
 
         DEALLOCATE(DENS)
@@ -295,12 +301,12 @@ C     &              IX,JY,KZ
 
 **********************************************************************
        SUBROUTINE HALOFIND_PARTICLES(NL,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
-     &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,VCM2,IPLIP,
-     &      VX,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
+     &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,VY,VZ,
+     &      VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
      &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM)
+     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -311,8 +317,8 @@ C     &              IX,JY,KZ
        REAL*4 MASA(MAXNCLUS),RADIO(MAXNCLUS)
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
        INTEGER REALCLUS(MAXNCLUS)
-       REAL*4 CONCENTRA(NMAXNCLUS),ANGULARM(NMAXNCLUS)
-       REAL*4 VMAXCLUS(NMAXNCLUS),VCM2(NMAXNCLUS)
+       REAL*4 CONCENTRA(NMAXNCLUS),ANGULARM(3,NMAXNCLUS)
+       REAL*4 VMAXCLUS(NMAXNCLUS)
        INTEGER IPLIP(NMAXNCLUS)
        REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
        REAL*4 VCMAX(NMAXNCLUS),MCMAX(NMAXNCLUS),RCMAX(NMAXNCLUS)
@@ -332,6 +338,7 @@ C     &              IX,JY,KZ
        INTEGER ORIPA2(PARTIRED)
        REAL*4 CONTRASTEC,OMEGAZ,UM,UV,LADO0
        REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),CLUSRZCM(MAXNCLUS)
+       REAL*4 MEAN_VR(NMAXNCLUS),INERTIA_TENSOR(6,NMAXNCLUS)
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -341,6 +348,9 @@ C     &              IX,JY,KZ
 
        REAL*4 RETE,HTE,ROTE
        COMMON /BACK/ RETE,HTE,ROTE
+
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
 
 *      Local variables
        INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
@@ -352,9 +362,10 @@ C     &              IX,JY,KZ
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
        REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
-       REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS
+       REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
        REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
-       REAL INERTIA(3,3),BASEIGENVAL(3),AADMX(3),RADII_ITER(7)
+       REAL INERTIA(3,3),BASEIGENVAL(3),RADII_ITER(7),BASVECCM(3)
+       REAL BASVCM(3)
        REAL DENSITOT(0:1000),RADIAL(0:1000),DENSR(0:1000)
        REAL LOGDERIV(0:1000)
        REAL DISTA(0:PARTIRED)
@@ -393,24 +404,24 @@ C     &              IX,JY,KZ
 
 !$OMP  PARALLEL DO SHARED(NCLUS,REALCLUS,
 !$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,NL,MASAP,
-!$OMP+           U2DM,U3DM,U4DM,VCM2,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
+!$OMP+           U2DM,U3DM,U4DM,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
 !$OMP+           MCMAX,RCMAX,CONTRASTEC,OMEGAZ,CGR,UM,UV,DMPCLUS,
 !$OMP+           CONCENTRA,ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
 !$OMP+           NUMPARTBAS,RADIO,MASA,VMAXCLUS,N_DM,NORMA,R200M,
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
 !$OMP+           M200C,M500C,M2500C,RSUB,MSUB,MINOVERDENS,CLUSRXCM,
-!$OMP+           CLUSRYCM,CLUSRZCM),
+!$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
 !$OMP+           DISTA,FAC,CONTAERR,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,
 !$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
-!$OMP+           DENSA,DENSB,DENSC,AADMX,VKK,AA,NROT,BASEIGENVAL,BASX,
-!$OMP+           BASY,BASZ,XP,YP,ZP,MP,RCLUS,RADII_ITER,COUNT_1,
+!$OMP+           DENSA,DENSB,DENSC,BASVEC,BASVECCM,VKK,AA,NROT,
+!$OMP+           BASEIGENVAL,BASX,BASY,BASZ,XP,YP,ZP,MP,RCLUS,COUNT_1,
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,JMINPROF,DENSR,LOGDERIV,
-!$OMP+           CX,CY,CZ,JJCORE),
-!$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE), IF(.FALSE.)
+!$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM),
+!$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
 ****************************
@@ -454,11 +465,11 @@ C     &              IX,JY,KZ
         BAS=RADIO(I)
         ! Find level used for recentering
         CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
-     &                                       RZPA,MASAP,N_DM)
+     &                                       RZPA,MASAP,N_DM,DX/2.0**NL)
 
         BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
         BAS=SQRT(BAS)
-        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
+c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
 
         CLUSRX(I)=CX
         CLUSRY(I)=CY
@@ -487,8 +498,7 @@ C     &              IX,JY,KZ
 
          IF (DELTA2.GT.0.9*MINOVERDENS) RCLUS=1.05*RCLUS
         END DO
-
-        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
+c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 
         IF (MASADM.LE.0.0.OR.KONTA.EQ.0) THEN
          REALCLUS(I)=0
@@ -508,12 +518,11 @@ C     &              IX,JY,KZ
         VX(I)=VCMX
         VY(I)=VCMY
         VZ(I)=VCMZ
-        VCM2(I)=VCM
         RADIO(I)=RCLUS
         MASA(I)=MASADM*UM
         DMPCLUS(I)=KONTA
-        WRITE(*,*) '*',sqrt((cmx-cx)**2+(cmy-cy)**2+(cmz-cz)**2)
-        write(*,*) '**',vcmx,vcmy,vcmz,vcm
+c        WRITE(*,*) '*',sqrt((cmx-cx)**2+(cmy-cy)**2+(cmz-cz)**2)
+c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 
 *********************************************************************
 *       END RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
@@ -528,6 +537,8 @@ C     &              IX,JY,KZ
         KONTA2=0
         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                 DISTA,KONTA2,1)
+        REF_MAX=DISTA(KONTA2)
+        REF_MIN=DISTA(1)
 
         FAC=0
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
@@ -537,15 +548,17 @@ C     &              IX,JY,KZ
      &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRXCM,
      &                   CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,VY,VZ,
      &                   REALCLUS,KONTA2)
-         CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA,KONTA2,0)
+         REF_MAX=DISTA(KONTA2)
+         REF_MIN=DISTA(1)
          CONTAERR=KONTA2PREV-KONTA2
         END DO
 
         count_1=konta-konta2
         count_2=konta2 !backup
-        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
-     &             '. Pruned:',count_1,'. Iters:', FAC
+c        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
+c     &             '. Pruned:',count_1,'. Iters:', FAC
 
 ********************************************************************
 *      UNBINDING: PHASE SPACE
@@ -560,15 +573,17 @@ C     &              IX,JY,KZ
      &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRXCM,
      &                        CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,
      &                        VY,VZ,REALCLUS,KONTA2)
-         CALL REORDENAR(KONTA,CMX,CMY,CMZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA,KONTA2,0)
+         REF_MAX=DISTA(KONTA2)
+         REF_MIN=DISTA(1)
          CONTAERR=KONTA2PREV-KONTA2
          !write(*,*) 'sigma unbinding: iter,unbound',fac,contaerr
         END DO
 
         count_2=count_2-konta2
-        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
-     &             '. Pruned:',count_2,'. Iters:', FAC
+c        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
+c     &             '. Pruned:',count_2,'. Iters:', FAC
 c        write(*,*) '--'
 
 ********************************************************************
@@ -734,14 +749,14 @@ c        write(*,*) '--'
           RADIAL(NSHELL_2)=DISTA(J)
          END IF
 
-         WRITE(*,*) 'HALO I,KONTA2,NSHELL_2,KK_ENTERO=',
-     &               I,KONTA2,NSHELL_2,KK_ENTERO
-         WRITE(*,*) CLUSRX(I),CLUSRY(I),CLUSRZ(I)
-         WRITE(*,*) R2500C(I),R500C(I),R200C(I),R2500M(I),R500M(I),
-     &              R200M(I),RADIO(I)
-         WRITE(*,*) M2500C(I),M500C(I),M200C(I),M2500M(I),M500M(I),
-     &              M200M(I),MASA(I)
-         WRITE(*,*) '---'
+c         WRITE(*,*) 'HALO I,KONTA2,NSHELL_2,KK_ENTERO=',
+c     &               I,KONTA2,NSHELL_2,KK_ENTERO
+c         WRITE(*,*) CLUSRX(I),CLUSRY(I),CLUSRZ(I)
+c         WRITE(*,*) R2500C(I),R500C(I),R200C(I),R2500M(I),R500M(I),
+c     &              R200M(I),RADIO(I)
+c         WRITE(*,*) M2500C(I),M500C(I),M200C(I),M2500M(I),M500M(I),
+c     &              M200M(I),MASA(I)
+c         WRITE(*,*) '---'
 
          BAS=VCMAX(I)*NORMA*CGR/RETE
          VCMAX(I)=SQRT(BAS)*UV
@@ -761,46 +776,57 @@ c        write(*,*) '--'
          BASMAS=0.0
          DMPCLUS(I)=0
 
-         CMX=CLUSRX(I)
-         CMY=CLUSRY(I)
-         CMZ=CLUSRZ(I)
          VCMX=VX(I)
          VCMY=VY(I)
          VCMZ=VZ(I)
+
+         BASX=0.0
+         BASY=0.0
+         BASZ=0.0
+         INERTIA=0.0
 
          DIS=1000000.0
          VMAXCLUS(I)=-1.0
          DO J=1,KONTA
           IF (CONTADM(J).EQ.0) THEN
-           AADMX(1)=RXPA(LIP(J))-CMX
-           AADMX(2)=RYPA(LIP(J))-CMY
-           AADMX(3)=RZPA(LIP(J))-CMZ
-           AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
-
-CV2
-           VVV2=0.0
-           VVV2=(U2DM(LIP(J))-VCMX)**2
-     &         +(U3DM(LIP(J))-VCMY)**2
-     &         +(U4DM(LIP(J))-VCMZ)**2
-CV2
-
+           JJ=LIP(J)
+           BASVEC(1)=RXPA(JJ)-CX
+           BASVEC(2)=RYPA(JJ)-CY
+           BASVEC(3)=RZPA(JJ)-CZ
+           AADM=SQRT(BASVEC(1)**2+BASVEC(2)**2+BASVEC(3)**2)
            IF (AADM.LE.RSHELL) THEN
             KONTA2=KONTA2+1
-            BASMAS=BASMAS+(MASAP(LIP(J))/NORMA)
+            BASMAS=BASMAS+(MASAP(JJ)/NORMA)
 
-            ANGULARM(I)=ANGULARM(I)+MASAP(LIP(J))*AADM*SQRT(VVV2)
+            BASVECCM(1)=RXPA(JJ)-CMX
+            BASVECCM(2)=RYPA(JJ)-CMY
+            BASVECCM(3)=RZPA(JJ)-CMZ
+
+            BASVCM(1)=U2DM(JJ)-VCMX
+            BASVCM(2)=U3DM(JJ)-VCMY
+            BASVCM(3)=U4DM(JJ)-VCMZ
+
+            VVV2=BASVCM(1)**2+BASVCM(2)**2+BASVCM(3)**2
+
+**          ANGULAR MOMENTUM
+            BASX=BASX+MASAP(JJ)*(BASVECCM(2)*BASVCM(3)
+     &                          -BASVECCM(3)*BASVCM(2))
+            BASY=BASY+MASAP(JJ)*(BASVECCM(3)*BASVCM(1)
+     &                          -BASVECCM(1)*BASVCM(3))
+            BASZ=BASZ+MASAP(JJ)*(BASVECCM(1)*BASVCM(2)
+     &                          -BASVECCM(2)*BASVCM(1))
 
 **          INERTIA TENSOR
-            DO JY=1, 3
-            DO IX=1, 3
-              INERTIA(IX,JY)=INERTIA(IX,JY)+AADMX(IX)*AADMX(JY)
+            DO JY=1,3
+            DO IX=1,3
+              INERTIA(IX,JY)=INERTIA(IX,JY)
+     &                       +MASAP(JJ)*BASVECCM(IX)*BASVECCM(JY)
             END DO
             END DO
 
 **        VELOCITY OF THE FASTEST PARTICLE IN THE HALO
             VKK=0.0
-            VKK=SQRT(U2DM(LIP(J))**2+U3DM(LIP(J))**2+
-     &               U4DM(LIP(J))**2)
+            VKK=SQRT(U2DM(JJ)**2+U3DM(JJ)**2+U4DM(J)**2)
 
             IF (VKK.GT.VMAXCLUS(I)) THEN
              VMAXCLUS(I)=VKK
@@ -809,31 +835,39 @@ CV2
 **        CLOSEST PARTICLE TO THE CENTER OF THE HALO
             IF (AADM.LT.DIS) THEN
              DIS=AADM
-             IPLIP(I)=ORIPA2(LIP(J))
+             IPLIP(I)=ORIPA2(JJ)
             END IF
 
             IF(AADM.NE.0.0) THEN
-             AA=0.0
-             AA=((RXPA(LIP(J))-CLUSRX(I))/AADM)*U2DM(LIP(J))+
-     &          ((RYPA(LIP(J))-CLUSRY(I))/AADM)*U3DM(LIP(J))+
-     &          ((RZPA(LIP(J))-CLUSRZ(I))/AADM)*U4DM(LIP(J))
-             VR=VR+AA*MASAP(LIP(J))
+             AA=(BASVEC(1)/AADM)*BASVCM(1)+
+     &          (BASVEC(2)/AADM)*BASVCM(2)+
+     &          (BASVEC(3)/AADM)*BASVCM(3)
+             VR=VR+AA*MASAP(JJ)
             END IF
            END IF    !AADM.LT.RSHELL
           END IF     !CONTADM
          END DO      !KONTA
 
-         DMPCLUS(I)=KONTA2
-
 *******************************************************
 *      SAVING MASSES, RADII, PROFILES AND SHAPES...
 *******************************************************
-
-         MASA(I)=BASMAS*NORMA*9.1717E18    !!MASA2
-         ANGULARM(I)=ANGULARM(I)/BASMAS
+         DMPCLUS(I)=KONTA2
+         IF (KONTA2.LT.NUMPARTBAS) REALCLUS(I)=0
+         MASA(I)=BASMAS*NORMA*UM
          RADIO(I)=RSHELL
+         ANGULARM(1,I)=BASX*UV / (BASMAS*NORMA)
+         ANGULARM(2,I)=BASY*UV / (BASMAS*NORMA)
+         ANGULARM(3,I)=BASZ*UV / (BASMAS*NORMA)
+         MEAN_VR(I)=VR/(BASMAS*NORMA)
 
-         INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/DMPCLUS(I)
+         INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/(BASMAS*NORMA)
+         INERTIA_TENSOR(1,I)=INERTIA(1,1)
+         INERTIA_TENSOR(2,I)=INERTIA(1,2)
+         INERTIA_TENSOR(3,I)=INERTIA(1,3)
+         INERTIA_TENSOR(4,I)=INERTIA(2,2)
+         INERTIA_TENSOR(5,I)=INERTIA(2,3)
+         INERTIA_TENSOR(6,I)=INERTIA(3,3)
+
          BASEIGENVAL(1:3)=0.0
          IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
           CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
@@ -844,6 +878,18 @@ CV2
           EIGENVAL(II,I)=BASEIGENVAL(II)
           EIGENVAL(II,I)=SQRT(EIGENVAL(II,I))
          END DO
+
+C         WRITE(*,*)
+C         WRITE(*,*)I,CLUSRX(I),CLUSRY(I),CLUSRZ(I),
+C     &         MASA(I),RADIO(I),DMPCLUS(I),
+C     &         REALCLUS(I), LEVHAL(I),(INERTIA_TENSOR(IX,I),IX=1,6),
+C     &         EIGENVAL(1,I),EIGENVAL(2,I),EIGENVAL(3,I),MEAN_VR(I)*UV,
+C     &         CONCENTRA(I),(ANGULARM(J,I),J=1,3),
+C     &         VCMAX(I),MCMAX(I),RCMAX(I),
+C     &         R200M(I),M200M(I),R200C(I),M200C(I),
+C     &         R500M(I),M500M(I),R500C(I),M500C(I),
+C     &         R2500M(I),M2500M(I),R2500C(I),M2500C(I),
+C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 ******************************************
 ************ FIN HALO I ******************
@@ -1088,7 +1134,6 @@ c       INTEGER CONTADM(PARTI)
        REAL*4 CLUSRXCM(MAXNCLUS)
        REAL*4 CLUSRYCM(MAXNCLUS)
        REAL*4 CLUSRZCM(MAXNCLUS)
-       REAL*4 VCM2(NMAXNCLUS) !!?
        REAL*4 VX(NMAXNCLUS)
        REAL*4 VY(NMAXNCLUS)
        REAL*4 VZ(NMAXNCLUS)
@@ -1149,7 +1194,11 @@ COJO       REAL*8 POT(KONTA)
 
         DO J=JJ+1,KONTA2
           MASA8=MASA8+DBLE(MASAP(LIP(J)))/NORMA
-          BAS8=DISTA(J)-DISTA(J-1)
+          IF (DISTA(J).NE.DISTA(J-1)) THEN
+           BAS8=DISTA(J)-DISTA(J-1)
+          ELSE
+           BAS8=0.D0
+          END IF
           POT(J)=POT(J-1)+MASA8*BAS8/(DBLE(DISTA(J))**2)
         END DO
 
@@ -1185,7 +1234,7 @@ COJO       REAL*8 POT(KONTA)
 
        END IF
 
-       KONTA3=COUNT(CONTADM(1:KONTA).EQ.0)
+       KONTA3=COUNT(CONTADM(1:KONTA2).EQ.0)
 
        IF (KONTA3.EQ.0) THEN
 
@@ -1213,29 +1262,6 @@ COJO       REAL*8 POT(KONTA)
         VZ(I)=VCMZ
 
         MASA(I)=MMM*9.1717e+18
-
-
-*       estimacion nuevo radio
-
-        REF_MIN=10.0E+10
-        REF_MAX=-1.0
-
-        DO J=1,KONTA
-         IF (CONTADM(J).EQ.0) THEN
-           AADMX(1)=RXPA(LIP(J))-CMX
-           AADMX(2)=RYPA(LIP(J))-CMY
-           AADMX(3)=RZPA(LIP(J))-CMZ
-
-           AADM=SQRT(AADMX(1)**2+AADMX(2)**2+AADMX(3)**2)
-
-           REF_MIN=MIN(REF_MIN,AADM)
-           REF_MAX=MAX(REF_MAX,AADM)
-         END IF
-        END DO
-
-
-CX       write(*,*) 'new_r',RADIO(I),REF_MAX
-        RADIO(I)=REF_MAX
 
        END IF
 
@@ -1340,26 +1366,6 @@ CX       write(*,*) 'new_r',RADIO(I),REF_MAX
         VZ(I)=VZCM
 
         MASA(I)=MMM*9.1717e+18
-
-*       estimacion nuevo radio
-
-        REF_MIN=10.0E+10
-        REF_MAX=-1.0
-
-        DO J=1,KONTA2
-         IF (CONTADM(J).EQ.0) THEN
-           AADMX=RXPA(LIP(J))-CMX
-           AADMY=RYPA(LIP(J))-CMY
-           AADMZ=RZPA(LIP(J))-CMZ
-
-           AADM=SQRT(AADMX**2+AADMY**2+AADMZ**2)
-
-           REF_MIN=MIN(REF_MIN,AADM)
-           REF_MAX=MAX(REF_MAX,AADM)
-         END IF
-        END DO
-
-        RADIO(I)=REF_MAX
 
        END IF
 

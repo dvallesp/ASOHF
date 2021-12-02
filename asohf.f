@@ -157,7 +157,7 @@
        INTEGER KONTA3,KONTA,KONTACAPA,KONTA1,KONTA2
        REAL*4 DIS, VKK, BASMAS, MASAKK
        REAL*4 CMX, CMY, CMZ, SOLMAS, MASAMIN, DELTA2
-       REAL*4 VCMX, VCMY, VCMZ, VCM,VVV2, MASA2
+       REAL*4 VCMX, VCMY, VCMZ, VCM,VVV2,VVV1,MASA2
 
        REAL*8 CMX8,CMY8,CMZ8,VCMX8,VCMY8,VCMZ8
 
@@ -171,14 +171,14 @@
        INTEGER HALBORDERS(MAXNCLUS)
 
        REAL*4 CONCENTRA(NMAXNCLUS)
-       REAL*4 ANGULARM(NMAXNCLUS)
+       REAL*4 ANGULARM(3,NMAXNCLUS)
        REAL*4 VMAXCLUS(NMAXNCLUS)
-       REAL*4 VCM2(NMAXNCLUS)
 
        INTEGER IPLIP(NMAXNCLUS)
        REAL*4 VX(NMAXNCLUS)
        REAL*4 VY(NMAXNCLUS)
        REAL*4 VZ(NMAXNCLUS)
+       REAL*4 MEAN_VR(NMAXNCLUS)
 
        REAL*4 VCMAX(NMAXNCLUS)
        REAL*4 MCMAX(NMAXNCLUS)
@@ -202,9 +202,8 @@
        INTEGER SUBHALOS(NMAXNCLUS)
 
 *      ---HALO SHAPE---
-       REAL*4 INERTIA(3,3),EIGENVAL(3,NMAXNCLUS)
-       REAL*4 BASEIGENVAL(3),AADMX(3)
-       INTEGER DIMEN,NROT
+       REAL*4 EIGENVAL(3,NMAXNCLUS)
+       REAL*4 INERTIA_TENSOR(6,NMAXNCLUS)
 
 *      ---STAND-ALONE HALO FINDER---
        INTEGER FLAG_SA,FLAG_GAS,FLAG_MASCLET,FLAG_WDM
@@ -438,19 +437,18 @@
 
        NMAXNCLUSBAS=NMAXNCLUS
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,CONCENTRA,
-!$OMP+                   ANGULARM,CLUSRX,CLUSRY,CLUSRZ,VCM2,VMAXCLUS,VX,
+!$OMP+                   ANGULARM,CLUSRX,CLUSRY,CLUSRZ,VMAXCLUS,VX,
 !$OMP+                   VY,VZ,CLUSRXCM,CLUSRYCM,CLUSRZCM),
 !$OMP+            PRIVATE(I)
        DO I=1,NMAXNCLUSBAS
         CONCENTRA(I)=0.0
-        ANGULARM(I)=0.0
+        ANGULARM(:,I)=0.0
         CLUSRX(I)=0.0
         CLUSRY(I)=0.0
         CLUSRZ(I)=0.0
         CLUSRXCM(I)=0.0
         CLUSRYCM(I)=0.0
         CLUSRZCM(I)=0.0
-        VCM2(I)=0.0
         VMAXCLUS(I)=0.0
 
         VX(I)=0.0
@@ -461,7 +459,8 @@
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,VCMAX,MCMAX,RCMAX,DMPCLUS,M200C,
 !$OMP+                   M500C,M2500C,M200M,M500M,M2500M,R200C,R500C,
 !$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
-!$OMP+                   LEVHAL,EIGENVAL,RSUB,MSUB),
+!$OMP+                   LEVHAL,EIGENVAL,RSUB,MSUB,INERTIA_TENSOR,
+!$OMP+                   MEAN_VR),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
        DO I=1,NMAXNCLUSBAS
@@ -487,11 +486,11 @@
         DMPCLUS(I)=0
         REALCLUS(I)=0    !de momento no hay halos
         EIGENVAL(:,I)=0.0
+        INERTIA_TENSOR(:,I)=0.0
+        MEAN_VR(I)=0.0
        END DO
 
        MARK(1:NFILE2)=0
-
-       INERTIA=0.0
 
 *///////// MAIN LOOP (ITERATIONS) /////////
 *//////////////////////////////////////////
@@ -779,12 +778,11 @@ c     &                     U11)
 *******************************************************
 
        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
-     &                     RADIO,MASA,LEVHAL,PATCHCLUS)
+     &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
 
-       WRITE(*,*)'MASSES: MIN, MAX AND MEAN=', MINVAL(MASA(1:NCLUS)),
-     &            MAXVAL(MASA(1:NCLUS)), SUM(MASA(1:NCLUS))/NCLUS
+       WRITE(*,*)'MASSES: MIN, MAX AND MEAN=', MINVAL(MASA(1:NCLUS))*UM,
+     &            MAXVAL(MASA(1:NCLUS))*UM, SUM(MASA(1:NCLUS))/NCLUS*UM
        WRITE(*,*) 'NCLUS=', NCLUS
-       WRITE(*,*) 'MEAN MASS',SUM(MASA(1:NCLUS))/NCLUS
 
 ***************************************************************
 **     HALOES AT THE EDGES OF THE BOX (JUST FOR CAUTION!)     *
@@ -807,7 +805,7 @@ c     &                     U11)
      &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
      &                        DMPCLUS,1.0)
        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
-     &                     RADIO,MASA,LEVHAL,PATCHCLUS)
+     &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
 
 *********************************************************
 *      CHECKING....
@@ -836,15 +834,12 @@ c     &                     U11)
        WRITE(*,*)'=================================='
 
        CALL HALOFIND_PARTICLES(NL,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
-     &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,VCM2,IPLIP,
-     &      VX,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
+     &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,VY,VZ,
+     &      VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
      &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM)
-
-       stop
-
+     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -937,9 +932,10 @@ c      WRITE(*,*)'=================================='
        A1=MIN(MASA(I),MASA(J))/MAX(MASA(I),MASA(J))
 
        A2=0.0
-       IF (MIN(ABS(VCM2(I)),ABS(VCM2(J))).NE.0.0) THEN
-       A2=(ABS(VCM2(I)-VCM2(J)))/
-     &                            MAX(ABS(VCM2(I)),ABS(VCM2(J)))
+       VVV1=SQRT(VX(I)**2+VY(I)**2+VZ(I)**2)
+       VVV2=SQRT(VX(J)**2+VY(J)**2+VZ(J)**2)
+       IF (MIN(VVV1,VVV2).NE.0.0) THEN
+       A2=(ABS(VVV1-VVV2))/MAX(VVV1,VVV2)
        END IF
 
        A3=0.0
@@ -1009,8 +1005,9 @@ c      WRITE(*,*)'=================================='
      &          (CLUSRY(I)-CLUSRY(J))**2+
      &          (CLUSRZ(I)-CLUSRZ(J))**2)
 
-       VVV2=0.0
-       VVV2=(VCM2(I)-VCM2(J))**2
+       VVV1=SQRT(VX(I)**2+VY(I)**2+VZ(I)**2)
+       VVV2=SQRT(VX(J)**2+VY(J)**2+VZ(J)**2)
+       VVV2=(VVV1-VVV2)**2
 
        VESC2=0.0
        IF (RS.NE.0.AND.DIS*F2/RS.NE.0) THEN
@@ -1083,21 +1080,10 @@ c      WRITE(*,*)'=================================='
 *************************************************
 *************************************************
 *===================Families===============
-       KONTA2=0
-c       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
        KONTA2=COUNT(REALCLUS(1:NCLUS).NE.0)
        CALL NOMFILE3(ITER,FILE3)
        FILERR3='./output_files/'//FILE3
        OPEN(3,FILE=FILERR3,STATUS='UNKNOWN')
-
-       IF (FLAG_WDM.EQ.1) THEN
-        CALL NOMFILE7(ITER,FILE7)
-        FILERR7='./output_files/'//FILE7
-        OPEN(4,FILE=FILERR7,STATUS='UNKNOWN',FORM='UNFORMATTED')
-       END IF
-
-
-       IF (FLAG_WDM.EQ.1) WRITE(4) KONTA2
 
        WRITE(3,*) '*********************NEW ITER*******************'
        WRITE(3,*) ITER, NCLUS, KONTA2, ZETA
@@ -1107,77 +1093,21 @@ c       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
        DO I=1, NCLUS
 
        IF (REALCLUS(I).NE.0) THEN
-
          WRITE(3,*) I,CLUSRX(I),CLUSRY(I),CLUSRZ(I),
      &         MASA(I),RADIO(I),DMPCLUS(I),
      &         REALCLUS(I), LEVHAL(I),SUBHALOS(I),
-     &         EIGENVAL(1,I),EIGENVAL(2,I),EIGENVAL(3,I),
-     &         VCM2(I)*UV,CONCENTRA(I),ANGULARM(I)*1.0E14,
+     &         (EIGENVAL(J,I),J=1,3),(INTERTIA_TENSOR(J,I),J=1,6)
+     &         (ANGULARM(J,I),J=1,3),
      &         VCMAX(I),MCMAX(I),RCMAX(I),
      &         R200M(I),M200M(I),R200C(I),M200C(I),
      &         R500M(I),M500M(I),R500C(I),M500C(I),
      &         R2500M(I),M2500M(I),R2500C(I),M2500C(I),
      &         RSUB(I),MSUB(I),VX(I)*UV,VY(I)*UV,VZ(I)*UV
-
-
-       IF (FLAG_WDM.EQ.1) THEN
-
-       WRITE(4) I,REALCLUS(I),DMPCLUS(I)
-
-       KK2=0
-       KKK2=0
-       KK2=SUM(DMPCLUS(1:I-1))+1
-       KKK2=SUM(DMPCLUS(1:I))
-
-       DO J2=KK2, KKK2
-
-       IX1=0
-       IX2=0
-       IX1=DMLIP(IFI2,J2)
-
-*      IR=0
-       DO J=1, NPART(0)
-        IX2=ORIPA2(J)
-        IF (IX2.EQ.IX1) THEN
-        WRITE(4) RXPA(J),RYPA(J),RZPA(J),MASAP(J),
-     &           U2DM(J),U3DM(J),U4DM(J)
-        END IF
-       END DO
-
-*      NIVELES AMR
-       DO IR=1, NL
-
-       KK1=0
-       KK3=0
-       KK1=SUM(NPART(0:IR-1))
-       KK3=SUM(NPART(0:IR))
-
-       DO J=KK1+1, KK3
-
-       IX2=ORIPA2(J)
-       IF (IX2.EQ.IX1) THEN
-        WRITE(4) RXPA(J),RYPA(J),RZPA(J),MASAP(J),
-     &           U2DM(J),U3DM(J),U4DM(J)
-       END IF
-
-       END DO
-       END DO  !ir
-
-       END DO  !J2
-       END IF  !FLAG_WDM
-
-
        END IF  !realclus
 
        END DO
 
-
-135    FORMAT (i8,'   ',3F15.6,'   ',e15.6,'   ',F15.6,'   ',i8,'    ',
-     &         3i5,'   ',7F15.6,'   ',e15.6,'   ',F15.6,'   ',
-     &         e15.6,'   ',F15.6,'   ',3F15.6)
-
        CLOSE(3)
-       IF (FLAG_WDM.EQ.1) CLOSE(4)
 
 *==========================================
 *************************************************
