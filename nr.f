@@ -17,7 +17,7 @@
        integer N,NROT,ip,iq,ialloc,i,j
        real*4  A(1:N,1:N),D(1:N)
        real*4, pointer :: B(:), Z(:)
-       real*4  c,g,h,s,sm,t,tau,theta,tresh
+       real*4  c,g,h,s,sm,t,tau,theta,tresh,sum_elements
 
        allocate(B(1:100))   !,stat=ialloc)
        allocate(Z(1:100))   !,stat=ialloc)
@@ -28,6 +28,14 @@
          Z(ip)=0.d0
        end do
        NROT=0
+
+       sum_elements=0.0
+       do ip=1,N
+       do iq=ip,N
+        sum_elements=sum_elements+abs(A(ip,iq))
+       end do
+       end do
+
        do i=1, 50
          sm=0.d0
          do ip=1, N-1           !sum off-diagonal elements
@@ -35,7 +43,7 @@
                sm=sm+ABS(A(ip,iq))
             end do
          end do
-         if(sm==0.d0) return    !normal return
+         if(sm.lt.1.e-4*sum_elements) return    !normal return
          if(i.lt.4) then
             tresh=0.2d0*sm**2
          else
