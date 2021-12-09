@@ -803,7 +803,7 @@ c     &                     U11)
        NUMPARTBAS=NUMPART
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
-     &                        DMPCLUS,1.0)
+     &                        DMPCLUS,1.0,1)
        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
      &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
 
@@ -867,107 +867,21 @@ c     &                     U11)
        WRITE(*,*)'===================================='
 
 *************************************************
-*************************************************
 
-c       WRITE(*,*) 'ESTIMATION HALOES_1 (AFTER UNBINDING)'
-c       WRITE(*,*)'=================================='
-c       DO I=1, NCLUS
-c       IF (REALCLUS(I).NE.0) THEN
-c       WRITE(*,*) I, MASA(I),RADIO(I),CLUSRX(I),
-c     &            CLUSRY(I),CLUSRZ(I)
-c       END IF
-c       END DO
-c      WRITE(*,*)'=================================='
-
-
-
-*      REPETIMOS ESTO OTRA VEZ
-*STEP 1) (2)************************************
-************REMOVING POOR HALOES***************
 ************************************************
-       KONTA2=0
+************ REMOVING POOR HALOES **************
+************************************************
        NUMPARTBAS=NUMPART
-!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,NUMPARTBAS,
-!$OMP+             REALCLUS),PRIVATE(I,KK_ENTERO),
-!$OMP+             REDUCTION(+:KONTA2)
-       DO I=1, NCLUS
+       CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
+     &                        DMPCLUS,1.0,0)
 
-       KK_ENTERO=0
-       KK_ENTERO=DMPCLUS(I)
-
-       IF (KK_ENTERO.LT.NUMPARTBAS) THEN
-
-       REALCLUS(I)=0
-       KONTA2=KONTA2+1
-
-       END IF
-
-       END DO
-
-       WRITE(*,*)'RE-CHECKING POOR HALOS----->', KONTA2
-
-
-*PASO 2)****************************************
-************RUBBISH (desbordamientos)***********
+************************************************
+************** RUBBISH (overlaps) **************
 ************************************************
 
-       KONTA2=0
-
-       DO I=1, NCLUS
-
-       IF (REALCLUS(I).NE.0) THEN
-
-       DO J=1, NCLUS
-
-
-       IF (REALCLUS(J).NE.0.AND.LEVHAL(J).GT.
-     &      LEVHAL(I)) THEN
-
-       DIS=0.0
-       DIS=SQRT((CLUSRX(I)-CLUSRX(J))**2+
-     &          (CLUSRY(I)-CLUSRY(J))**2+
-     &          (CLUSRZ(I)-CLUSRZ(J))**2)
-
-       A1=0.0
-       A1=MIN(MASA(I),MASA(J))/MAX(MASA(I),MASA(J))
-
-       A2=0.0
-       VVV1=SQRT(VX(I)**2+VY(I)**2+VZ(I)**2)
-       VVV2=SQRT(VX(J)**2+VY(J)**2+VZ(J)**2)
-       IF (MIN(VVV1,VVV2).NE.0.0) THEN
-       A2=(ABS(VVV1-VVV2))/MAX(VVV1,VVV2)
-       END IF
-
-       A3=0.0
-       A3=MIN(RADIO(I),RADIO(J))
-
-*       IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.3.0.OR.A1.GT.0.6) THEN
-       IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.3.0) THEN
-*       IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.5.0) THEN
-*       IF (DIS.LT.1.01*A3.AND.A1.GT.0.2) THEN
-
-       IF (MASA(I).GT.MASA(J)) THEN
-
-       REALCLUS(J)=0
-       KONTA2=KONTA2+1
-
-       ELSE
-
-       REALCLUS(I)=0
-       KONTA2=KONTA2+1
-
-       END IF
-
-       END IF
-
-       END IF   !realclus
-
-       END DO
-       END IF   !realclus
-       END DO
-
-       WRITE(*,*)'CHECKING RUBBISH----->', KONTA2
-
+       CALL CHECK_RUBISH(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,VX,VY,VZ,
+     &                   MASA,RADIO,LEVHAL)
 
 *PASO 3)********************************************
 *******************SUBSTRUCTURE*********************
@@ -1044,23 +958,6 @@ c      WRITE(*,*)'=================================='
      &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
 
 
-*********************************************************
-*      CHECKING....2
-*********************************************************
-       WRITE(*,*) '---------------------------------'
-       WRITE(*,*) 'RE-CHECKING HIERARCHY:'
-       WRITE(*,*) '---------------------------------'
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
-       WRITE(*,*) 'REAL HALOS----->', KONTA2
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.0)
-       WRITE(*,*) 'REMOVED HALOS----->', KONTA2
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(1:NCLUS).GT.0)
-       WRITE(*,*) 'SUBSTRUCTURE----->', KONTA2
-       WRITE(*,*) '---------------------------------'
-
        WRITE(*,*)'At the end...'
        WRITE(*,*)'=================================='
        DO I=0,NL
@@ -1096,7 +993,7 @@ c      WRITE(*,*)'=================================='
          WRITE(3,*) I,CLUSRX(I),CLUSRY(I),CLUSRZ(I),
      &         MASA(I),RADIO(I),DMPCLUS(I),
      &         REALCLUS(I), LEVHAL(I),SUBHALOS(I),
-     &         (EIGENVAL(J,I),J=1,3),(INTERTIA_TENSOR(J,I),J=1,6)
+     &         (EIGENVAL(J,I),J=1,3),(INERTIA_TENSOR(J,I),J=1,6),
      &         (ANGULARM(J,I),J=1,3),
      &         VCMAX(I),MCMAX(I),RCMAX(I),
      &         R200M(I),M200M(I),R200C(I),M200C(I),

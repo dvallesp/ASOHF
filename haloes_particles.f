@@ -135,7 +135,8 @@
 **********************************************************************
        SUBROUTINE PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                              REALCLUS,RXPA,RYPA,RZPA,N_DM,
-     &                              NUMPARTBAS,DMPCLUS,FACRAD)
+     &                              NUMPARTBAS,DMPCLUS,FACRAD,
+     &                              DO_NEED_TO_COUNT)
 **********************************************************************
 *       Removes haloes with too few particles
 **********************************************************************
@@ -151,45 +152,122 @@
         INTEGER N_DM,NUMPARTBAS
         INTEGER DMPCLUS(NMAXNCLUS)
         REAL FACRAD
+        INTEGER DO_NEED_TO_COUNT
 
         INTEGER I,BASINT,KONTA2
         REAL CMX,CMY,CMZ,RR
 
         KONTA2=0
 
+
+        IF (DO_NEED_TO_COUNT.EQ.1) THEN
 !$OMP PARALLEL DO SHARED(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,N_DM,
 !$OMP+                   NUMPARTBAS,REALCLUS,RXPA,RYPA,RZPA,FACRAD,
 !$OMP+                   DMPCLUS),
 !$OMP+            PRIVATE(I,CMX,CMY,CMZ,RR,BASINT),
 !$OMP+            REDUCTION(+:KONTA2)
 !$OMP+            DEFAULT(NONE)
-*****************************
-        DO I=1,NCLUS
 ****************************
-         CMX=CLUSRX(I)
-         CMY=CLUSRY(I)
-         CMZ=CLUSRZ(I)
-         RR=FACRAD*RADIO(I)
+         DO I=1,NCLUS
+****************************
+          CMX=CLUSRX(I)
+          CMY=CLUSRY(I)
+          CMZ=CLUSRZ(I)
+          RR=FACRAD*RADIO(I)
 
-         CALL COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CMX,CMY,CMZ,RR,
-     &                             BASINT)
+          CALL COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CMX,CMY,CMZ,RR,
+     &                              BASINT)
 
-         IF (BASINT.LT.NUMPARTBAS) THEN
-          REALCLUS(I)=0
-          KONTA2=KONTA2+1
-          !WRITE(*,*) I,BASINT,RR
-         END IF
+          IF (BASINT.LT.NUMPARTBAS) THEN
+           REALCLUS(I)=0
+           KONTA2=KONTA2+1
+           !WRITE(*,*) I,BASINT,RR
+          END IF
 
-         DMPCLUS(I)=BASINT
+          DMPCLUS(I)=BASINT
 
 *****************************
-        END DO        !I
+         END DO        !I
 *****************************
-
-        WRITE(*,*)'CHECKING POOR HALOS----->', KONTA2
+         WRITE(*,*)'CHECKING POOR HALOS----->', KONTA2
+        ELSE
+!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,NUMPARTBAS,
+!$OMP+             REALCLUS),PRIVATE(I,BASINT),
+!$OMP+             REDUCTION(+:KONTA2)
+         DO I=1, NCLUS
+          BASINT=DMPCLUS(I)
+          IF (BASINT.LT.NUMPARTBAS) THEN
+           REALCLUS(I)=0
+           KONTA2=KONTA2+1
+          END IF
+         END DO
+         WRITE(*,*)'RE-CHECKING POOR HALOS----->', KONTA2
+        END IF
 
         RETURN
         END
+
+**********************************************************************
+       SUBROUTINE CHECK_RUBISH(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,VX,
+     &                         VY,VZ,MASA,RADIO,LEVHAL)
+**********************************************************************
+*      Looks for overlapping haloes
+**********************************************************************
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NCLUS
+       INTEGER REALCLUS(MAXNCLUS)
+       REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+       REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
+       REAL*4 RADIO(MAXNCLUS),MASA(MAXNCLUS)
+       INTEGER LEVHAL(MAXNCLUS)
+
+       INTEGER KONTA,I,J
+       REAL A1,A2,A3,DIS,VVV1,VVV2
+
+       KONTA=0
+
+       DO I=1, NCLUS
+        IF (REALCLUS(I).NE.0) THEN
+         DO J=1, NCLUS
+          IF (REALCLUS(J).NE.0.AND.LEVHAL(J).GT.
+     &        LEVHAL(I)) THEN
+
+           DIS=SQRT((CLUSRX(I)-CLUSRX(J))**2+
+     &              (CLUSRY(I)-CLUSRY(J))**2+
+     &              (CLUSRZ(I)-CLUSRZ(J))**2)
+
+           A1=MIN(MASA(I),MASA(J))/MAX(MASA(I),MASA(J))
+
+           VVV1=SQRT(VX(I)**2+VY(I)**2+VZ(I)**2)
+           VVV2=SQRT(VX(J)**2+VY(J)**2+VZ(J)**2)
+           IF (MIN(VVV1,VVV2).NE.0.0) THEN
+            A2=(ABS(VVV1-VVV2))/MAX(VVV1,VVV2)
+           END IF
+
+           A3=MIN(RADIO(I),RADIO(J))
+
+           IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.3.0) THEN
+            IF (MASA(I).GT.MASA(J)) THEN
+             REALCLUS(J)=0
+             KONTA=KONTA+1
+            ELSE
+             REALCLUS(I)=0
+             KONTA=KONTA+1
+            END IF
+           END IF
+
+          END IF   !realclus
+         END DO
+        END IF   !realclus
+       END DO
+
+       WRITE(*,*)'CHECKING RUBBISH----->', KONTA
+
+
+       RETURN
+       END
 
 **********************************************************************
         SUBROUTINE RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,R,RXPA,RYPA,
