@@ -302,6 +302,7 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
        REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4,MINDERIV
        REAL VECDENS(1000),VECRAD(1000),DERIVATIVE(1000),BASVOL_SHELL
+       REAL DXPAPA,DYPAPA,DZPAPA
 
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
@@ -846,12 +847,12 @@ c           END DO
 
             ! AND NOW LOOP UP TO IR-1, AND THEN ANOTHER LOOP ON IR, OVER RELEVANT_PATCHES
             DO IRR=1,IR-1
-             DXPA=DX/2.0**IRR
-             DYPA=DY/2.0**IRR
-             DZPA=DZ/2.0**IRR
+             DXPAPA=DX/2.0**IRR
+             DYPAPA=DY/2.0**IRR
+             DZPAPA=DZ/2.0**IRR
              LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
              LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
-             VOLCELL=DXPA*DYPA*DZPA
+             VOLCELL=DXPAPA*DYPAPA*DZPAPA
              DO BASINT=LOW1,LOW2
               IPATCH=RELEVANT_PATCHES(BASINT)
               N1=PATCHNX(IPATCH)
@@ -888,12 +889,12 @@ c           END DO
             END DO
 
             IRR=IR
-            DXPA=DX/(2.0**IRR)
-            DYPA=DY/(2.0**IRR)
-            DZPA=DZ/(2.0**IRR)
+            DXPAPA=DX/(2.0**IRR)
+            DYPAPA=DY/(2.0**IRR)
+            DZPAPA=DZ/(2.0**IRR)
             LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
             LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
-            VOLCELL=DXPA*DYPA*DZPA
+            VOLCELL=DXPAPA*DYPAPA*DZPAPA
             DO BASINT=LOW1,LOW2
              IPATCH=RELEVANT_PATCHES(BASINT)
              !if (ir.gt.1) write(*,*) 'ipatch=',ipatch,low1,low2,basint
@@ -967,7 +968,6 @@ c     &                RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
          IF (IR.LT.NL) THEN
           LOW1=SUM(NPATCH(0:IR))+1
           LOW2=SUM(NPATCH(0:IR+1))
-          write(*,*) 'masking halos for',ir,nl,low1,low2
 
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,CONTA1,LOW1,
 !$OMP+                   LOW2),
@@ -986,14 +986,14 @@ c     &                RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
            END DO
           END DO
 
-          DXPA=DX/(2.0**(IR+1))
-          DYPA=DY/(2.0**(IR+1))
-          DZPA=DZ/(2.0**(IR+1))
+          DXPAPA=DX/(2.0**(IR+1))
+          DYPAPA=DY/(2.0**(IR+1))
+          DZPAPA=DZ/(2.0**(IR+1))
 
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHRX,PATCHRY,
 !$OMP+                   PATCHRZ,DX,DY,DZ,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-!$OMP+                   RX,RY,RZ,CONTA1,NCLUS,IR,LOW1,LOW2,DXPA,DYPA,
-!$OMP+                   DZPA),
+!$OMP+                   RX,RY,RZ,CONTA1,NCLUS,IR,LOW1,LOW2,DXPAPA,
+!$OMP+                   DYPAPA,DZPAPA),
 !$OMP+            PRIVATE(I,N1,N2,N3,X1,X2,Y1,Y2,Z1,Z2,BASX,BASY,BASZ,
 !$OMP+                    BAS,IX,JY,KZ,AA,X3,Y3,Z3,X4,Y4,Z4),
 !$OMP+            DEFAULT(NONE)
@@ -1001,12 +1001,12 @@ c     &                RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
            N1=PATCHNX(I)
            N2=PATCHNY(I)
            N3=PATCHNZ(I)
-           X1=PATCHRX(I)-DXPA
-           Y1=PATCHRY(I)-DYPA
-           Z1=PATCHRZ(I)-DZPA
-           X2=X1+N1*DXPA
-           Y2=Y1+N2*DYPA
-           Z2=Z1+N3*DZPA
+           X1=PATCHRX(I)-DXPAPA
+           Y1=PATCHRY(I)-DYPAPA
+           Z1=PATCHRZ(I)-DZPAPA
+           X2=X1+N1*DXPAPA
+           Y2=Y1+N2*DYPAPA
+           Z2=Z1+N3*DZPAPA
            DO II=1,NCLUS
             BASX=CLUSRX(II)
             BASY=CLUSRY(II)

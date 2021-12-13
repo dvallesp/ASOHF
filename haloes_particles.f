@@ -270,6 +270,52 @@
        END
 
 **********************************************************************
+       SUBROUTINE ACCIDENTAL_SUBSTRUCTURE(NCLUS,REALCLUS,CLUSRX,CLUSRY,
+     &                                    CLUSRZ,VX,VY,VZ,MASA,RADIO,
+     &                                    LEVHAL)
+**********************************************************************
+*      Looks for overlapping haloes
+**********************************************************************
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NCLUS
+       INTEGER REALCLUS(MAXNCLUS)
+       REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+       REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
+       REAL*4 RADIO(MAXNCLUS),MASA(MAXNCLUS)
+       INTEGER LEVHAL(MAXNCLUS)
+
+       INTEGER KONTA,I,J
+       REAL A1,A2,A3,DIS,VVV1,VVV2
+
+       KONTA=0
+
+       DO I=1, NCLUS
+        IF (REALCLUS(I).EQ.-1) THEN
+         DO J=1, NCLUS
+          IF (REALCLUS(J)==-1) THEN
+           DIS=SQRT((CLUSRX(I)-CLUSRX(J))**2+
+     &              (CLUSRY(I)-CLUSRY(J))**2+
+     &              (CLUSRZ(I)-CLUSRZ(J))**2)
+           IF(LEVHAL(J).GT.LEVHAL(I).AND.
+     &        DIS+RADIO(J).LE.1.0*RADIO(I)) THEN
+            REALCLUS(J)=0
+            KONTA=KONTA+1
+
+           END IF
+          END IF
+
+         END DO
+        END IF
+       END DO
+
+       WRITE(*,*)'CHECKING ACCIDENTAL SUBSTRUCTURE----->', KONTA
+
+       RETURN
+       END
+
+**********************************************************************
         SUBROUTINE RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,R,RXPA,RYPA,
      &                                             RZPA,MASAP,N_DM,
      &                                             DXPAMIN)

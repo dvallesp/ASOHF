@@ -190,7 +190,7 @@
        REAL*4 M200M(NMAXNCLUS),R200M(NMAXNCLUS)
        REAL*4 M500M(NMAXNCLUS),R500M(NMAXNCLUS)
        REAL*4 M2500M(NMAXNCLUS),R2500M(NMAXNCLUS)
-       REAL*4 MSUB(NMAXNCLUS),RSUB(NMAXNCLUS)
+       REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
 
        INTEGER,ALLOCATABLE::RESORT(:)
 
@@ -198,7 +198,7 @@
        INTEGER DMPCLUS(NMAXNCLUS)
 
 *      ---SUBSTRUCTURE---
-       INTEGER LEVHAL(MAXNCLUS),NHALLEV(0:NLEVELS)
+       INTEGER LEVHAL(MAXNCLUS),NHALLEV(0:NLEVELS),SUBS_LEV(0:NLEVELS)
        INTEGER SUBHALOS(NMAXNCLUS)
 
 *      ---HALO SHAPE---
@@ -551,6 +551,7 @@
         END DO
 
         NHALLEV=0
+        SUBS_LEV=0
         NPART=0
 
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,MASA,RADIO,
@@ -883,76 +884,12 @@ c     &                     U11)
        CALL CHECK_RUBISH(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,VX,VY,VZ,
      &                   MASA,RADIO,LEVHAL)
 
-*PASO 3)********************************************
-*******************SUBSTRUCTURE*********************
+****************************************************
+********* PRUNING ACCIDENTAL SUBSTRUCTURE **********
 ****************************************************
 
-       SUBHALOS=0
-       KONTA2=0
-       DO I=1, NCLUS
-
-       IF (REALCLUS(I).EQ.-1) THEN
-
-       CONCEN=0.0
-       RS=0.0
-       FC=0.0
-       VMAX2=0.0
-
-       IF (MASA(I).GT.0.0) THEN
-       CONCEN=124.0*((MASA(I)*(ACHE/3.66D-3)**(-1))**(-0.084))
-       RS=RADIO(I)/CONCEN
-       END IF
-
-       CONCENTRA(I)=CONCEN
-
-       FC=LOG(1.0+CONCEN)-(CONCEN/(1.0+CONCEN))
-
-       IF (FC.GT.0.0) THEN
-       VMAX2=(CGR*(MASA(I)/9.1717E18)*F2)/(RS*RETE*2.0*FC)
-       END IF
-
-
-       DO J=1, NCLUS
-
-       DIS=0.0
-       DIS=SQRT((CLUSRX(I)-CLUSRX(J))**2+
-     &          (CLUSRY(I)-CLUSRY(J))**2+
-     &          (CLUSRZ(I)-CLUSRZ(J))**2)
-
-       VVV1=SQRT(VX(I)**2+VY(I)**2+VZ(I)**2)
-       VVV2=SQRT(VX(J)**2+VY(J)**2+VZ(J)**2)
-       VVV2=(VVV1-VVV2)**2
-
-       VESC2=0.0
-       IF (RS.NE.0.AND.DIS*F2/RS.NE.0) THEN
-       VESC2=(4.0*VMAX2*LOG(1.0+DIS/RS))/(DIS*F2/RS)
-       END IF
-
-       A1=0.0
-       A1=MIN(MASA(I),MASA(J))/MAX(MASA(I),MASA(J))
-
-       IF (REALCLUS(J)==-1) THEN
-
-       IF(LEVHAL(J).GT.LEVHAL(I).AND.
-     &    DIS.LE.1.0*RADIO(I).AND.A1.LE.0.2.AND.VVV2.LE.VESC2) THEN
-
-
-       REALCLUS(J)=I
-       SUBHALOS(I)=SUBHALOS(I)+1
-       IF (SUBHALOS(I).GT.NMAXSUB) THEN
-       WRITE(*,*)'WARNING: DEMASIASOS SUBHALOS!!', ITER, I, SUBHALOS
-       STOP
-       END IF
-       KONTA2=KONTA2+1
-
-       END IF
-       END IF
-
-       END DO
-       END IF
-       END DO
-
-       WRITE(*,*)'CHECKING SUBSTRUCTURE----->', KONTA2
+       CALL ACCIDENTAL_SUBSTRUCTURE(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
+     &                              VX,VY,VZ,MASA,RADIO,LEVHAL)
 
        WRITE(*,*)'TOTAL NUMBER OF HALOS=',
      &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
@@ -967,11 +904,25 @@ c     &                     U11)
      &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
        END DO
        WRITE(*,*)'=================================='
+       SUBS_LEV(0)=NCLUS
 
 
 ****************************************************
 ****************************************************
 ****************************************************
+
+       DO IR=1,NL
+        CALL SEARCH_SUBSTRUCTURE_GRID(IR,NL,NX,NY,NZ,NPATCH,PATCHNX,
+     &                    PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,CLUSRX,
+     &                    CLUSRY,CLUSRZ,REALCLUS,LEVHAL,NHALLEV,BOUND,
+     &                    CONTRASTEC,RODO,SOLAP,VECINO,NVECI,CR0AMR,
+     &                    CR0AMR11,PATCHCLUS,VOL_SOLAP_LOW,CLUSRXCM,
+     &                    CLUSRYCM,CLUSRZCM,RSUB,MSUB,SUBS_LEV,UM)
+
+        STOP
+
+       END DO
 
 
 *************************************************
@@ -1038,6 +989,8 @@ c     &                     U11)
        INCLUDE 'haloes_grids.f'
 *      Halo finding procedures using particles
        INCLUDE 'haloes_particles.f'
+*      Substructure search
+       INCLUDE 'substructure.f'
 *      Read MASCLET outputs (can be changed for other code outputs)
        INCLUDE 'reader.f'
 *      Solve Poisson's equation for the gravitational potential
