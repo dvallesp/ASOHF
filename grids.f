@@ -903,9 +903,9 @@ C        WRITE(*,*) LVAL(I,IPARE)
           IF (ZP.LT.ZR) THEN
            BAS=MASAP(IP)
 
-           IX=FLOOR((XP-XLFIX)/DXPA)
-           JY=FLOOR((YP-YLFIX)/DYPA)
-           KZ=FLOOR((ZP-ZLFIX)/DZPA)
+           IX=FLOOR((XP-XLFIX)/DXPA)+1
+           JY=FLOOR((YP-YLFIX)/DYPA)+1
+           KZ=FLOOR((ZP-ZLFIX)/DZPA)+1
 
 !          Cloud bounds over the patch grid
            I1=IX-N
