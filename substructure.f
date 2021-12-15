@@ -872,7 +872,7 @@ C     &               DISTA
        REAL*4 M200M(NMAXNCLUS),R200M(NMAXNCLUS)
        REAL*4 M500M(NMAXNCLUS),R500M(NMAXNCLUS)
        REAL*4 M2500M(NMAXNCLUS),R2500M(NMAXNCLUS)
-       REAL*4 MSUB(NMAXNCLUS),RSUB(NMAXNCLUS)
+       REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
        INTEGER DMPCLUS(NMAXNCLUS),LEVHAL(MAXNCLUS)
        REAL*4 EIGENVAL(3,NMAXNCLUS)
        INTEGER N_DM
@@ -1077,7 +1077,7 @@ c     &             DISTHOST/PROFILES(NBINS,1,IHOSTHALO),MHOST
 
 *        Simplified equation (estimation)
          MASADM=0.0
-         MINJ=MAX(10,KONTA/100)
+         MINJ=MAX(10,KONTA/50)
          DO J=1,KONTA
           MASADM=MASADM+MASAP(LIP(J))
           EQ_JACOBI_R=(DISTA(J)/DISTHOST)-
@@ -1096,7 +1096,7 @@ c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
          IF (ABS(EQ_JACOBI_R).LT.0.01) THEN
           FLAG_JACOBI=1
          ELSE
-          IR=1
+          DIR=1
           IF (EQ_JACOBI_R.LT.0.0) DIR=-1
 
           IF (DIR.EQ.1) THEN
@@ -1148,8 +1148,6 @@ c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
          CYCLE
         END IF
 
-        STOP
-
         CONTADM(1:KONTA)=0     !en principio todas estas ligadas
         CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
      &                        RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
@@ -1190,7 +1188,7 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
          FAC=FAC+1
          KONTA2PREV=KONTA2
          CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
-     &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRXCM,
+     &                   MASAP,RXPA,RYPA,RZPA,RSUB,MSUB,CLUSRXCM,
      &                   CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,VY,VZ,
      &                   REALCLUS,KONTA2)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
@@ -1202,8 +1200,8 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 
         count_1=konta-konta2
         count_2=konta2 !backup
-c        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
-c     &             '. Pruned:',count_1,'. Iters:', FAC
+        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
+     &             '. Pruned:',count_1,'. Iters:', FAC
 
 ********************************************************************
 *      UNBINDING: PHASE SPACE
@@ -1215,7 +1213,7 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
          FAC=FAC+1
          KONTA2PREV=KONTA2
          CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,RXPA,
-     &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRXCM,
+     &                        RYPA,RZPA,MASAP,RSUB,MSUB,CLUSRXCM,
      &                        CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,
      &                        VY,VZ,REALCLUS,KONTA2)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
@@ -1227,9 +1225,37 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
         END DO
 
         count_2=count_2-konta2
-c        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
-c     &             '. Pruned:',count_2,'. Iters:', FAC
-c        write(*,*) '--'
+        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
+     &             '. Pruned:',count_2,'. Iters:', FAC
+        write(*,*) '--'
+
+********************************************************************
+*      CORRECT RSUB, MSUB AFTER UNBINDING
+********************************************************************
+        MASADM=MSUB(I)/UM
+        BASX=DISTA(KONTA2)/DISTHOST
+        BASY=MASADM*UM/MHOST
+        EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
+        WRITE(*,*) 'after unbinding, eq_jacobi:',eq_jacobi_r
+        IF (EQ_JACOBI_R.GT.0.0) THEN
+         DO J=KONTA2,1,-1
+          MASADM=MASADM-MASAP(LIP(J))
+          BASX=DISTA(J)/DISTHOST
+          BASY=MASADM*UM/MHOST
+          EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
+          IF (EQ_JACOBI_R.LT.0.0) EXIT
+         END DO
+         RSUB(I)=DISTA(J+1)
+         MSUB(I)=MASADM*UM
+         KONTA2=J
+         NCAPAS(I)=J
+         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
+         IF (J.EQ.KONTA2) THEN
+          RSHELL=DISTA(J)
+         ELSE
+          RSHELL=DISTA(J+1)
+         END IF
+        END IF
 
 ********************************************************************
 *      DISCARD POOR HALOES
@@ -1364,14 +1390,6 @@ c        write(*,*) '--'
             FLAGVIR=1
             MASA(I)=DELTA2*VOL*ROTE*UM
             RADIO(I)=DISTA(J)
-
-            NCAPAS(I)=J
-            IF (J.EQ.KONTA2) THEN
-             RSHELL=DISTA(J)
-            ELSE
-             RSHELL=DISTA(J+1)
-            END IF
-
            END IF
           END IF
 
@@ -1382,7 +1400,6 @@ c        write(*,*) '--'
            RADIAL(NSHELL_2)=DISTA(J)
           END IF
 
-          IF (SALIDA.EQ.1.AND.FLAG200M.EQ.1) EXIT
          END DO ! J=1,KONTA2
 
          !WRITE(*,*) RADIAL(1:NSHELL_2)
@@ -1408,15 +1425,10 @@ c         WRITE(*,*) '---'
          MCMAX(I)=MCMAX(I)*NORMA*UM
          RCMAX(I)=RCMAX(I)   !*RETE
 
-         IF (KK_ENTERO.EQ.-1.AND.SALIDA.NE.1) THEN
-          WRITE(*,*) 'PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
-     &               NSHELL_2,RADIAL(NSHELL_2)
-         END IF
-
 ***********************************************************
 *      GUARDAMOS LAS PARTICULAS LIGADAS  DEL HALO I
 ***********************************************************
-         KONTA=KONTA2
+         KONTA=NCAPAS(I) ! DISTANCE TO PARTICLE AT DISTANCE RJ
          KONTA2=0
          BASMAS=0.0
          DMPCLUS(I)=0
@@ -1506,8 +1518,8 @@ c         WRITE(*,*) '---'
 *******************************************************
          DMPCLUS(I)=KONTA2
          IF (KONTA2.LT.NUMPARTBAS) REALCLUS(I)=0
-         MASA(I)=BASMAS*NORMA*UM
-         RADIO(I)=RSHELL
+         !MASA(I)=BASMAS*NORMA*UM
+         !RADIO(I)=RSHELL
          ANGULARM(1,I)=BASX*UV / (BASMAS*NORMA)
          ANGULARM(2,I)=BASY*UV / (BASMAS*NORMA)
          ANGULARM(3,I)=BASZ*UV / (BASMAS*NORMA)
