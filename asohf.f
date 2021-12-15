@@ -192,6 +192,8 @@
        REAL*4 M2500M(NMAXNCLUS),R2500M(NMAXNCLUS)
        REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
 
+       REAL*4 PROFILES(NBINS,2,NMAXNCLUS)
+
        INTEGER,ALLOCATABLE::RESORT(:)
 
 *      ---PARTICULAS E ITERACIONES---
@@ -840,7 +842,7 @@ c     &                     U11)
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
      &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR)
+     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,PROFILES)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -918,7 +920,8 @@ c     &                     U11)
      &                    CLUSRY,CLUSRZ,REALCLUS,LEVHAL,NHALLEV,BOUND,
      &                    CONTRASTEC,RODO,SOLAP,VECINO,NVECI,CR0AMR,
      &                    CR0AMR11,PATCHCLUS,VOL_SOLAP_LOW,CLUSRXCM,
-     &                    CLUSRYCM,CLUSRZCM,RSUB,MSUB,SUBS_LEV,UM)
+     &                    CLUSRYCM,CLUSRZCM,RSUB,MSUB,SUBS_LEV,UM,
+     &                    PROFILES)
 
         open(99, file='./output_files/substructuregrid.res',
      &       status='unknown')
@@ -934,7 +937,8 @@ c     &                     U11)
      &      M2500M,MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,
      &      DMPCLUS,LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,
      &      U4DM,ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH)
+     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
+     &      PROFILES)
 
         STOP
 

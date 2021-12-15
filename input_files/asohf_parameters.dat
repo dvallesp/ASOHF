@@ -69,6 +69,10 @@ c       PARAMETER (NMAXCLUS_PLOT=100000)
        INTEGER NUMPART
        PARAMETER (NUMPART=25)
 
+*      Number of bins for computing profiles-----------------------
+       INTEGER NBINS
+       PARAMETER (NBINS=20)
+
 *###################################################################
 *      ASOHF LIKE STAND ALONE                                      *
 *###################################################################
