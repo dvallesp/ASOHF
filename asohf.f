@@ -920,6 +920,22 @@ c     &                     U11)
      &                    CR0AMR11,PATCHCLUS,VOL_SOLAP_LOW,CLUSRXCM,
      &                    CLUSRYCM,CLUSRZCM,RSUB,MSUB,SUBS_LEV,UM)
 
+        open(99, file='./output_files/substructuregrid.res',
+     &       status='unknown')
+        do i=sum(subs_lev(0:ir-1))+1,nclus
+         write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
+     &              realclus(i)
+        end do
+        close(99)
+
+        CALL SUBSTRUCTURE_PARTICLES(IR,NL,NCLUS,MASA,RADIO,CLUSRX,
+     &      CLUSRY,CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,
+     &      VY,VZ,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,
+     &      M2500M,MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,
+     &      DMPCLUS,LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,
+     &      U4DM,ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
+     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH)
+
         STOP
 
        END DO
