@@ -896,7 +896,11 @@ c         WRITE(*,*) '---'
 ***********************************************************
 *      GUARDAMOS LAS PARTICULAS LIGADAS  DEL HALO I
 ***********************************************************
-         KONTA=KONTA2
+         KONTA=NCAPAS(I)
+         IF (KONTA.LT.NUMPARTBAS) THEN
+          REALCLUS(I)=0
+          CYCLE
+         END IF
          KONTA2=0
          BASMAS=0.0
          DMPCLUS(I)=0

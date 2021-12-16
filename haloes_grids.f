@@ -295,7 +295,7 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
        INTEGER IR,IX,JY,KZ,I,J,K,II,JJ,KK,IPATCH,ICEN(3),NV_GOOD
        INTEGER L1,L2,L3,NX1,NX2,NY1,NY2,NZ1,NZ2,KK_ENTERO,ITER_GROW
        INTEGER N1,N2,N3,KONTA,LOW1,LOW2,I2,ICEN1(1),ICEN4(4),CEL,I1,J1
-       INTEGER K1,BORAMR,IRR,BASINT,FLAG_ITER,BOR,FLAG
+       INTEGER K1,BORAMR,IRR,BASINT,FLAG_ITER,BOR,FLAG,FLAG_DUP
        REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
        REAL ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT,LADO0
        REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
@@ -335,13 +335,33 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
 
        KK_ENTERO=0
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,CONTRASTEC,BOR),
-!$OMP+            PRIVATE(IX,JY,KZ),
+!$OMP+            PRIVATE(IX,JY,KZ,BASX,BASY,BASZ,BASXX,BASYY,BASZZ),
 !$OMP+            REDUCTION(+:KK_ENTERO),
 !$OMP+            DEFAULT(NONE)
        DO KZ=1+BOR,NZ-BOR
        DO JY=1+BOR,NY-BOR
        DO IX=1+BOR,NX-BOR
-        IF (U1(IX,JY,KZ).GE.CONTRASTEC) KK_ENTERO=KK_ENTERO+1
+        IF (U1(IX,JY,KZ).GE.CONTRASTEC) THEN
+         BASX =U1(IX+1,JY,KZ)-U1(IX,JY,KZ)
+         BASY =U1(IX,JY+1,KZ)-U1(IX,JY,KZ)
+         BASZ =U1(IX,JY,KZ+1)-U1(IX,JY,KZ)
+         BASXX=U1(IX,JY,KZ)  -U1(IX-1,JY,KZ)
+         BASYY=U1(IX,JY,KZ)  -U1(IX,JY-1,KZ)
+         BASZZ=U1(IX,JY,KZ)  -U1(IX,JY,KZ-1)
+         IF (BASX.LT.0) THEN
+         IF (BASY.LT.0) THEN
+         IF (BASZ.LT.0) THEN
+         IF (BASXX.GT.0) THEN
+         IF (BASYY.GT.0) THEN
+         IF (BASZZ.GT.0) THEN ! then it's a local maximum
+          KK_ENTERO=KK_ENTERO+1
+         END IF
+         END IF
+         END IF
+         END IF
+         END IF
+         END IF
+        END IF
        END DO
        END DO
        END DO
@@ -367,11 +387,29 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
        DO IX=1+BOR,NX-BOR
         BAS=U1(IX,JY,KZ)
         IF (BAS.GE.CONTRASTEC) THEN
-         II=II+1
-         DDD(II)=BAS
-         DDDX(II)=IX
-         DDDY(II)=JY
-         DDDZ(II)=KZ
+         BASX =U1(IX+1,JY,KZ)-U1(IX,JY,KZ)
+         BASY =U1(IX,JY+1,KZ)-U1(IX,JY,KZ)
+         BASZ =U1(IX,JY,KZ+1)-U1(IX,JY,KZ)
+         BASXX=U1(IX,JY,KZ)  -U1(IX-1,JY,KZ)
+         BASYY=U1(IX,JY,KZ)  -U1(IX,JY-1,KZ)
+         BASZZ=U1(IX,JY,KZ)  -U1(IX,JY,KZ-1)
+         IF (BASX.LT.0) THEN
+         IF (BASY.LT.0) THEN
+         IF (BASZ.LT.0) THEN
+         IF (BASXX.GT.0) THEN
+         IF (BASYY.GT.0) THEN
+         IF (BASZZ.GT.0) THEN ! then it's a local maximum
+          II=II+1
+          DDD(II)=BAS
+          DDDX(II)=IX
+          DDDY(II)=JY
+          DDDZ(II)=KZ
+         END IF
+         END IF
+         END IF
+         END IF
+         END IF
+         END IF
         END IF
        END DO
        END DO
@@ -396,13 +434,6 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
         KK_ENTERO=CONTA(ICEN(1),ICEN(2),ICEN(3))
         IF(KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo yet
 c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
-
-         NCLUS=NCLUS+1
-         REALCLUS(NCLUS)=-1
-         LEVHAL(NCLUS)=IR
-         NHALLEV(IR)=NHALLEV(IR)+1
-         PATCHCLUS(NCLUS)=0
-
          IF(NCLUS.GT.MAXNCLUS) THEN
           WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
           STOP
@@ -412,9 +443,30 @@ c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
          YCEN=RADY(ICEN(2))
          ZCEN=RADZ(ICEN(3))
 
-         CALL RECENTER_DENSITY_PEAK(XCEN,YCEN,ZCEN,0,U1,U11,PATCHRX,
-     &                              PATCHRY,PATCHRZ,PATCHNX,PATCHNY,
-     &                              PATCHNZ,NPATCH,LADO0,NL)
+         IF (NL.GT.0) THEN
+          IPATCH=0
+          CALL RECENTER_DENSITY_PEAK(XCEN,YCEN,ZCEN,0,U1,U11,PATCHRX,
+     &                               PATCHRY,PATCHRZ,PATCHNX,PATCHNY,
+     &                               PATCHNZ,NPATCH,LADO0,NL,IX,JY,KZ,
+     &                               IPATCH)
+*         Assert we have not yet identified this same halo (dupplicated
+*          due to recentering)
+          FLAG_DUP=0
+          DO II=1,NCLUS
+           IF ((XCEN-CLUSRX(II))**2+(YCEN-CLUSRY(II))**2+
+     &         (ZCEN-CLUSRZ(II))**2.LT.RADIO(II)**2) THEN
+            FLAG_DUP=1
+            EXIT
+           END IF
+          END DO
+          IF (FLAG_DUP.EQ.1) CYCLE
+         END IF
+
+         NCLUS=NCLUS+1
+         REALCLUS(NCLUS)=-1
+         LEVHAL(NCLUS)=IR
+         NHALLEV(IR)=NHALLEV(IR)+1
+         PATCHCLUS(NCLUS)=IPATCH
 
          CLUSRX(NCLUS)=XCEN
          CLUSRY(NCLUS)=YCEN
@@ -639,7 +691,8 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
          KK_ENTERO=0
 !$OMP  PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,U11,CONTRASTEC,LOW1,
 !$OMP+                    LOW2,CONTA1,BORAMR),
-!$OMP+             PRIVATE(N1,N2,N3,I,IX,JY,KZ),
+!$OMP+             PRIVATE(N1,N2,N3,I,IX,JY,KZ,BASX,BASY,BASZ,BASXX,
+!$OMP+                     BASYY,BASZZ),
 !$OMP+             REDUCTION(+:KK_ENTERO),
 !$OMP+             DEFAULT(NONE)
          DO I=LOW1,LOW2
@@ -650,7 +703,27 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
           DO JY=1+BORAMR,N2-BORAMR
           DO IX=1+BORAMR,N1-BORAMR
            IF (U11(IX,JY,KZ,I).GE.CONTRASTEC.AND.
-     &         CONTA1(IX,JY,KZ,I).EQ.1) KK_ENTERO=KK_ENTERO+1
+     &         CONTA1(IX,JY,KZ,I).EQ.1) THEN
+            BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
+            BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
+            BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
+            BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
+            BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
+            BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
+            IF (BASX.LT.0) THEN
+            IF (BASY.LT.0) THEN
+            IF (BASZ.LT.0) THEN
+            IF (BASXX.GT.0) THEN
+            IF (BASYY.GT.0) THEN
+            IF (BASZZ.GT.0) THEN ! then it's a local maximum
+             KK_ENTERO=KK_ENTERO+1
+            END IF
+            END IF
+            END IF
+            END IF
+            END IF
+            END IF
+           END IF
           END DO
           END DO
           END DO
@@ -683,12 +756,30 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
           DO IX=1+BORAMR,N1-BORAMR
            IF (U11(IX,JY,KZ,I).GE.CONTRASTEC.AND.
      &         CONTA1(IX,JY,KZ,I).EQ.1) THEN
-            II=II+1
-            DDD(II)=U11(IX,JY,KZ,I)
-            DDDX(II)=IX
-            DDDY(II)=JY
-            DDDZ(II)=KZ
-            DDDP(II)=I
+            BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
+            BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
+            BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
+            BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
+            BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
+            BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
+            IF (BASX.LT.0) THEN
+            IF (BASY.LT.0) THEN
+            IF (BASZ.LT.0) THEN
+            IF (BASXX.GT.0) THEN
+            IF (BASYY.GT.0) THEN
+            IF (BASZZ.GT.0) THEN ! then it's a local maximum
+             II=II+1
+             DDD(II)=U11(IX,JY,KZ,I)
+             DDDX(II)=IX
+             DDDY(II)=JY
+             DDDZ(II)=KZ
+             DDDP(II)=I
+            END IF
+            END IF
+            END IF
+            END IF
+            END IF
+            END IF
            END IF
           END DO
           END DO
@@ -720,12 +811,6 @@ c         END DO
 
           KK_ENTERO=CONTA1(IX,JY,KZ,IPATCH)
           IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo yet
-           NCLUS=NCLUS+1
-           REALCLUS(NCLUS)=-1
-           LEVHAL(NCLUS)=IR
-           NHALLEV(IR)=NHALLEV(IR)+1
-           PATCHCLUS(NCLUS)=IPATCH
-
            XCEN=RX(IX,IPATCH)
            YCEN=RY(JY,IPATCH)
            ZCEN=RZ(KZ,IPATCH)
@@ -733,8 +818,26 @@ c         END DO
            IF (IR.NE.NL) THEN
             CALL RECENTER_DENSITY_PEAK(XCEN,YCEN,ZCEN,IR,U1,U11,PATCHRX,
      &                                 PATCHRY,PATCHRZ,PATCHNX,PATCHNY,
-     &                                 PATCHNZ,NPATCH,LADO0,NL)
+     &                                 PATCHNZ,NPATCH,LADO0,NL,IX,JY,KZ,
+     &                                 IPATCH)
+*         Assert we have not yet identified this same halo (dupplicated
+*          due to recentering)
+            FLAG_DUP=0
+            DO II=1,NCLUS
+             IF ((XCEN-CLUSRX(II))**2+(YCEN-CLUSRY(II))**2+
+     &           (ZCEN-CLUSRZ(II))**2.LT.RADIO(II)**2) THEN
+              FLAG_DUP=1
+              EXIT
+             END IF
+            END DO
+            IF (FLAG_DUP.EQ.1) CYCLE
            END IF ! (IR.NE.NL)
+
+           NCLUS=NCLUS+1
+           REALCLUS(NCLUS)=-1
+           LEVHAL(NCLUS)=IR
+           NHALLEV(IR)=NHALLEV(IR)+1
+           PATCHCLUS(NCLUS)=IPATCH
 
            CLUSRX(NCLUS)=XCEN
            CLUSRY(NCLUS)=YCEN
@@ -1067,8 +1170,9 @@ C       END DO
 
 ********************************************************************
        SUBROUTINE RECENTER_DENSITY_PEAK(BASX,BASY,BASZ,HLEV,U1,U11,
-     &            PATCHRX,PATCHRY,PATCHRZ,PATCHNX,PATCHNY,PATCHNZ,
-     &            NPATCH,LADO0,NL)
+     &                                  PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
+     &                                  PATCHNY,PATCHNZ,NPATCH,LADO0,NL,
+     &                                  PIX,PJY,PKZ,PIPATCH)
 ********************************************************************
 *      Refines the location of a density peak using finer AMR levels
 ********************************************************************
@@ -1083,6 +1187,7 @@ C       END DO
        INTEGER NPATCH(0:NLEVELS)
        REAL LADO0
        INTEGER NL
+       INTEGER PIX,PJY,PKZ,PIPATCH
 
        REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
        COMMON /GRID/ RADX,RADY,RADZ
@@ -1095,14 +1200,17 @@ C       END DO
        COMMON /ESPACIADO/ DX,DY,DZ
 
        REAL X1,X2,X3,X4,Y1,Y2,Y3,Y4,Z1,Z2,Z3,Z4,DXPA,DYPA,DZPA
+       REAL DXP,DYP,DZP,DXM,DYM,DZM,CURRENTMAX
        REAL,ALLOCATABLE::UBAS(:,:,:)
        INTEGER IX,JY,KZ,II,JJ,KK,IR,LOW1,LOW2,FLAG_FOUND,I,I1,I2,J1,J2
        INTEGER K1,K2,INMAX(3),BOR
 
-       BOR=1
+       BOR=2
        ALLOCATE(UBAS(2+2*BOR,2+2*BOR,2+2*BOR))
 
 c       WRITE(*,*) hlev,BASX,BASY,BASZ
+
+C       WRITE(*,*) 'RECENTER',HLEV,BASX,BASY,BASZ
 
        loop_levels: DO IR=HLEV+1,NL
         DXPA=DX/2.0**IR
@@ -1140,7 +1248,6 @@ c       WRITE(*,*) hlev,BASX,BASY,BASZ
 
         IF (FLAG_FOUND.EQ.0) EXIT loop_levels
 
-
         I1=INT((X1-X3)/DXPA+0.5)+1
         J1=INT((Y1-Y3)/DYPA+0.5)+1
         K1=INT((Z1-Z3)/DZPA+0.5)+1
@@ -1153,10 +1260,56 @@ c        WRITE(*,*) X1,X2,X3,X4,I1,I2
 c        WRITE(*,*) Y1,Y2,Y3,Y4,J1,J2
 c        WRITE(*,*) Z1,Z2,Z3,Z4,K1,K2
 
-
         UBAS=U11(I1:I2,J1:J2,K1:K2,I)
 
-        INMAX=MAXLOC(UBAS)
+        CURRENTMAX=-100000.0
+        DO KK=3,4
+        DO JJ=3,4
+        DO II=3,4
+         DXP=UBAS(II+1,JJ,KK)-UBAS(II,JJ,KK)
+         DXM=UBAS(II,JJ,KK)-UBAS(II-1,JJ,KK)
+         DYP=UBAS(II,JJ+1,KK)-UBAS(II,JJ,KK)
+         DYM=UBAS(II,JJ,KK)-UBAS(II,JJ-1,KK)
+         DZP=UBAS(II,JJ,KK+1)-UBAS(II,JJ,KK)
+         DZM=UBAS(II,JJ,KK)-UBAS(II,JJ,KK-1)
+         IF (DXP.LT.0.0.AND.DYP.LT.0.0.AND.DZP.LT.0.0.AND.
+     &       DXM.GT.0.0.AND.DYM.GT.0.0.AND.DZM.GT.0.0) THEN
+          IF (UBAS(II,JJ,KK).GT.CURRENTMAX) THEN
+           CURRENTMAX=UBAS(II,JJ,KK)
+           INMAX(1)=II
+           INMAX(2)=JJ
+           INMAX(3)=KK
+          END IF
+         END IF
+        END DO
+        END DO
+        END DO
+
+        IF (CURRENTMAX.LT.0.0) THEN
+         DO KK=2,5
+         DO JJ=2,5
+         DO II=2,5
+          DXP=UBAS(II+1,JJ,KK)-UBAS(II,JJ,KK)
+          DXM=UBAS(II,JJ,KK)-UBAS(II-1,JJ,KK)
+          DYP=UBAS(II,JJ+1,KK)-UBAS(II,JJ,KK)
+          DYM=UBAS(II,JJ,KK)-UBAS(II,JJ-1,KK)
+          DZP=UBAS(II,JJ,KK+1)-UBAS(II,JJ,KK)
+          DZM=UBAS(II,JJ,KK)-UBAS(II,JJ,KK-1)
+          IF (DXP.LT.0.0.AND.DYP.LT.0.0.AND.DZP.LT.0.0.AND.
+     &        DXM.GT.0.0.AND.DYM.GT.0.0.AND.DZM.GT.0.0) THEN
+           IF (UBAS(II,JJ,KK).GT.CURRENTMAX) THEN
+            CURRENTMAX=UBAS(II,JJ,KK)
+            INMAX(1)=II
+            INMAX(2)=JJ
+            INMAX(3)=KK
+           END IF
+          END IF
+         END DO
+         END DO
+         END DO
+        END IF
+
+        IF (CURRENTMAX.LT.0.0) EXIT loop_levels
 
         IX=I1+INMAX(1)-1
         JY=J1+INMAX(2)-1
@@ -1165,8 +1318,14 @@ c        WRITE(*,*) Z1,Z2,Z3,Z4,K1,K2
         BASX=RX(IX,I)
         BASY=RY(JY,I)
         BASZ=RZ(KZ,I)
+
+        PIX=IX
+        PJY=JY
+        PKZ=KZ
+        PIPATCH=I
 c       WRITE(*,*) IR,BASX,BASY,BASZ,U11(IX,JY,KZ,I),I,inmax
 c       write(*,*)
+C       WRITE(*,*) 'RECENTER',IR,BASX,BASY,BASZ,INMAX(1:3)
        END DO loop_levels
 c       WRITE(*,*) '-----'
 

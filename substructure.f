@@ -339,14 +339,27 @@ C        write(*,*) 'new candidate!!!!'
         KZ=ICEN4(3)
         IPATCH=ICEN4(4)
 
+        XCEN=RX(IX,IPATCH)
+        YCEN=RY(JY,IPATCH)
+        ZCEN=RZ(KZ,IPATCH)
+
         IF (IR.NE.NL) THEN
-         XCEN=RX(IX,IPATCH)
-         YCEN=RY(JY,IPATCH)
-         ZCEN=RZ(KZ,IPATCH)
-         CALL RECENTER_DENSITY_PEAK_SUBS(XCEN,YCEN,ZCEN,IR,U1,U11,
-     &                               PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
-     &                               PATCHNY,PATCHNZ,NPATCH,LADO0,NL,
-     &                               IX,JY,KZ,IPATCH)
+         CALL RECENTER_DENSITY_PEAK(XCEN,YCEN,ZCEN,IR,U1,U11,PATCHRX,
+     &                              PATCHRY,PATCHRZ,PATCHNX,PATCHNY,
+     &                              PATCHNZ,NPATCH,LADO0,NL,IX,JY,KZ,
+     &                              IPATCH)
+
+*        Assert we have not yet identified this same halo (dupplicated
+*         due to recentering)
+         FLAG_DUP=0
+         DO II=NCLUS_INI+1,NCLUS
+          IF ((XCEN-CLUSRX(II))**2+(YCEN-CLUSRY(II))**2+
+     &        (ZCEN-CLUSRZ(II))**2.LT.RSUB(II)**2) THEN
+           FLAG_DUP=1
+           EXIT
+          END IF
+         END DO
+         IF (FLAG_DUP.EQ.1) CYCLE
         END IF ! (IR.NE.NL)
 
 c        KK_ENTERO=CONTA1(IX,JY,KZ,IPATCH)
@@ -364,18 +377,6 @@ c         write(*,*) 'indeed, dista=',disthost
 c        end if
 
 ccc        IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo yet
-
-*        Assert we have not yet identified this same halo (dupplicated
-*         due to recentering)
-        FLAG_DUP=0
-        DO II=NCLUS_INI+1,NCLUS
-         IF ((XCEN-CLUSRX(II))**2+(YCEN-CLUSRY(II))**2+
-     &       (ZCEN-CLUSRZ(II))**2.LT.RSUB(II)**2) THEN
-          FLAG_DUP=1
-          EXIT
-         END IF
-        END DO
-        IF (FLAG_DUP.EQ.1) CYCLE
 
         CALL FIND_HOST_HALO(XCEN,YCEN,ZCEN,DXPA,IR,SUBS_LEV,REALCLUS,
      &                      CLUSRX,CLUSRY,CLUSRZ,RADIO,RSUB,IHOSTHALO)
@@ -614,172 +615,6 @@ C     &          ((BASMASS*UM)/(BASMASS*UM+3*MHOST))**(1.0/3.0)
 
        SUBS_LEV(IR)=NCLUS-NCLUS_INI
        WRITE(*,*) '... Halos found at level:',IR,SUBS_LEV(IR)
-
-       RETURN
-       END
-
-********************************************************************
-       SUBROUTINE RECENTER_DENSITY_PEAK_SUBS(BASX,BASY,BASZ,HLEV,U1,U11,
-     &                                       PATCHRX,PATCHRY,PATCHRZ,
-     &                                       PATCHNX,PATCHNY,PATCHNZ,
-     &                                       NPATCH,LADO0,NL,
-     &                                       PIX,PJY,PKZ,PIPATCH)
-********************************************************************
-*      Refines the location of a density peak using finer AMR levels
-*      Case for substructure (impose it is a relative maximum!)
-********************************************************************
-       IMPLICIT NONE
-       INCLUDE 'input_files/asohf_parameters.dat'
-
-       REAL BASX,BASY,BASZ
-       INTEGER HLEV
-       REAL U1(NMAX,NMAY,NMAZ),U11(NAMRX,NAMRY,NAMRZ,NPALEV)
-       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
-       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
-       INTEGER NPATCH(0:NLEVELS)
-       REAL LADO0
-       INTEGER NL
-       INTEGER PIX,PJY,PKZ,PIPATCH
-
-       REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
-       COMMON /GRID/ RADX,RADY,RADZ
-
-       REAL*4  RX(0:NAMRX+1,NPALEV),RY(0:NAMRX+1,NPALEV),
-     &         RZ(0:NAMRX+1,NPALEV)
-       COMMON /GRIDAMR/ RX,RY,RZ
-
-       REAL*4 DX,DY,DZ,H2
-       COMMON /ESPACIADO/ DX,DY,DZ
-
-       REAL X1,X2,X3,X4,Y1,Y2,Y3,Y4,Z1,Z2,Z3,Z4,DXPA,DYPA,DZPA
-       REAL DXP,DYP,DZP,DXM,DYM,DZM,CURRENTMAX
-       REAL,ALLOCATABLE::UBAS(:,:,:)
-       INTEGER IX,JY,KZ,II,JJ,KK,IR,LOW1,LOW2,FLAG_FOUND,I,I1,I2,J1,J2
-       INTEGER K1,K2,INMAX(3),BOR
-
-       BOR=2
-       ALLOCATE(UBAS(2+2*BOR,2+2*BOR,2+2*BOR))
-
-c       WRITE(*,*) hlev,BASX,BASY,BASZ
-
-C       WRITE(*,*) 'RECENTER',HLEV,BASX,BASY,BASZ
-
-       loop_levels: DO IR=HLEV+1,NL
-        DXPA=DX/2.0**IR
-        DYPA=DY/2.0**IR
-        DZPA=DZ/2.0**IR
-
-        X1=BASX-(1.0+BOR)*DXPA
-        X2=BASX+(1.0+BOR)*DXPA
-        Y1=BASY-(1.0+BOR)*DYPA
-        Y2=BASY+(1.0+BOR)*DYPA
-        Z1=BASZ-(1.0+BOR)*DZPA
-        Z2=BASZ+(1.0+BOR)*DZPA
-
-        FLAG_FOUND=0
-
-        LOW1=SUM(NPATCH(0:IR-1))+1
-        LOW2=SUM(NPATCH(0:IR))
-
-        loop_patches: DO I=LOW1,LOW2
-         X3=PATCHRX(I)-DXPA
-         X4=X3+PATCHNX(I)*DXPA
-         Y3=PATCHRY(I)-DYPA
-         Y4=Y3+PATCHNY(I)*DYPA
-         Z3=PATCHRZ(I)-DZPA
-         Z4=Z3+PATCHNZ(I)*DZPA
-
-         IF (X3.LT.X1.AND.X2.LT.X4.AND.   ! what we are looking is
-     &       Y3.LT.Y1.AND.Y2.LT.Y4.AND.   ! completely enclosed in the
-     &       Z3.LT.Z1.AND.Z2.LT.Z4) THEN  ! patch
-          FLAG_FOUND=1
-          EXIT loop_patches
-         END IF
-
-        END DO loop_patches
-
-        IF (FLAG_FOUND.EQ.0) EXIT loop_levels
-
-        I1=INT((X1-X3)/DXPA+0.5)+1
-        J1=INT((Y1-Y3)/DYPA+0.5)+1
-        K1=INT((Z1-Z3)/DZPA+0.5)+1
-        I2=I1+1+2*BOR
-        J2=J1+1+2*BOR
-        K2=K1+1+2*BOR
-c        WRITE(*,*) '--------------'
-c        WRITE(*,*) IR
-c        WRITE(*,*) X1,X2,X3,X4,I1,I2
-c        WRITE(*,*) Y1,Y2,Y3,Y4,J1,J2
-c        WRITE(*,*) Z1,Z2,Z3,Z4,K1,K2
-
-        UBAS=U11(I1:I2,J1:J2,K1:K2,I)
-
-        CURRENTMAX=-100000.0
-        DO KK=3,4
-        DO JJ=3,4
-        DO II=3,4
-         DXP=UBAS(II+1,JJ,KK)-UBAS(II,JJ,KK)
-         DXM=UBAS(II,JJ,KK)-UBAS(II-1,JJ,KK)
-         DYP=UBAS(II,JJ+1,KK)-UBAS(II,JJ,KK)
-         DYM=UBAS(II,JJ,KK)-UBAS(II,JJ-1,KK)
-         DZP=UBAS(II,JJ,KK+1)-UBAS(II,JJ,KK)
-         DZM=UBAS(II,JJ,KK)-UBAS(II,JJ,KK-1)
-         IF (DXP.LT.0.0.AND.DYP.LT.0.0.AND.DZP.LT.0.0.AND.
-     &       DXM.GT.0.0.AND.DYM.GT.0.0.AND.DZM.GT.0.0) THEN
-          IF (UBAS(II,JJ,KK).GT.CURRENTMAX) THEN
-           CURRENTMAX=UBAS(II,JJ,KK)
-           INMAX(1)=II
-           INMAX(2)=JJ
-           INMAX(3)=KK
-          END IF
-         END IF
-        END DO
-        END DO
-        END DO
-
-        IF (CURRENTMAX.LT.0.0) THEN
-         DO KK=2,5
-         DO JJ=2,5
-         DO II=2,5
-          DXP=UBAS(II+1,JJ,KK)-UBAS(II,JJ,KK)
-          DXM=UBAS(II,JJ,KK)-UBAS(II-1,JJ,KK)
-          DYP=UBAS(II,JJ+1,KK)-UBAS(II,JJ,KK)
-          DYM=UBAS(II,JJ,KK)-UBAS(II,JJ-1,KK)
-          DZP=UBAS(II,JJ,KK+1)-UBAS(II,JJ,KK)
-          DZM=UBAS(II,JJ,KK)-UBAS(II,JJ,KK-1)
-          IF (DXP.LT.0.0.AND.DYP.LT.0.0.AND.DZP.LT.0.0.AND.
-     &        DXM.GT.0.0.AND.DYM.GT.0.0.AND.DZM.GT.0.0) THEN
-           IF (UBAS(II,JJ,KK).GT.CURRENTMAX) THEN
-            CURRENTMAX=UBAS(II,JJ,KK)
-            INMAX(1)=II
-            INMAX(2)=JJ
-            INMAX(3)=KK
-           END IF
-          END IF
-         END DO
-         END DO
-         END DO
-        END IF
-
-        IF (CURRENTMAX.LT.0.0) EXIT loop_levels
-
-        IX=I1+INMAX(1)-1
-        JY=J1+INMAX(2)-1
-        KZ=K1+INMAX(3)-1
-
-        BASX=RX(IX,I)
-        BASY=RY(JY,I)
-        BASZ=RZ(KZ,I)
-
-        PIX=IX
-        PJY=JY
-        PKZ=KZ
-        PIPATCH=I
-c       WRITE(*,*) IR,BASX,BASY,BASZ,U11(IX,JY,KZ,I),I,inmax
-c       write(*,*)
-C       WRITE(*,*) 'RECENTER',IR,BASX,BASY,BASZ,INMAX(1:3)
-       END DO loop_levels
-c       WRITE(*,*) '-----'
 
        RETURN
        END

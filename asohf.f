@@ -949,6 +949,13 @@ c     &                     U11)
         close(99)
        END DO
 
+       write(*,*)
+       do ir=1,nl
+        write(*,*) 'substructures at level ir,#:',ir,subs_lev(ir),
+     & count(realclus(sum(subs_lev(0:ir-1))+1:sum(subs_lev(0:ir))).gt.0)
+       end do
+
+
 
 *************************************************
 *************************************************
