@@ -925,7 +925,7 @@ c     &                     U11)
 
         open(99, file='./output_files/substructuregrid.res',
      &       status='unknown')
-        do i=sum(subs_lev(0:ir-1))+1,nclus
+        do i=subs_lev(0)+1,nclus
          write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
      &              realclus(i)
         end do
@@ -940,8 +940,13 @@ c     &                     U11)
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
      &      PROFILES)
 
-        STOP
-
+        open(99, file='./output_files/substructureparticles.res',
+     &       status='unknown')
+        do i=subs_lev(0)+1,nclus
+         write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
+     &              realclus(i)
+        end do
+        close(99)
        END DO
 
 

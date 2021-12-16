@@ -112,7 +112,7 @@
 
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHRX,PATCHRY,
 !$OMP+                   PATCHRZ,DXPA,DYPA,DZPA,CLUSRX,CLUSRY,CLUSRZ,
-!$OMP+                   RADIO,RX,RY,RZ,CONTA1,NCLUS),
+!$OMP+                   RADIO,RX,RY,RZ,CONTA1,NCLUS,REALCLUS,RSUB),
 !$OMP+            PRIVATE(I,N1,N2,N3,X1,X2,Y1,Y2,Z1,Z2,BASX,BASY,BASZ,
 !$OMP+                    BAS,IX,JY,KZ,AA,X3,Y3,Z3,X4,Y4,Z4),
 !$OMP+            DEFAULT(NONE)
@@ -130,7 +130,13 @@
          BASX=CLUSRX(II)
          BASY=CLUSRY(II)
          BASZ=CLUSRZ(II)
-         BAS=RADIO(II)
+         IF (REALCLUS(II).EQ.0) THEN
+          CYCLE
+         ELSE IF (REALCLUS(II).EQ.-1) THEN
+          BAS=RADIO(II)
+         ELSE
+          BAS=RSUB(II)
+         END IF
          X3=BASX-BAS
          Y3=BASY-BAS
          Z3=BASZ-BAS
@@ -158,7 +164,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
 !      Unflag centers of haloes to avoid double-counting
 !$OMP PARALLEL DO SHARED(NPATCH,PATCHNX,PATCHNY,PATCHNZ,PATCHRX,PATCHRY,
 !$OMP+                   PATCHRZ,DXPA,DYPA,DZPA,CLUSRX,CLUSRY,CLUSRZ,
-!$OMP+                   RADIO,RX,RY,RZ,CONTA1,NCLUS),
+!$OMP+                   RADIO,RX,RY,RZ,CONTA1,NCLUS,REALCLUS),
 !$OMP+            PRIVATE(I,N1,N2,N3,X1,X2,Y1,Y2,Z1,Z2,BASX,BASY,BASZ,
 !$OMP+                    BAS,IX,JY,KZ,AA,X3,Y3,Z3,X4,Y4,Z4),
 !$OMP+            DEFAULT(NONE)
@@ -176,6 +182,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
          BASX=CLUSRX(II)
          BASY=CLUSRY(II)
          BASZ=CLUSRZ(II)
+         IF (REALCLUS(II).EQ.0) CYCLE
          BAS=2.0*DXPA !0.1*RADIO(II)
          X3=BASX-BAS
          Y3=BASY-BAS
@@ -371,7 +378,7 @@ ccc        IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo 
         IF (FLAG_DUP.EQ.1) CYCLE
 
         CALL FIND_HOST_HALO(XCEN,YCEN,ZCEN,DXPA,IR,SUBS_LEV,REALCLUS,
-     &                      CLUSRX,CLUSRY,CLUSRZ,RADIO,IHOSTHALO)
+     &                      CLUSRX,CLUSRY,CLUSRZ,RADIO,RSUB,IHOSTHALO)
 
         IF (IHOSTHALO.EQ.-1) THEN
          write(*,*) 'not found parent',xcen,ycen,zcen
@@ -780,7 +787,7 @@ c       WRITE(*,*) '-----'
 ********************************************************************
        SUBROUTINE FIND_HOST_HALO(BASX,BASY,BASZ,DXPA,IR,SUBS_LEV,
      &                           REALCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                           IHOSTHALO)
+     &                           RSUB,IHOSTHALO)
 ********************************************************************
 *      Find the host halo (from deeper levels to coarser levels of
 *       substructure)
@@ -794,7 +801,7 @@ c       WRITE(*,*) '-----'
        INTEGER SUBS_LEV(0:NLEVELS)
        INTEGER REALCLUS(MAXNCLUS)
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
-       REAL RADIO(MAXNCLUS)
+       REAL RADIO(MAXNCLUS),RSUB(MAXNCLUS)
        INTEGER IHOSTHALO
 
        INTEGER FLAG,IRR,LOW1,LOW2,II
@@ -815,7 +822,11 @@ c       WRITE(*,*) '-----'
          BASXX=CLUSRX(II)
          BASYY=CLUSRY(II)
          BASZZ=CLUSRZ(II)
-         BAS=RADIO(II)
+         IF (REALCLUS(II).EQ.-1) THEN
+          BAS=RADIO(II)
+         ELSE
+          BAS=RSUB(II)
+         END IF
 
          DISTA=SQRT((BASX-BASXX)**2+(BASY-BASYY)**2+(BASZ-BASZZ)**2)
      &           / BAS
@@ -1001,7 +1012,11 @@ C     &               DISTA
         CZ=CLUSRZ(I)
         BAS=RSUB(I)
         IHOSTHALO=REALCLUS(I)
-        MHOST=MASA(IHOSTHALO)
+        IF (REALCLUS(IHOSTHALO).EQ.-1) THEN
+         MHOST=MASA(IHOSTHALO)
+        ELSE
+         MHOST=MSUB(IHOSTHALO)
+        END IF
         DISTHOST=SQRT((CLUSRX(IHOSTHALO)-CX)**2 +
      &                (CLUSRY(IHOSTHALO)-CY)**2 +
      &                (CLUSRZ(IHOSTHALO)-CZ)**2)
