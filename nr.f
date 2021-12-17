@@ -11,13 +11,21 @@
 !* Ref.:"NUMERICAL RECIPES, Cambridge University Press, 1986,*
 !*       chap. 11, pages 346-348" [BIBLI 08].                *
 !*************************************************************
-       Subroutine JACOBI(A,N,D,NROT)
+       Subroutine JACOBI(AINPUT,N,DOUTPUT,NROT)
 
        implicit none
-       integer N,NROT,ip,iq,ialloc,i,j
-       real*4  A(1:N,1:N),D(1:N)
-       real*4, pointer :: B(:), Z(:)
-       real*4  c,g,h,s,sm,t,tau,theta,tresh,sum_elements
+       integer N,NROT
+       real*4  AINPUT(1:N,1:N),DOUTPUT(1:N)
+       real*8 A(1:N,1:N),D(1:N)
+       integer ip,iq,ialloc,i,j
+       real*8, pointer :: B(:), Z(:)
+       real*8  c,g,h,s,sm,t,tau,theta,tresh,sum_elements
+
+       DO IP=1,N
+       DO IQ=1,N
+        A(IP,IQ)=AINPUT(IP,IQ)
+       END DO
+       END DO
 
        allocate(B(1:100))   !,stat=ialloc)
        allocate(Z(1:100))   !,stat=ialloc)
@@ -106,6 +114,10 @@
        end do
        end do                    !main i loop
 c       pause ' 50 iterations !'
+
+       DO IP=1,N
+        DOUTPUT(IP)=D(IP)
+       END DO
        return
        END
 
