@@ -302,10 +302,14 @@ c       WRITE(*,*)
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
        REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4,MINDERIV
        REAL VECDENS(1000),VECRAD(1000),DERIVATIVE(1000),BASVOL_SHELL
-       REAL DXPAPA,DYPAPA,DZPAPA
+       REAL DXPAPA,DYPAPA,DZPAPA,CONTRASTECPEAK
 
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
+
+       !This is to be able to find peaks which are not dense enough over
+       ! the grid due to the smooth density interpolation
+       CONTRASTECPEAK=CONTRASTEC/6.0
 
 **************************************************************
 *      NIVEL BASE!!
@@ -334,14 +338,14 @@ c       WRITE(*,*)
        END DO
 
        KK_ENTERO=0
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,CONTRASTEC,BOR),
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1,CONTRASTECPEAK,BOR),
 !$OMP+            PRIVATE(IX,JY,KZ,BASX,BASY,BASZ,BASXX,BASYY,BASZZ),
 !$OMP+            REDUCTION(+:KK_ENTERO),
 !$OMP+            DEFAULT(NONE)
        DO KZ=1+BOR,NZ-BOR
        DO JY=1+BOR,NY-BOR
        DO IX=1+BOR,NX-BOR
-        IF (U1(IX,JY,KZ).GE.CONTRASTEC) THEN
+        IF (U1(IX,JY,KZ).GE.CONTRASTECPEAK) THEN
          BASX =U1(IX+1,JY,KZ)-U1(IX,JY,KZ)
          BASY =U1(IX,JY+1,KZ)-U1(IX,JY,KZ)
          BASZ =U1(IX,JY,KZ+1)-U1(IX,JY,KZ)
@@ -386,7 +390,7 @@ c       WRITE(*,*)
        DO JY=1+BOR,NY-BOR
        DO IX=1+BOR,NX-BOR
         BAS=U1(IX,JY,KZ)
-        IF (BAS.GE.CONTRASTEC) THEN
+        IF (BAS.GE.CONTRASTECPEAK) THEN
          BASX =U1(IX+1,JY,KZ)-U1(IX,JY,KZ)
          BASY =U1(IX,JY+1,KZ)-U1(IX,JY,KZ)
          BASZ =U1(IX,JY,KZ+1)-U1(IX,JY,KZ)
@@ -559,7 +563,7 @@ c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
           END DO
 
           BASMASS=BASMASS+BASMASS_SHELL*RODO*RE0**3
-          DELTA=BASMASS/(BASVOL*RETE**3)
+          IF (BASVOL.GT.0.0) DELTA=BASMASS/(BASVOL*RETE**3)
 c         WRITE(*,*) DELTA/ROTE, II
          END DO   ! do while (DELTA)
 
@@ -689,8 +693,8 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
 
 *        estimation to allocate
          KK_ENTERO=0
-!$OMP  PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,U11,CONTRASTEC,LOW1,
-!$OMP+                    LOW2,CONTA1,BORAMR),
+!$OMP  PARALLEL DO SHARED(PATCHNX,PATCHNY,PATCHNZ,U11,CONTRASTECPEAK,
+!$OMP+                    LOW1,LOW2,CONTA1,BORAMR),
 !$OMP+             PRIVATE(N1,N2,N3,I,IX,JY,KZ,BASX,BASY,BASZ,BASXX,
 !$OMP+                     BASYY,BASZZ),
 !$OMP+             REDUCTION(+:KK_ENTERO),
@@ -702,7 +706,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
           DO KZ=1+BORAMR,N3-BORAMR
           DO JY=1+BORAMR,N2-BORAMR
           DO IX=1+BORAMR,N1-BORAMR
-           IF (U11(IX,JY,KZ,I).GE.CONTRASTEC.AND.
+           IF (U11(IX,JY,KZ,I).GE.CONTRASTECPEAK.AND.
      &         CONTA1(IX,JY,KZ,I).EQ.1) THEN
             BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
             BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
@@ -754,7 +758,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
           DO KZ=1+BORAMR,N3-BORAMR
           DO JY=1+BORAMR,N2-BORAMR
           DO IX=1+BORAMR,N1-BORAMR
-           IF (U11(IX,JY,KZ,I).GE.CONTRASTEC.AND.
+           IF (U11(IX,JY,KZ,I).GE.CONTRASTECPEAK.AND.
      &         CONTA1(IX,JY,KZ,I).EQ.1) THEN
             BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
             BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
@@ -1033,7 +1037,7 @@ c           END DO
             END DO
 
             BASMASS=BASMASS+BASMASS_SHELL*RODO*RE0**3
-            DELTA=BASMASS/(BASVOL*RETE**3)
+            IF (BASVOL.GT.0.0) DELTA=BASMASS/(BASVOL*RETE**3)
 
 c           WRITE(*,*) DELTA/ROTE,II,JJ
 
