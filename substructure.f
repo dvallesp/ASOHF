@@ -382,7 +382,7 @@ ccc        IF (KK_ENTERO.EQ.1) THEN ! this means this peak is not inside a halo 
      &                      CLUSRX,CLUSRY,CLUSRZ,RADIO,RSUB,IHOSTHALO)
 
         IF (IHOSTHALO.EQ.-1) THEN
-         write(*,*) 'not found parent',xcen,ycen,zcen
+C         write(*,*) 'not found parent',xcen,ycen,zcen
          CYCLE
         END IF
 
@@ -680,7 +680,7 @@ C     &               DISTA
        END DO !IRR=IR-1,0,-1
 
        IF (FLAG.NE.1) THEN
-        WRITE(*,*) 'Not found progenitor'
+C        WRITE(*,*) 'Not found progenitor'
         IHOSTHALO=-1
        END IF
 
@@ -791,12 +791,12 @@ C     &               DISTA
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
 !$OMP+           M200C,M500C,M2500C,RSUB,MSUB,MINOVERDENS,CLUSRXCM,
 !$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR,LOWH1,
-!$OMP+           LOWH2,PATCHCLUS,NPATCH,PROFILES),
+!$OMP+           LOWH2,PATCHCLUS,NPATCH,PROFILES,NCAPAS),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
-!$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
+!$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
 !$OMP+           DISTA,FAC,CONTAERR,JJ,DENSITOT,RADIAL,SALIDA,BAS1,BAS2,
-!$OMP+           VOL,DELTA2,NCAPAS,RSHELL,KONTA3,NSHELL_2,KONTA1,
+!$OMP+           VOL,DELTA2,RSHELL,KONTA3,NSHELL_2,KONTA1,
 !$OMP+           DENSA,DENSB,DENSC,BASVEC,BASVECCM,VKK,AA,NROT,
 !$OMP+           BASEIGENVAL,BASX,BASY,BASZ,XP,YP,ZP,MP,RCLUS,COUNT_1,
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
@@ -804,7 +804,7 @@ C     &               DISTA
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IHOSTHALO,MINJ,DIR,
 !$OMP+           FLAG_JACOBI,MHOST,DISTHOST,EQ_JACOBI_R,IPATCH,IRR,
 !$OMP+           J_JACOBI,EACH_PROF),
-!$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE), IF(.FALSE.)
+!$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=LOWH1,LOWH2
 ****************************
@@ -882,19 +882,19 @@ c     &             DISTHOST/PROFILES(NBINS,1,IHOSTHALO),MHOST
          IF (SUM(NPATCH(0:IRR-1))+1.LE.IPATCH.AND.
      &       IPATCH.LE.SUM(NPATCH(0:IRR))) EXIT
         END DO
-        WRITE(*,*) CX,CY,CZ,IRR
+c        WRITE(*,*) CX,CY,CZ,IRR
         CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
      &                                       RZPA,MASAP,N_DM,
      &                                       DX/2.0**IRR)
 
         BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
         BAS=SQRT(BAS)
-        WRITE(*,*) 'Recentering shift', i, bas, bas/rsub(i)
+c        WRITE(*,*) 'Recentering shift', i, bas, bas/rsub(i)
 
         DISTHOST=SQRT((CLUSRX(IHOSTHALO)-CX)**2 +
      &                (CLUSRY(IHOSTHALO)-CY)**2 +
      &                (CLUSRZ(IHOSTHALO)-CZ)**2)
-        write(*,*) 'mhost,dishost',mhost,disthost
+c        write(*,*) 'mhost,dishost',mhost,disthost
 
         CLUSRX(I)=CX
         CLUSRY(I)=CY
@@ -921,7 +921,7 @@ c     &             DISTHOST/PROFILES(NBINS,1,IHOSTHALO),MHOST
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA,KONTA2,1)
 
-         WRITE(*,*) 'CHECK I,KONTA,KONTA2=',I,KONTA,KONTA2
+c         WRITE(*,*) 'CHECK I,KONTA,KONTA2=',I,KONTA,KONTA2
 
          DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
 
@@ -991,7 +991,7 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
          END IF
         END DO
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
-        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
+c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
 
         IF (MASADM.LE.0.0.OR.KONTA.EQ.0) THEN
          REALCLUS(I)=0
@@ -1050,8 +1050,8 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 
         count_1=konta-konta2
         count_2=konta2 !backup
-        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
-     &             '. Pruned:',count_1,'. Iters:', FAC
+c        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
+c     &             '. Pruned:',count_1,'. Iters:', FAC
 
 ********************************************************************
 *      UNBINDING: PHASE SPACE
@@ -1075,9 +1075,9 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
         END DO
 
         count_2=count_2-konta2
-        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
-     &             '. Pruned:',count_2,'. Iters:', FAC
-        write(*,*) '--'
+c        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
+c     &             '. Pruned:',count_2,'. Iters:', FAC
+c        write(*,*) '--'
 
 ********************************************************************
 *      CORRECT RSUB, MSUB AFTER UNBINDING
@@ -1086,7 +1086,7 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
         BASX=DISTA(KONTA2)/DISTHOST
         BASY=MASADM*UM/MHOST
         EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
-        WRITE(*,*) 'after unbinding, eq_jacobi:',eq_jacobi_r
+c        WRITE(*,*) 'after unbinding, eq_jacobi:',eq_jacobi_r
         IF (EQ_JACOBI_R.GT.0.0) THEN
          DO J=KONTA2,1,-1
           MASADM=MASADM-MASAP(LIP(J))
@@ -1099,7 +1099,7 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
          MSUB(I)=MASADM*UM
          KONTA2=J
          NCAPAS(I)=J
-         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
+c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
          IF (J.EQ.KONTA2) THEN
           RSHELL=DISTA(J)
          ELSE
@@ -1416,6 +1416,9 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        END DO   !I=IP,IP2
 ****************
 
+       WRITE(*,*) '... Finally, haloes found at level:',IR,
+     &            COUNT(REALCLUS(LOWH1:LOWH2).NE.0)
+       WRITE(*,*)
 
        RETURN
        END

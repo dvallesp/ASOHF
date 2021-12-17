@@ -507,13 +507,13 @@ c     &              IX,JY,KZ,FLAG_ITER
 
        MINOVERDENS=200.0
 
-       DO I=0,NL
-       WRITE(*,*)'Halos at level ', I,' =',
-     &            COUNT(LEVHAL(1:NCLUS).EQ.I),
-     &            COUNT(REALCLUS(1:NCLUS).NE.0.AND.
-     &                       LEVHAL(1:NCLUS).EQ.I)
-       END DO
-       WRITE(*,*)'=================================='
+c       DO I=0,NL
+c       WRITE(*,*)'Halos at level ', I,' =',
+c     &            COUNT(LEVHAL(1:NCLUS).EQ.I),
+c     &            COUNT(REALCLUS(1:NCLUS).NE.0.AND.
+c     &                       LEVHAL(1:NCLUS).EQ.I)
+c       END DO
+c       WRITE(*,*)'=================================='
 
        WRITE(*,*) 'Max num. of part. in a halo=',
      &            MAXVAL(DMPCLUS(1:NCLUS))

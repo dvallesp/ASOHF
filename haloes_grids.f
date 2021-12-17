@@ -218,8 +218,8 @@ C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
        WRITE(*,*) 'POSSIBLE HALOS_0----->', BASINT
        BASINT=COUNT(REALCLUS(LOWH1:LOWH2).EQ.-1)
        BASINT2=COUNT(REALCLUS(LOWH1:LOWH2).GT.0)
-       WRITE(*,*) '--> Of which free,substructure:',BASINT,BASINT2
-       WRITE(*,*)
+c       WRITE(*,*) '--> Of which free,substructure:',BASINT,BASINT2
+c       WRITE(*,*)
 
        RETURN
        END
@@ -1162,8 +1162,8 @@ C       END DO
 
        BASINT=COUNT(REALCLUS(1:NCLUS).EQ.-1)
        WRITE(*,*) '====> TOTAL NUMBER OF TENTATIVE FREE HALOES',BASINT
-       BASINT=COUNT(REALCLUS(1:NCLUS).GT.0)
-       WRITE(*,*) '====> TOTAL NUMBER OF TENTATIVE SUBSTRUCTURES',BASINT
+c       BASINT=COUNT(REALCLUS(1:NCLUS).GT.0)
+c       WRITE(*,*) '====> TOTAL NUMBER OF TENTATIVE SUBSTRUCTURES',BASINT
 
        RETURN
        END

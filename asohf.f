@@ -379,8 +379,6 @@
 
        WRITE(*,*) 'Min. number of particles per halo ', NUMPART
 
-       WRITE(*,*) '************************************************'
-
 
 ***************************
 *      GRID BUILDER
@@ -388,8 +386,9 @@
        LADO=LADO0-(LADO0/NX)
        CALL MALLA(NX,NY,NZ,LADO)
 
+       WRITE(*,*)
        WRITE(*,*) '************************************************'
-       WRITE(*,*) '             GRID                               '
+       WRITE(*,*) '                     GRID                       '
        WRITE(*,*) '************************************************'
        WRITE(*,*) 'SIDE LENGTH=',LADO
        WRITE(*,*) 'NX,DX,RADX(1),RADX(NX)=',NX,DX,RADX(1),RADX(NX)
@@ -398,7 +397,7 @@
        IF (PARCHLIM.NE.0) THEN
              WRITE(*,*) '  Limit patches per level=', MPAPOLEV(1)
        END IF
-       WRITE(*,*) '************************************************'
+       WRITE(*,*)
 
 
 
@@ -432,10 +431,7 @@
 ********************************************************************
 
        NFILE2=INT((LAST-FIRST)/EVERY) + 1
-       NFILE=2    !SIEMPRE SON 2 ITERACIONES
-
-       WRITE(*,*)'NFILE2=',NFILE2
-       WRITE(*,*)'NFILE=',NFILE
+       WRITE(*,*)'Number of iterations to analise=',NFILE2
 
        NMAXNCLUSBAS=NMAXNCLUS
 !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,CONCENTRA,
@@ -502,7 +498,13 @@
 
         ITER=FIRST+EVERY*(IFI2-1)
 
-        WRITE(*,*)'STARTING ITER', ITER, IFI2
+        WRITE(*,*)
+        WRITE(*,*) '************************************************'
+        WRITE(*,*) '************************************************'
+        WRITE(*,*) '* STARTING ITER', ITER, IFI2
+        WRITE(*,*) '************************************************'
+        WRITE(*,*) '************************************************'
+        WRITE(*,*)
 
         PATCHNX=0
         PATCHNY=0
@@ -635,9 +637,11 @@
         ROTE=RODO*(1.0+ZETA)**3
         RETE=RE0/(1.0+ZETA)
 
+        WRITE(*,*)
         WRITE(*,*)'***********************'
         WRITE(*,*)'***** MESHRENOEF ******'
         WRITE(*,*)'***********************'
+        WRITE(*,*)
 
         IF (NL.GT.0) THEN
          WRITE(*,*)'==== Building the grid...', ITER, NL
@@ -698,15 +702,15 @@ c       END DO
 ****************************************************************
        CALL BRYAN_NORMAN_98(CONTRASTEC,OMEGAZ,OMEGA0,ZETA)
 
-       WRITE(*,*) '************************************************'
-       WRITE(*,*) '             "COSMOLOGICAL" PARAMETERS            '
-       WRITE(*,*) '************************************************'
+c       WRITE(*,*) '***************************'
+       WRITE(*,*) '* COSMOLOGICAL PARAMETERS *'
+       WRITE(*,*) '***************************'
        WRITE(*,*) 'RETE=', RETE
        WRITE(*,*) 'ROTE=', ROTE
        WRITE(*,*) 'RODO,RE0,OMEGA0,OMEGAZ=', RODO,RE0,OMEGA0,OMEGAZ
        WRITE(*,*) 'Z=', ZETA
        WRITE(*,*) 'CONTRASTEC=',CONTRASTEC
-       WRITE(*,*) '************************************************'
+c       WRITE(*,*) '***************************'
 
 **************************************************************
 *      Cleaning overlaps of patches
@@ -752,9 +756,10 @@ c     &                     U11)
 ******************************HALO FINDER*****************************
 **********************************************************************
 
-       WRITE(*,*) '************************************************'
-       WRITE(*,*) '         HALO FINDING                           '
-       WRITE(*,*) '************************************************'
+       WRITE(*,*)
+       WRITE(*,*) '***************************'
+       WRITE(*,*) '***    HALO FINDING     ***'
+       WRITE(*,*) '***************************'
 
 
 **********************************************************
@@ -814,17 +819,9 @@ c     &                     U11)
 *      CHECKING....
 *********************************************************
        WRITE(*,*) '---------------------------------'
-       WRITE(*,*) 'CHECKING HIERARCHY:'
-       WRITE(*,*) '---------------------------------'
-       KONTA2=0
+       WRITE(*,*) 'CHECKING GRID FINDING:'
        KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
-       WRITE(*,*) 'REAL HALOS ------------------>', KONTA2
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.0)
-       WRITE(*,*) 'REMOVED HALOS --------------->', KONTA2
-       KONTA2=0
-       KONTA2=COUNT(REALCLUS(1:NCLUS).GT.0)
-       WRITE(*,*) 'SUBSTRUCTURE candidates ----->', KONTA2
+       WRITE(*,*) 'REAL, FREE HALOS --->', KONTA2
        WRITE(*,*) '---------------------------------'
 *********************************************************
 
@@ -832,6 +829,7 @@ c     &                     U11)
 *      REFINING REAL HALOES WITH THE DM PARTICLES ONLY     *
 ************************************************************
 
+       WRITE(*,*)
        WRITE(*,*)'=================================='
        WRITE(*,*)'Refining with DM particles...'
        WRITE(*,*)'=================================='
@@ -850,24 +848,21 @@ c     &                     U11)
 
        WRITE(*,*)'HALOES WITHOUT MASS=',
      &        COUNT(MASA(1:NCLUS).LE.0.0)
-
-       WRITE(*,*)'HALOES WITH MASS=0',
-     &        COUNT(MASA(1:NCLUS).EQ.0.0)
 *       WRITE(*,*)'KKKONTA=',KKKONTA
 
        WRITE(*,*) 'Total number of particles within halos:',
      &            SUM(DMPCLUS(1:NCLUS))
 
 
-       WRITE(*,*)'After refining with DM particles...'
-       WRITE(*,*)'===================================='
-       DO I=0,NL
-       WRITE(*,*)'Haloes at level ', I,' =',
-     &            COUNT(LEVHAL(1:NCLUS).EQ.I
-     &            .AND.REALCLUS(1:NCLUS).NE.0),
-     &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
-       END DO
-       WRITE(*,*)'===================================='
+c       WRITE(*,*)'After refining with DM particles...'
+c       WRITE(*,*)'===================================='
+c       DO I=0,NL
+c       WRITE(*,*)'Haloes at level ', I,' =',
+c     &            COUNT(LEVHAL(1:NCLUS).EQ.I
+c     &            .AND.REALCLUS(1:NCLUS).NE.0),
+c     &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
+c       END DO
+c       WRITE(*,*)'===================================='
 
 *************************************************
 
@@ -893,11 +888,10 @@ c     &                     U11)
        CALL ACCIDENTAL_SUBSTRUCTURE(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
      &                              VX,VY,VZ,MASA,RADIO,LEVHAL)
 
-       WRITE(*,*)'TOTAL NUMBER OF HALOS=',
+       WRITE(*,*)
+       WRITE(*,*) 'At the end...'
+       WRITE(*,*) 'TOTAL NUMBER OF HALOS=',
      &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
-
-
-       WRITE(*,*)'At the end...'
        WRITE(*,*)'=================================='
        DO I=0,NL
        WRITE(*,*)'Haloes at level ', I,' =',
@@ -912,6 +906,11 @@ c     &                     U11)
 ****************************************************
 ****************************************************
 ****************************************************
+
+       WRITE(*,*)
+       WRITE(*,*) '***************************'
+       WRITE(*,*) '** SUBSTRUCTURE SEARCH   **'
+       WRITE(*,*) '***************************'
 
        DO IR=1,NL
         CALL SEARCH_SUBSTRUCTURE_GRID(IR,NL,NX,NY,NZ,NPATCH,PATCHNX,
@@ -948,14 +947,6 @@ c     &                     U11)
         end do
         close(99)
        END DO
-
-       write(*,*)
-       do ir=1,nl
-        write(*,*) 'substructures at level ir,#:',ir,subs_lev(ir),
-     & count(realclus(sum(subs_lev(0:ir-1))+1:sum(subs_lev(0:ir))).gt.0)
-       end do
-
-
 
 *************************************************
 *************************************************
