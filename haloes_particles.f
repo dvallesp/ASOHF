@@ -997,7 +997,10 @@ c         WRITE(*,*) '---'
 *      SAVING MASSES, RADII, PROFILES AND SHAPES...
 *******************************************************
          DMPCLUS(I)=KONTA2
-         IF (KONTA2.LT.NUMPARTBAS) REALCLUS(I)=0
+         IF (KONTA2.LT.NUMPARTBAS) THEN
+          REALCLUS(I)=0
+          CYCLE
+         END IF
          MASA(I)=BASMAS*NORMA*UM
          RADIO(I)=RSHELL
          ANGULARM(1,I)=BASX*UV / (BASMAS*NORMA)
@@ -1006,6 +1009,9 @@ c         WRITE(*,*) '---'
          MEAN_VR(I)=VR/(BASMAS*NORMA)
 
          INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/(BASMAS*NORMA)
+         INERTIA(1,2)=INERTIA(2,1)
+         INERTIA(1,3)=INERTIA(3,1)
+         INERTIA(2,3)=INERTIA(3,2)
          INERTIA_TENSOR(1,I)=INERTIA(1,1)
          INERTIA_TENSOR(2,I)=INERTIA(1,2)
          INERTIA_TENSOR(3,I)=INERTIA(1,3)
