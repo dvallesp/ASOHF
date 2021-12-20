@@ -760,7 +760,7 @@ C        WRITE(*,*) 'Not found progenitor'
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
        REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
        REAL INERTIA(3,3),BASEIGENVAL(3),RADII_ITER(7),BASVECCM(3)
-       REAL BASVCM(3),MHOST,DISTHOST,EQ_JACOBI_R
+       REAL BASVCM(3),MHOST,DISTHOST,EQ_JACOBI_R,BASVX,BASVY,BASVZ
        REAL DENSITOT(0:1000),RADIAL(0:1000),DENSR(0:1000)
        REAL LOGDERIV(0:1000)
        REAL DISTA(0:PARTIRED)
@@ -806,7 +806,7 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,JMINPROF,DENSR,LOGDERIV,
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IHOSTHALO,MINJ,DIR,
 !$OMP+           FLAG_JACOBI,MHOST,DISTHOST,EQ_JACOBI_R,IPATCH,IRR,
-!$OMP+           J_JACOBI,EACH_PROF),
+!$OMP+           J_JACOBI,EACH_PROF,BASVX,BASVY,BASVZ),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=LOWH1,LOWH2
@@ -1130,6 +1130,9 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
          BAS=0.0 ! to store cummulative mass profile
          BAS1=-1.0 ! to store vcmax
          BAS2=0.0 ! to store vc(r)
+         BASVX=0.0 ! to compute CM velocity
+         BASVY=0.0
+         BASVZ=0.0
 *        VCMAX=-1.0
          ! Initialise flags (whether each overdensity has been found)
          FLAG200C=0
@@ -1145,11 +1148,19 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
          NSHELL_2=0
          JJCORE=INT(MAX(10.0,KONTA2/100.0))
          DO J=1,JJCORE
-          BAS=BAS+(MASAP(LIP(J))/NORMA)
+          JJ=LIP(J)
+          BAS=BAS+(MASAP(JJ)/NORMA)
+          BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
+          BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
+          BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
          END DO
          DO J=JJCORE+1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
+          JJ=LIP(J)
           VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
-          BAS=BAS+(MASAP(LIP(J))/NORMA)
+          BAS=BAS+(MASAP(JJ)/NORMA)
+          BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
+          BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
+          BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
 
           DELTA2=NORMA*BAS/VOL/ROTE ! overdensity
 
@@ -1263,6 +1274,10 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
           DENSITOT(NSHELL_2)=NORMA*BAS*UM
           RADIAL(NSHELL_2)=DISTA(J)
          END IF
+
+         VX(I)=BASVX/BAS
+         VY(I)=BASVY/BAS
+         VZ(I)=BASVZ/BAS
 
 c         WRITE(*,*) 'HALO I,KONTA2,NSHELL_2,KK_ENTERO=',
 c     &               I,KONTA2,NSHELL_2,KK_ENTERO

@@ -491,7 +491,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
        REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
        REAL INERTIA(3,3),BASEIGENVAL(3),RADII_ITER(7),BASVECCM(3)
-       REAL BASVCM(3)
+       REAL BASVCM(3),BASVX,BASVY,BASVZ
        REAL DENSITOT(0:1000),RADIAL(0:1000),DENSR(0:1000)
        REAL LOGDERIV(0:1000)
        REAL DISTA(0:PARTIRED)
@@ -546,7 +546,8 @@ c       WRITE(*,*)'=================================='
 !$OMP+           BASEIGENVAL,BASX,BASY,BASZ,XP,YP,ZP,MP,RCLUS,COUNT_1,
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,EACH_PROF,DENSR,LOGDERIV,
-!$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR),
+!$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR,BASVX,
+!$OMP+           BASVY,BASVZ),
 !$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
@@ -739,6 +740,9 @@ c        write(*,*) '--'
          BAS=0.0 ! to store cummulative mass profile
          BAS1=-1.0 ! to store vcmax
          BAS2=0.0 ! to store vc(r)
+         BASVX=0.0 ! to compute CM velocity
+         BASVY=0.0
+         BASVZ=0.0
 *        VCMAX=-1.0
          ! Initialise flags (whether each overdensity has been found)
          FLAG200C=0
@@ -754,11 +758,19 @@ c        write(*,*) '--'
          NSHELL_2=0
          JJCORE=INT(MAX(10.0,KONTA2/100.0))
          DO J=1,JJCORE
-          BAS=BAS+(MASAP(LIP(J))/NORMA)
+          JJ=LIP(J)
+          BAS=BAS+(MASAP(JJ)/NORMA)
+          BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
+          BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
+          BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
          END DO
          DO J=JJCORE+1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
+          JJ=LIP(J)
           VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
-          BAS=BAS+(MASAP(LIP(J))/NORMA)
+          BAS=BAS+(MASAP(JJ)/NORMA)
+          BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
+          BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
+          BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
 
           DELTA2=NORMA*BAS/VOL/ROTE ! overdensity
 
@@ -852,6 +864,10 @@ c        write(*,*) '--'
             FLAGVIR=1
             MASA(I)=DELTA2*VOL*ROTE*UM
             RADIO(I)=DISTA(J)
+
+            VX(I)=BASVX/BAS
+            VY(I)=BASVY/BAS
+            VZ(I)=BASVZ/BAS
 
             NCAPAS(I)=J
             IF (J.EQ.KONTA2) THEN
