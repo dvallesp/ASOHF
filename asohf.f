@@ -193,6 +193,7 @@
        REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
 
        REAL*4 PROFILES(NBINS,2,NMAXNCLUS)
+       REAL*4 VELOCITY_DISPERSION(NMAXNCLUS)
 
        INTEGER,ALLOCATABLE::RESORT(:)
 
@@ -458,7 +459,7 @@
 !$OMP+                   M500C,M2500C,M200M,M500M,M2500M,R200C,R500C,
 !$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
 !$OMP+                   LEVHAL,EIGENVAL,RSUB,MSUB,INERTIA_TENSOR,
-!$OMP+                   MEAN_VR),
+!$OMP+                   MEAN_VR,VELOCITY_DISPERSION),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
        DO I=1,NMAXNCLUSBAS
@@ -486,6 +487,7 @@
         EIGENVAL(:,I)=0.0
         INERTIA_TENSOR(:,I)=0.0
         MEAN_VR(I)=0.0
+        VELOCITY_DISPERSION(I)=0.0
        END DO
 
        MARK(1:NFILE2)=0
@@ -840,7 +842,8 @@ c     &                     U11)
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
      &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES)
+     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
+     &      VELOCITY_DISPERSION)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -937,7 +940,7 @@ c       WRITE(*,*)'===================================='
      &      DMPCLUS,LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,
      &      U4DM,ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
-     &      PROFILES)
+     &      PROFILES,VELOCITY_DISPERSION)
 
         open(99, file='./output_files/substructureparticles.res',
      &       status='unknown')
