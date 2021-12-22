@@ -1446,3 +1446,263 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
        RETURN
        END
+
+*********************************************************************
+       SUBROUTINE CORE_SEARCH(NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
+     &                        REALCLUS,MSUB,RSUB,SUBS_LEV,DMPCLUS,
+     &                        RMAXSIGMA,RXPA,RYPA,RZPA,MASAP,
+     &                        U2DM,U3DM,U4DM,N_DM,MMAXSIGMA)
+**********************************************************************
+*      Looks for the radius of maximum velocity dispersion inside a
+*       halo
+**********************************************************************
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NCLUS
+       REAL*4 MASA(MAXNCLUS),RADIO(MAXNCLUS)
+       REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
+       INTEGER REALCLUS(MAXNCLUS)
+       REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
+       INTEGER SUBS_LEV(0:NLEVELS),DMPCLUS(NMAXNCLUS)
+       REAL*4 RMAXSIGMA(NMAXNCLUS),MMAXSIGMA(NMAXNCLUS)
+       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       REAL*4 MASAP(PARTIRED)
+       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
+       INTEGER N_DM
+
+       INTEGER I,IRAD,NRAD,KONTA,JJ,II,KONTA2,CONTACORES,BINS_DECREASE
+       REAL RHOST,MHOST,XHOST,YHOST,ZHOST,AA,RHOST2,MMAX
+       REAL SIGMAMAX,RMAX,RR,BASV2,BASDEN,SIGMA,VXCM,VYCM,VZCM
+       INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
+       REAL*4 DISTA(0:PARTIRED)
+
+C       write(*,*) 'core search'
+
+       NRAD=100 ! number of radial bins
+       CONTACORES=0
+
+!$OMP PARALLEL DO SHARED(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,MASA,RADIO,
+!$OMP+                   MSUB,RSUB,N_DM,RXPA,RYPA,RZPA,NRAD,RMAXSIGMA,
+!$OMP+                   MASAP,U2DM,U3DM,U4DM,MMAXSIGMA),
+!$OMP+            PRIVATE(I,XHOST,YHOST,ZHOST,MHOST,RHOST,CONTADM,KONTA,
+!$OMP+                    RHOST2,II,AA,LIP,KONTA2,RMAX,SIGMAMAX,IRAD,RR,
+!$OMP+                    VXCM,VYCM,VZCM,BASV2,BASDEN,JJ,SIGMA,DISTA,
+!$OMP+                    MMAX,BINS_DECREASE),
+!$OMP+            REDUCTION(+:CONTACORES),
+!$OMP+            DEFAULT(NONE), SCHEDULE(DYNAMIC)
+       DO I=1,NCLUS
+C        write(*,*) '****************'
+C        write(*,*) 'halo',i
+C        write(*,*) '****************'
+        IF (REALCLUS(I).EQ.0) CYCLE
+        XHOST=CLUSRX(I)
+        YHOST=CLUSRY(I)
+        ZHOST=CLUSRZ(I)
+        IF (REALCLUS(I).EQ.-1) THEN
+         MHOST=MASA(I)
+         RHOST=RADIO(I)
+        ELSE
+         MHOST=MSUB(I)
+         RHOST=RSUB(I)
+        END IF
+
+        CONTADM(:)=1
+        KONTA=0
+        RHOST2=RHOST**2
+        DO II=1,N_DM
+         AA=(RXPA(II)-XHOST)**2+(RYPA(II)-YHOST)**2+(RZPA(II)-ZHOST)**2
+         IF (AA.LT.RHOST2) THEN
+          KONTA=KONTA+1
+          CONTADM(KONTA)=0
+          LIP(KONTA)=II
+         END IF
+        END DO
+        KONTA2=KONTA
+        CALL REORDENAR(KONTA,XHOST,YHOST,ZHOST,RXPA,RYPA,RZPA,
+     &                 CONTADM,LIP,DISTA,KONTA,1)
+        IF (KONTA2.NE.KONTA) THEN
+         WRITE(*,*) 'ERROR: KONTA!=KONTA2',KONTA,KONTA2
+         STOP
+        END IF
+C        write(*,*) konta,'particles inside'
+        CONTADM(KONTA+1:PARTIRED)=1
+
+        RMAX=-1.0
+        SIGMAMAX=-1.0
+        DO IRAD=1,NRAD
+         RR=IRAD*RHOST/NRAD
+
+         DO II=1,KONTA
+          IF (DISTA(II).GT.RR) EXIT
+         END DO
+         KONTA2=II-1
+         CONTADM(1:KONTA2)=0
+         CONTADM(KONTA2+1:KONTA)=1
+
+C         write(*,*) 'radial bin',irad,rr,konta2
+
+         CALL UNBINDING_CORESEARCH(KONTA,KONTA2,DISTA,CONTADM,LIP,RR,
+     &                             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
+     &                             VXCM,VYCM,VZCM)
+
+C         write(*,*) 'bound',count(contadm(1:konta2).eq.0)
+
+         IF (COUNT(CONTADM(1:KONTA2).EQ.0).LT.25) CYCLE
+
+         BASV2=0.0
+         BASDEN=0.0
+         DO II=1,KONTA2
+          IF (CONTADM(II).EQ.0) THEN
+           JJ=LIP(II)
+           BASDEN=BASDEN+MASAP(JJ)
+           BASV2=BASV2+MASAP(JJ)*((U2DM(JJ)-VXCM)**2+(U3DM(JJ)-VYCM)**2
+     &                           +(U4DM(JJ)-VZCM)**2)
+          END IF
+         END DO
+
+         SIGMA=BASV2/BASDEN
+C         write(*,*) 'sigma=',sqrt(sigma)
+         IF (SIGMA.GT.SIGMAMAX) THEN
+          SIGMAMAX=SIGMA
+          RMAX=RR
+          MMAX=BASDEN
+          BINS_DECREASE=0
+         ELSE
+          BINS_DECREASE=BINS_DECREASE+1
+          IF (BINS_DECREASE.GT.5) EXIT
+         END IF
+
+        END DO
+C        write(*,*) 'finally,',rmax,sqrt(sigma)*299792
+        IF (RMAX.GT.0.0.AND.IRAD.LT.NRAD) THEN
+         RMAXSIGMA(I)=RMAX
+         MMAXSIGMA(I)=MMAX
+         CONTACORES=CONTACORES+1
+        END IF
+
+       END DO
+
+       WRITE(*,*) 'Found',CONTACORES,'cores.'
+
+c       WRITE(*,*) 'RMAX,R'
+c       DO I=1,NCLUS
+c        WRITE(*,*) RMAXSIGMA(I),RADIO(I),RMAXSIGMA(I)/RADIO(I),MASA(I)
+c       END DO
+
+       RETURN
+       END
+
+***********************************************************
+       SUBROUTINE UNBINDING_CORESEARCH(KONTA,KONTA2,DISTA,CONTADM,LIP,
+     &                     REF_MAX,U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
+     &                     VCMX,VCMY,VCMZ)
+***********************************************************
+*      Finds and discards the unbound particles (those
+*      with speed larger than the scape velocity).
+*      Potential is computed in double precision.
+***********************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER KONTA,KONTA2
+       REAL*4 DISTA(0:PARTIRED)
+       INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
+       REAL*4 REF_MAX
+       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
+       REAL*4 MASAP(PARTIRED)
+       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       REAL VCMX,VCMY,VCMZ
+
+       INTEGER I,J,K,IX,IMAX,JJ,FAC
+
+       REAL*4 REI,CGR,PI,PI4ROD
+       COMMON /CONS/PI4ROD,REI,CGR,PI
+
+       REAL*4 RETE,HTE,ROTE
+       COMMON /BACK/ RETE,HTE,ROTE
+
+       REAL*4 REF_MIN
+
+       INTEGER KONTA3
+       REAL*4 VVV2,VESC2,AADMX(3),AADM,DR, AA, BB, CC
+       REAL*4 BAS
+       REAL*4 CMX,CMY,CMZ,MMM
+       REAL*4 POTOK
+*!!!!! ESPECIAL DOBLE PRECISON !!!!!!!!!!!!!!!!!!!!!
+       REAL*8 POT(0:KONTA)
+       REAL*8 POT1
+       REAL*8 BAS8
+       REAL*8 MASA8,NORMA
+       REAL*8 AA8
+***********************************************
+
+       POT=0.D0
+
+       IF (KONTA2.GT.0) THEN
+
+        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
+     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
+     &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM)
+*      Max mass
+        NORMA=DBLE(MAXVAL(MASAP))
+        MASA8=DBLE(MASAP(1))/NORMA
+
+        !POT(1)=MASA8/DBLE(DISTA(1))
+        !WRITE(*,*) 'IN UNBINDING, KONTA2=',KONTA2
+        DO J=1,KONTA2
+         IF (DISTA(J).GT.0.01*REF_MAX) EXIT
+        END DO
+        JJ=J
+        MASA8=0.D0
+        DO J=1,JJ
+         MASA8=MASA8+DBLE(MASAP(LIP(J)))/NORMA
+        END DO
+        DO J=1,JJ
+         POT(J)=MASA8/DISTA(JJ)
+        END DO
+
+        !WRITE(*,*) 'KONTA2,JJ=',konta2,jj
+
+        DO J=JJ+1,KONTA2
+          MASA8=MASA8+DBLE(MASAP(LIP(J)))/NORMA
+          IF (DISTA(J).NE.DISTA(J-1)) THEN
+           BAS8=DISTA(J)-DISTA(J-1)
+          ELSE
+           BAS8=0.D0
+          END IF
+          POT(J)=POT(J-1)+MASA8*BAS8/(DBLE(DISTA(J))**2)
+        END DO
+
+        POT1=POT(KONTA2) + MASA8/REF_MAX
+        !POT1 is the constant to be subtracted to the computed potential
+        !so that the potential origin is located at infinity
+
+        AA8=NORMA*DBLE(CGR/RETE)
+
+        BB=2.0
+        BB=BB**2 !(we compare the squared velocities)
+
+*      Find particles able to escape the potential well
+        DO J=1,KONTA2
+
+         POTOK=(POT(J)-POT1)*AA8
+         VESC2=2.0*ABS(POTOK)
+
+         VVV2=(U2DM(LIP(J))-VCMX)**2
+     &       +(U3DM(LIP(J))-VCMY)**2
+     &       +(U4DM(LIP(J))-VCMZ)**2
+
+         IF (VVV2.GT.BB*VESC2)  CONTADM(J)=1
+        END DO
+
+*      NEW CENTER OF MASS AND ITS VELOCITY
+        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
+     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
+     &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM)
+
+       END IF
+
+       RETURN
+       END

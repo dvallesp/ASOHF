@@ -47,6 +47,10 @@ Minimum fraction of shared volume to merge (in grid search) ---------->
 0.6
 FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
 0
+Search for substructure (=1 yes, =0 no) ------------------------------>
+1
+Search for cores (max sigma_v of bound particles) (=1 yes, =0 no) ---->
+1
 ***********************************************************************
 *	      Merger tree parameters block                                  *
 ***********************************************************************

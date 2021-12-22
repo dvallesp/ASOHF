@@ -194,6 +194,7 @@
 
        REAL*4 PROFILES(NBINS,2,NMAXNCLUS)
        REAL*4 VELOCITY_DISPERSION(NMAXNCLUS)
+       REAL*4 RMAXSIGMA(NMAXNCLUS),MMAXSIGMA(NMAXNCLUS)
 
        INTEGER,ALLOCATABLE::RESORT(:)
 
@@ -254,6 +255,7 @@
        COMMON /PROCESADORES/ NUM
 
        INTEGER NMAXNCLUSBAS,PABAS,NPBAS,NLEVBAS,NUMPARTBAS,NBASPART_PLOT
+       INTEGER FLAG_SUBS,FLAG_CENTRAL
 
        INTEGER, ALLOCATABLE:: IP_PARAL(:,:)
        INTEGER, ALLOCATABLE:: IR_PARAL(:,:)
@@ -332,6 +334,10 @@
        READ(1,*) VOL_SOLAP_LOW
        READ(1,*) !FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
        READ(1,*) FLAG_WDM
+       READ(1,*) !Search for substructure (=1 yes, =0 no) ------------------------------>
+       READ(1,*) FLAG_SUBS
+       READ(1,*) !Search for cores (max sigma_v of bound particles) (=1 yes, =0 no) ---->
+       READ(1,*) FLAG_CENTRAL
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Merger tree parameters block                                  *
        READ(1,*) !***********************************************************************
@@ -459,7 +465,8 @@
 !$OMP+                   M500C,M2500C,M200M,M500M,M2500M,R200C,R500C,
 !$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
 !$OMP+                   LEVHAL,EIGENVAL,RSUB,MSUB,INERTIA_TENSOR,
-!$OMP+                   MEAN_VR,VELOCITY_DISPERSION),
+!$OMP+                   MEAN_VR,VELOCITY_DISPERSION,RMAXSIGMA,
+!$OMP+                   MMAXSIGMA),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
        DO I=1,NMAXNCLUSBAS
@@ -488,6 +495,8 @@
         INERTIA_TENSOR(:,I)=0.0
         MEAN_VR(I)=0.0
         VELOCITY_DISPERSION(I)=0.0
+        RMAXSIGMA(I)=0.0
+        MMAXSIGMA(I)=0.0
        END DO
 
        MARK(1:NFILE2)=0
@@ -909,7 +918,7 @@ c       WRITE(*,*)'===================================='
 ****************************************************
 ****************************************************
 ****************************************************
-
+       IF (FLAG_SUBS.EQ.1) THEN
        WRITE(*,*)
        WRITE(*,*) '***************************'
        WRITE(*,*) '** SUBSTRUCTURE SEARCH   **'
@@ -950,6 +959,21 @@ c       WRITE(*,*)'===================================='
         end do
         close(99)
        END DO
+       END IF
+
+****************************************************
+****************************************************
+****************************************************
+       IF (FLAG_CENTRAL.EQ.1) THEN
+       WRITE(*,*)
+       WRITE(*,*) '***************************'
+       WRITE(*,*) '**     CORE SEARCH       **'
+       WRITE(*,*) '***************************'
+
+       CALL CORE_SEARCH(NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,REALCLUS,
+     &                  MSUB,RSUB,SUBS_LEV,DMPCLUS,RMAXSIGMA,RXPA,RYPA,
+     &                  RZPA,MASAP,U2DM,U3DM,U4DM,N_DM,MMAXSIGMA)
+       END IF
 
 *************************************************
 *************************************************
@@ -971,7 +995,7 @@ c       WRITE(*,*)'===================================='
      &         MASA(I),RADIO(I),DMPCLUS(I),
      &         REALCLUS(I), LEVHAL(I),SUBHALOS(I),
      &         (EIGENVAL(J,I),J=1,3),(INERTIA_TENSOR(J,I),J=1,6),
-     &         (ANGULARM(J,I),J=1,3),
+     &         (ANGULARM(J,I),J=1,3),VELOCITY_DISPERSION(I),
      &         VCMAX(I),MCMAX(I),RCMAX(I),
      &         R200M(I),M200M(I),R200C(I),M200C(I),
      &         R500M(I),M500M(I),R500C(I),M500C(I),
