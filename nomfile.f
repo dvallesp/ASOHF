@@ -1,10 +1,10 @@
 ***************************************************************
-       SUBROUTINE NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3)
+       SUBROUTINE NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3,FILNOM4)
 ***************************************************************
 
        IMPLICIT NONE
        INTEGER ITER
-       CHARACTER*9 FILNOM1,FILNOM2
+       CHARACTER*9 FILNOM1,FILNOM2,FILNOM4
        CHARACTER*10 FILNOM3
        CHARACTER*5 NOM
        INTEGER CONTA,I,N10,IT
@@ -21,6 +21,7 @@
        FILNOM1='clus'//NOM
        FILNOM2='cldm'//NOM
        FILNOM3='grids'//NOM
+       FILNOM4='clst'//NOM
 
        RETURN
        END

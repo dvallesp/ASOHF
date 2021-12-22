@@ -16,7 +16,7 @@
 
 *      Refinements ------------------------------------------------
        INTEGER NPALEV,NLEVELS
-       PARAMETER (NPALEV=4000,NLEVELS=9)
+       PARAMETER (NPALEV=10000,NLEVELS=9)
 
 *      Maximum patch extension ------------------------------------
        INTEGER NAMRX,NAMRY,NAMRZ
@@ -24,7 +24,7 @@
 
 *      Total number of particles (all types) ---------------
        INTEGER PARTIRED
-       PARAMETER (PARTIRED=25097152)
+       PARAMETER (PARTIRED=33105868)
 
 *      If PLOT>1 o FLAG_WDM=1, then >>PARTIRED; if not, 1 ----------
        INTEGER PARTIRED_PLOT
@@ -84,7 +84,7 @@ c       PARAMETER (NMAXCLUS_PLOT=100000)
 
 *      Number of DM especies---------------------------------------
        INTEGER N_ESP
-       PARAMETER (N_ESP=4)
+       PARAMETER (N_ESP=6)
 
 *      Number of conditions to build the AMR grid
        INTEGER NCOTAS

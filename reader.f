@@ -19,9 +19,9 @@
 
        INTEGER I,J,K,IX,NL,IR,IRR,VAR,N1,N2,N3
 
-       CHARACTER*9 FILNOM1,FILNOM2
+       CHARACTER*9 FILNOM1,FILNOM2,FILNOM4
        CHARACTER*10 FILNOM3
-       CHARACTER*25 FIL1,FIL2
+       CHARACTER*25 FIL1,FIL2,FIL4
        CHARACTER*26 FIL3
 
 *      VARIABLES
@@ -62,12 +62,14 @@
 
 
 *      READING DATA
-       CALL NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3)
-       WRITE(*,*) 'Reading iter',ITER,' ',FILNOM1,FILNOM2,FILNOM3
+       CALL NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3,FILNOM4)
+       WRITE(*,*) 'Reading iter',ITER,' ',FILNOM1,FILNOM2,FILNOM3,
+     &            FILNOM4
 
        FIL1='simu_masclet/'//FILNOM1
        FIL2='simu_masclet/'//FILNOM2
        FIL3='simu_masclet/'//FILNOM3
+       FIL4='simu_masclet/'//FILNOM4
 
 
        OPEN (33,FILE=FIL3,STATUS='UNKNOWN',ACTION='READ')
@@ -249,7 +251,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
 
 *********************************************************************
        SUBROUTINE READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,MAP,
-     &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,N_DM)
+     &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,N_DM,VAR,N_ST)
 *********************************************************************
 *      Reads MASCLET data: grids and DM particles information.
 *      Must be checked depending on the version/flavour of MASCLET
@@ -262,17 +264,18 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
 
        INTEGER NX,NY,NZ,ITER,NDXYZ
        REAL*4 T,AAA,BBB,CCC,MAP,ZETA
+       INTEGER VAR !(=1: only DM; =2: DM+stars)
 
-       INTEGER I,J,K,IX,NL,IR,IRR,VAR,N1,N2,N3,N_DM
+       INTEGER I,J,K,IX,NL,IR,IRR,N1,N2,N3,N_DM,N_ST,NBAS,ARE_BH
 
-       CHARACTER*9 FILNOM1,FILNOM2
+       CHARACTER*9 FILNOM1,FILNOM2,FILNOM4
        CHARACTER*10 FILNOM3
-       CHARACTER*25 FIL1,FIL2
+       CHARACTER*25 FIL1,FIL2,FIL4
        CHARACTER*26 FIL3
 
        INTEGER,ALLOCATABLE::NPATCH(:)
 
-       INTEGER,ALLOCATABLE::NPART(:)
+       INTEGER,ALLOCATABLE::NPART(:),NPARTST(:),NPARTBH(:)
        REAL*4 U2DM(PARTIRED)
        REAL*4 U3DM(PARTIRED)
        REAL*4 U4DM(PARTIRED)
@@ -287,14 +290,17 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
 
+       ARE_BH=1 ! Depends on MASCLET version (are there BHs??)
 
 *      READING DATA
-       CALL NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3)
-       WRITE(*,*) 'Reading iter',ITER,' ',FILNOM1,FILNOM2,FILNOM3
+       CALL NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3,FILNOM4)
+       WRITE(*,*) 'Reading iter',ITER,' ',FILNOM1,FILNOM2,FILNOM3,
+     &                                    FILNOM4
 
        FIL1='simu_masclet/'//FILNOM1
        FIL2='simu_masclet/'//FILNOM2
        FIL3='simu_masclet/'//FILNOM3
+       FIL4='simu_masclet/'//FILNOM4
 
 *      GRID DATA
        OPEN (33,FILE=FIL3,STATUS='UNKNOWN',ACTION='READ')
@@ -303,10 +309,18 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        READ(33,*) IR,NDXYZ
        !WRITE(*,*) 'IR,NL,NDXYZ,MAP', IR,NL,NDXYZ,MAP
 
-       ALLOCATE(NPATCH(0:NL),NPART(0:NL))
+       ALLOCATE(NPATCH(0:NL),NPART(0:NL),NPARTST(0:NL),NPARTBH(0:NL))
+       NPATCH=0
+       NPART=0
+       NPARTST=0
+       NPARTBH=0
 
        DO IR=1,NL
-       READ(33,*) IRR,NPATCH(IR), NPART(IR)
+       IF (ARE_BH.EQ.0) THEN
+        READ(33,*) IRR,NPATCH(IR),NPART(IR),NPARTST(IR)!,NPARTBH(IR)
+       ELSE
+        READ(33,*) IRR,NPATCH(IR),NPART(IR),NPARTST(IR),NPARTBH(IR)
+       END IF
        !WRITE(*,*) 'NPATCH(IR), NPART(IR)',NPATCH(IR), NPART(IR)
        READ(33,*)
 
@@ -379,13 +393,98 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
 
        CLOSE(32)
 ***       END IF
-       WRITE(*,*) 'TOTAL PARTICLES IN ITER=',CONTA
+       WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',CONTA
        IF (CONTA.NE.N_DM) THEN
         WRITE(*,*) 'WARNING: CONTA != N_DM',CONTA,N_DM
         STOP
        END IF
 
-       DEALLOCATE(NPATCH,NPART)
+       IF (VAR.EQ.2) THEN
+        N_ST=SUM(NPARTST(0:NL))+SUM(NPARTBH(0:NL))
+        OPEN (34,FILE=FIL4,
+     &        STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
+
+        READ(34) !ITER,T4,ZETA
+        !IR=0
+        NBAS=NPARTST(0)+NPARTBH(0)
+        READ(34) !(((U1ST(I,J,K),I=1,NX),J=1,NY),K=1,NZ)
+        READ(34) (UBAS(I),I=1,NBAS)
+        RXPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+        READ(34) (UBAS(I),I=1,NBAS)
+        RYPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+        READ(34) (UBAS(I),I=1,NBAS)
+        RZPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+        READ(34) (UBAS(I),I=1,NBAS)
+        U2DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+        READ(34) (UBAS(I),I=1,NBAS)
+        U3DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+        READ(34) (UBAS(I),I=1,NBAS)
+        U4DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+        READ(34) (UBAS(I),I=1,NBAS)
+        MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+        READ(34) !(UBAS(I),I=1,NDXYZ)
+        READ(34) !(UBAS(I),I=1,NDXYZ)
+        CONTA=CONTA+NBAS
+
+        WRITE(*,*) 'NST(IR)=',0,NBAS,CONTA
+
+        DO IR=1,NL
+         LOW1=SUM(NPATCH(0:IR-1))+1
+         LOW2=SUM(NPATCH(0:IR))
+         DO I=LOW1,LOW2
+          READ(34) !(((SCR(IX,J,K),IX=1,N1),J=1,N2),K=1,N3)
+         END DO
+
+         NBAS=NPARTST(IR)
+         READ(34) (UBAS(IX),IX=1,NBAS)
+         RXPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+         READ(34) (UBAS(IX),IX=1,NBAS)
+         RYPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+         READ(34) (UBAS(IX),IX=1,NBAS)
+         RZPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+         READ(34) (UBAS(IX),IX=1,NBAS)
+         U2DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+         READ(34) (UBAS(IX),IX=1,NBAS)
+         U3DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+         READ(34) (UBAS(IX),IX=1,NBAS)
+         U4DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+         READ(34) (UBAS(IX),IX=1,NBAS)
+         MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+         READ(34)
+         READ(34)
+         READ(34)
+         CONTA=CONTA+NBAS
+
+         NBAS=NPARTBH(IR)
+         IF (ARE_BH.EQ.1) THEN
+          READ(34) (UBAS(IX),IX=1,NBAS)
+          RXPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+          READ(34) (UBAS(IX),IX=1,NBAS)
+          RYPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+          READ(34) (UBAS(IX),IX=1,NBAS)
+          RZPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+          READ(34) (UBAS(IX),IX=1,NBAS)
+          U2DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+          READ(34) (UBAS(IX),IX=1,NBAS)
+          U3DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+          READ(34) (UBAS(IX),IX=1,NBAS)
+          U4DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+          READ(34) (UBAS(IX),IX=1,NBAS)
+          MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+          READ(34)
+          READ(34)
+          CONTA=CONTA+NBAS
+         END IF
+
+         WRITE(*,*) 'NST(IR)=',IR,NPARTST(IR)+NPARTBH(IR),CONTA
+        END DO
+
+        CLOSE(34)
+       ELSE
+        N_ST=0
+       END IF !(VAR.EQ.2)
+
+       DEALLOCATE(NPATCH,NPART,NPARTST,NPARTBH)
 
        RETURN
        END
@@ -556,7 +655,8 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
 
 *********************************************************************
        SUBROUTINE SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,
-     &                              RZPA,N_DM,NPART_ESP)
+     &                              RZPA,N_DM,NPART_ESP,N_ST,
+     &                              IR_KERN_STARS)
 *********************************************************************
 *      Reorders DM particles by species (assumes there are N_ESP
 *       especies, each 8 times lighter than the previous one)
@@ -570,21 +670,25 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
        INTEGER N_DM
        INTEGER NPART_ESP(0:N_ESP-1)
+       INTEGER N_ST,IR_KERN_STARS
 
        INTEGER I,J,K,N,IESP,CONTA
-       REAL MLOW,MHIGH,BAS,MAXMASS
+       REAL MLOW,MHIGH,BAS,MAXMASS,MINMASS
        INTEGER,ALLOCATABLE::INDICES(:)
        REAL,ALLOCATABLE::SCR(:,:)
 
        WRITE(*,*) 'Sorting particles by mass'
 
        MAXMASS=MAXVAL(MASAP(1:N_DM))
+       MINMASS=MINVAL(MASAP(1:N_DM))
+       NPART_ESP=0
 
        CONTA=0
        ALLOCATE(INDICES(1:N_DM))
        DO IESP=0,N_ESP-1
         MHIGH=2*MAXMASS/8.0**IESP
         MLOW=0.5*MAXMASS/8.0**IESP
+        IF (MHIGH.LT.MINMASS) EXIT
 
         DO I=1,N_DM
          BAS=MASAP(I)
@@ -600,7 +704,9 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
         ELSE
          NPART_ESP(IESP)=CONTA-SUM(NPART_ESP(0:IESP-1))
         END IF
-        WRITE(*,*) 'Of species',IESP,', no. particles:',NPART_ESP(IESP)
+        IF (NPART_ESP(IESP).GT.0) THEN
+         WRITE(*,*) 'Of species',IESP,', no. particles:',NPART_ESP(IESP)
+        END IF
        END DO
 
        IF (CONTA.NE.N_DM.OR.SUM(NPART_ESP(0:N_ESP-1)).NE.N_DM) THEN
@@ -639,6 +745,12 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
        END DO
 
        DEALLOCATE(INDICES,SCR)
+
+       IF (N_ST.GT.0) THEN
+        NPART_ESP(IR_KERN_STARS)=N_ST
+        WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
+     &             ', no. particles:',NPART_ESP(IR_KERN_STARS)
+       END IF
 
 C       WRITE(*,*) 'Checking...'
 *      CHECK

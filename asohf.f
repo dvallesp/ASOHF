@@ -211,7 +211,7 @@
 
 *      ---STAND-ALONE HALO FINDER---
        INTEGER FLAG_SA,FLAG_GAS,FLAG_MASCLET,FLAG_WDM
-       INTEGER N_GAS,N_DM,N_PARTICLES
+       INTEGER N_DM,N_PARTICLES,N_ST,N_GAS,IR_KERN_STARS
        REAL*4 COTA(NCOTAS,0:NLEVELS)
 
 *      ---UNBINDING---
@@ -285,8 +285,8 @@
        READ(1,*) FIRST,LAST,EVERY
        READ(1,*) !Cells per direction (NX,NY,NZ) --------------------------------------->
        READ(1,*) NX,NY,NZ
-       READ(1,*) !GAS,DM particles (all levels) ---------------------------------------->
-       READ(1,*) N_GAS,N_DM
+       READ(1,*) !DM particles (all levels) ---------------------------------------->
+       READ(1,*) N_DM
        READ(1,*) !Hubble constant (h), omega matter ------------------------------------>
        READ(1,*) ACHE,OMEGA0
        READ(1,*) !Initial redshift, box size (Mpc) ------------------------------------->
@@ -323,8 +323,10 @@
        READ(1,*) BOR_OVLP
        READ(1,*) !Density interpolation kernel (1=linear, 2=quadratic) ----------------->
        READ(1,*) INTERP_DEGREE
-       READ(1,*) !Variable for mesh halo finding: 1(gas), 2(dm), 0(gas+dm) ------------->
+       READ(1,*) !Variable for mesh halo finding: 1(dm), 2(dm+stars) ------------------->
        READ(1,*) VAR
+       READ(1,*) !Kernel level for stars (if VAR=2) ------------------------------------>
+       READ(1,*) IR_KERN_STARS
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Halo finding parameters block                                 *
        READ(1,*) !***********************************************************************
@@ -347,7 +349,7 @@
 
        CLOSE(1)
 
-       N_PARTICLES=N_GAS+N_DM
+       N_PARTICLES=N_DM
        H2=ACHE
 
 **************************************************************
@@ -374,15 +376,14 @@
        IF (FLAG_PARALLEL.EQ.0)  WRITE(*,*)'Running in SERIAL...'
 
        IF(FLAG_SA.EQ.0.AND.FLAG_MASCLET.EQ.0)
-     &       WRITE(*,*) 'ASOHF like stand-alone Halo Finder...'
+     &       WRITE(*,*) 'ASOHF as stand-alone Halo Finder...'
        IF(FLAG_SA.EQ.0.AND.FLAG_MASCLET.EQ.1)
-     &       WRITE(*,*) 'ASOHF reading MASCLETs PARTICLES...'
+     &       WRITE(*,*) 'ASOHF reading MASCLET PARTICLES...'
        IF(FLAG_SA.EQ.1)
      &       WRITE(*,*) 'ASOHF reading MASCLETs GRID...'
 
-       IF(VAR.EQ.1) WRITE(*,*) 'Analysing only GAS'
-       IF(VAR.EQ.2) WRITE(*,*) 'Analysing only DM'
-       IF(VAR.EQ.0) WRITE(*,*) 'Analysing GAS+DM'
+       IF(VAR.EQ.1) WRITE(*,*) 'Analysing only DM'
+       IF(VAR.EQ.2) WRITE(*,*) 'Analysing DM+stars'
 
        WRITE(*,*) 'Min. number of particles per halo ', NUMPART
 
@@ -626,7 +627,9 @@
         IF (FLAG_MASCLET.EQ.1) THEN
          CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,MAP,
      &                               U2DM,U3DM,U4DM,MASAP,RXPA,
-     &                               RYPA,RZPA,N_DM)
+     &                               RYPA,RZPA,N_DM,VAR,N_ST)
+         IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
+         WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
         ELSE
          CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
      &                               U2DM,U3DM,U4DM,MASAP,RXPA,
@@ -635,7 +638,7 @@
         END IF
 
         CALL SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &                         N_DM,NPART_ESP)
+     &                         N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
 
 !      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE
        !NPART=0
