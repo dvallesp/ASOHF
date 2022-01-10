@@ -920,7 +920,7 @@ c        write(*,*) 'mhost,dishost',mhost,disthost
 *       Find jacobi radius (substructure radius; grow if necessary)
         DELTA2=100.0*MINOVERDENS ! just to ensure it enters the loop
         FLAG_JACOBI=0
-        RCLUS=RSUB(I)
+        RCLUS=2.0*RSUB(I)
         DO WHILE (FLAG_JACOBI.EQ.0)
          KONTA=0
          MASADM=0.0
@@ -1004,9 +1004,9 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
          END IF
 
          IF (FLAG_JACOBI.EQ.0) THEN
-          RCLUS=1.1*RCLUS
+          RCLUS=1.5*RCLUS
          END IF
-        END DO
+        END DO !(FLAG_JACOBI.EQ.0)
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
 
