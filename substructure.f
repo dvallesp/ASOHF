@@ -514,6 +514,12 @@ c           END DO
          BASMASS_SHELL=0.0
 
          VOLCELL=DX*DY*DZ
+!$0MP PARALLEL DO SHARED(NZ1,NZ2,NY1,NY2,NX1,NX2,RADX,RADY,RADZ,XCEN,
+!$OMP+                   YCEN,ZCEN,R_INT,R_EXT,VOLCELL,U1,CR0AMR),
+!$OMP+            PRIVATE(I,J,K,AA,BAS),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
          DO K=NZ1,NZ2
          DO J=NY1,NY2
          DO I=NX1,NX2
@@ -552,6 +558,12 @@ c           END DO
            N1=PATCHNX(IPATCH)
            N2=PATCHNY(IPATCH)
            N3=PATCHNZ(IPATCH)
+!$0MP PARALLEL DO SHARED(N1,N2,N3,RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,IPATCH,
+!$OMP+                   R_EXT,CONTA1,VOLCELL,U11,CR0AMR11,SOLAP),
+!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
            DO KZ=1,N3
            DO JY=1,N2
            DO IX=1,N1

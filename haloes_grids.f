@@ -304,6 +304,10 @@ c       WRITE(*,*)
        REAL VECDENS(1000),VECRAD(1000),DERIVATIVE(1000),BASVOL_SHELL
        REAL DXPAPA,DYPAPA,DZPAPA,CONTRASTECPEAK
 
+*      Additional variables to perform reductions on sums
+c       REAL R_BASVOL,R_BASMASS_SHELL,R_BASX,R_BASY,R_BASZ,R_BASDELTA
+c       INTEGER R_II
+
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
 
@@ -536,6 +540,12 @@ c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
           VOLCELL=DX*DY*DZ
           BASMASS_SHELL=0.0
           II=0
+!$0MP PARALLEL DO SHARED(NZ1,NZ2,NY1,NY2,NX1,NX2,RADX,RADY,RADZ,XCEN,
+!$OMP+                   YCEN,ZCEN,R_INT,R_EXT,CONTA,VOLCELL,U1),
+!$OMP+            PRIVATE(I,J,K,AA,BAS),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
           DO K=NZ1,NZ2
           DO J=NY1,NY2
           DO I=NX1,NX2
@@ -927,6 +937,12 @@ c           END DO
             BASMASS_SHELL=0.0
 
             VOLCELL=DX*DY*DZ
+!$0MP PARALLEL DO SHARED(NZ1,NZ2,NY1,NY2,NX1,NX2,RADX,RADY,RADZ,XCEN,
+!$OMP+                   YCEN,ZCEN,R_INT,R_EXT,VOLCELL,U1,CR0AMR),
+!$OMP+            PRIVATE(I,J,K,AA,BAS),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
             DO K=NZ1,NZ2
             DO J=NY1,NY2
             DO I=NX1,NX2
@@ -965,6 +981,12 @@ c           END DO
               N1=PATCHNX(IPATCH)
               N2=PATCHNY(IPATCH)
               N3=PATCHNZ(IPATCH)
+!$0MP PARALLEL DO SHARED(N1,N2,N3,RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,IPATCH,
+!$OMP+                   R_EXT,CONTA,VOLCELL,U11,CR0AMR11,SOLAP),
+!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
               DO KZ=1,N3
               DO JY=1,N2
               DO IX=1,N1
@@ -1008,6 +1030,12 @@ c           END DO
              N1=PATCHNX(IPATCH)
              N2=PATCHNY(IPATCH)
              N3=PATCHNZ(IPATCH)
+!$0MP PARALLEL DO SHARED(N1,N2,N3,RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,IPATCH,
+!$OMP+                   R_EXT,CONTA1,VOLCELL,U11,SOLAP),
+!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
              DO KZ=1,N3
              DO JY=1,N2
              DO IX=1,N1

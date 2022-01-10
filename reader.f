@@ -290,7 +290,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
 
-       ARE_BH=1 ! Depends on MASCLET version (are there BHs??)
+       ARE_BH=0 ! Depends on MASCLET version (are there BHs??)
 
 *      READING DATA
        CALL NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3,FILNOM4)
@@ -747,7 +747,7 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
        DEALLOCATE(INDICES,SCR)
 
        IF (N_ST.GT.0) THEN
-        NPART_ESP(IR_KERN_STARS)=N_ST
+        NPART_ESP(IR_KERN_STARS)=NPART_ESP(IR_KERN_STARS)+N_ST
         WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
      &             ', no. particles:',NPART_ESP(IR_KERN_STARS)
        END IF
