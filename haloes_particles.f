@@ -429,7 +429,7 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
-     &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
+     &      ORIPA,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES)
@@ -461,7 +461,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
        REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
        REAL*4 MASAP(PARTIRED)
-       INTEGER ORIPA2(PARTIRED)
+       INTEGER ORIPA(PARTIRED)
        REAL*4 CONTRASTEC,OMEGAZ,UM,UV,LADO0
        REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),CLUSRZCM(MAXNCLUS)
        REAL*4 MEAN_VR(NMAXNCLUS),INERTIA_TENSOR(6,NMAXNCLUS)
@@ -487,7 +487,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,KONTA3,NSHELL_2,KONTA2PREV
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2,JJCORE
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
-       INTEGER FLAGVIR,EACH_PROF,IPATCH,IRR
+       INTEGER FLAGVIR,EACH_PROF,IPATCH,IRR,MOST_BOUND_IDX
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
        REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
@@ -537,7 +537,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,NL,MASAP,
 !$OMP+           U2DM,U3DM,U4DM,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
 !$OMP+           MCMAX,RCMAX,CONTRASTEC,OMEGAZ,CGR,UM,UV,DMPCLUS,
-!$OMP+           CONCENTRA,ORIPA2,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
+!$OMP+           CONCENTRA,ORIPA,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
 !$OMP+           NUMPARTBAS,RADIO,MASA,VMAXCLUS,N_DM,NORMA,R200M,
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
 !$OMP+           M200C,M500C,M2500C,RSUB,MSUB,MINOVERDENS,CLUSRXCM,
@@ -554,7 +554,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,EACH_PROF,DENSR,LOGDERIV,
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR,BASVX,
-!$OMP+           BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,t1,t2),
+!$OMP+           BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,MOST_BOUND_IDX),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
@@ -1006,10 +1006,10 @@ c         WRITE(*,*) '---'
             END IF
 
 **        CLOSEST PARTICLE TO THE CENTER OF THE HALO
-            IF (AADM.LT.DIS) THEN
-             DIS=AADM
-             IPLIP(I)=ORIPA2(JJ)
-            END IF
+C            IF (AADM.LT.DIS) THEN
+C             DIS=AADM
+C             IPLIP(I)=ORIPA(JJ)
+C            END IF
 
             IF(AADM.NE.0.0) THEN
              AA=(BASVEC(1)/AADM)*BASVCM(1)+
@@ -1034,11 +1034,15 @@ c         WRITE(*,*) '---'
 
          IF (DO_COMPUTE_ENERGIES.EQ.1) THEN
           CALL COMPUTE_EPOT(KONTA,KONTA2,LIP,RXPA,RYPA,RZPA,MASAP,
-     &                      CONTADM,EPOT)
+     &                      CONTADM,EPOT,MOST_BOUND_IDX)
           EPOT=EPOT*UM**2*GCONS ! Gravitational Energy in Msun * km^2 * s^-2
           EKIN=0.5*EKIN*UM*UV**2 ! Kinetic Energy in Msun * km^2 * s^-2
           KINETIC_E(I)=EKIN
           POTENTIAL_E(I)=EPOT
+          IPLIP(I)=ORIPA(MOST_BOUND_IDX)
+          WRITE(*,*) 'halo',i,'most bound particle',
+     & RXPA(MOST_BOUND_IDX),RYPA(MOST_BOUND_IDX),RZPA(MOST_BOUND_IDX),
+     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
          END IF
 
          MASA(I)=BASMAS*NORMA*UM
@@ -1100,7 +1104,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 **********************************************************************
        SUBROUTINE COMPUTE_EPOT(KONTA,KONTA2,LIP,RXPA,RYPA,RZPA,MASAP,
-     &                         CONTADM,EPOT)
+     &                         CONTADM,EPOT,MOST_BOUND_IDX)
 **********************************************************************
 *      Computes the gravitational potential energy of a halo, taking
 *       into account only bound particles, by direct summation (small
@@ -1116,16 +1120,25 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        REAL*4 MASAP(PARTIRED)
        INTEGER CONTADM(PARTIRED)
        REAL EPOT
+       INTEGER MOST_BOUND_IDX
 
        INTEGER J,JJ,K,KK,NSAMPLE!,NPAIRS
        INTEGER FLAG,JJJ,KKK
-       REAL X1,X2,Y1,Y2,Z1,Z2,M1,M2,U,TEMP
+       REAL X1,X2,Y1,Y2,Z1,Z2,M1,M2,U,LARGEST_ENERGY,BAS
+       REAL,ALLOCATABLE::EPOT_PART(:)
        INTEGER(8) NPAIRS,NPAIRS_TOTAL,NPAIRS_EXPECT,NBAS64 !this has to be 8-byte because of possible OVERFLOWS
        !REAL NPAIRS_TOTAL,NPAIRS_EXPECT
 
        EPOT=0.0
 
+
        IF (KONTA2.LT.1000) THEN ! direct summation
+        ALLOCATE(EPOT_PART(KONTA))
+
+        DO J=1,KONTA
+         EPOT_PART(J)=0.0
+        END DO
+
         DO J=1,KONTA
          JJ=LIP(J)
          IF (CONTADM(J).EQ.1) CYCLE
@@ -1140,9 +1153,23 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
           Y2=RYPA(KK)
           Z2=RZPA(KK)
           M2=MASAP(KK)
-          EPOT=EPOT-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+          BAS=-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+          EPOT_PART(J)=EPOT_PART(J)+BAS
+          EPOT_PART(K)=EPOT_PART(K)+BAS
+          EPOT=EPOT+BAS
          END DO
         END DO
+
+        DO J=1,KONTA
+         IF (CONTADM(J).EQ.1) THEN
+          EPOT_PART(J)=100000.0
+         ELSE
+          EPOT_PART(J)=EPOT_PART(J)/MASAP(LIP(J)) ! gravitational energy per unit mass
+         END IF
+        END DO
+        MOST_BOUND_IDX=LIP(MINLOC(EPOT_PART,1))
+
+        DEALLOCATE(EPOT_PART)
        ELSE ! sampling
         NSAMPLE=MAX(1000,INT(0.01*KONTA2))
         NBAS64=NSAMPLE
@@ -1151,6 +1178,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
         CALL RANDOM_SEED() ! set the seed for random numbers
 
+        LARGEST_ENERGY=1000000.0
         DO JJJ=1,NSAMPLE
          ! Generate a random, valid particle
          FLAG=0
@@ -1164,6 +1192,8 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
          Y1=RYPA(JJ)
          Z1=RZPA(JJ)
          M1=MASAP(JJ)
+
+         BAS=0.0
 
          DO KKK=JJJ+1,NSAMPLE
           FLAG=0
@@ -1182,13 +1212,21 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
           M2=MASAP(KK)
 
           NPAIRS=NPAIRS+1
-          EPOT=EPOT-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+          BAS=BAS-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
          END DO
+
+         EPOT=EPOT+BAS
+
+         BAS=BAS/M1 ! gravitational energy per unit mass
+         IF (BAS.LT.LARGEST_ENERGY) THEN
+          LARGEST_ENERGY=BAS
+          MOST_BOUND_IDX=JJ
+         END IF
         END DO
         NBAS64=KONTA
         NPAIRS_TOTAL=NBAS64*(NBAS64-1)/2
         ! here NPAIRS_TOTAL is real, to avoid overflows with 4-byte integers
-        TEMP=EPOT
+        !TEMP=EPOT
         EPOT=EPOT*FLOAT(NPAIRS_TOTAL)/FLOAT(NPAIRS)
        END IF !(KONTA2.LT.1000)
 

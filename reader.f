@@ -2,7 +2,7 @@
        SUBROUTINE READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
      &           PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,MAP,
-     &           U2DM,U3DM, U4DM,MASAP,NPART,RXPA,RYPA,RZPA,N_DM)
+     &           U2DM,U3DM,U4DM,MASAP,NPART,RXPA,RYPA,RZPA,ORIPA,N_DM)
 *********************************************************************
 *      Reads MASCLET data: grids, gas density (clus files) and
 *      DM particles information.
@@ -52,8 +52,7 @@
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-       INTEGER ORIPA2(PARTIRED)
-       COMMON /PUNTEROS/ ORIPA2
+       INTEGER ORIPA(PARTIRED)
 
        REAL*4, ALLOCATABLE::SCR(:,:,:)
 
@@ -181,11 +180,11 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
         READ(32) (U2DM(I),I=1,NDXYZ)
         READ(32) (U3DM(I),I=1,NDXYZ)
         READ(32) (U4DM(I),I=1,NDXYZ)
-        READ(32) (ORIPA2(I),I=1,NDXYZ)    !particle ID
+        READ(32) (ORIPA(I),I=1,NDXYZ)    !particle ID
         CONTA=NDXYZ
         MASAP(1:NDXYZ)=MAP
-        WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:NDXYZ)),
-     &                       MINVAL(ORIPA2(1:NDXYZ))
+        WRITE(*,*) 'ORIPA=',MAXVAL(ORIPA(1:NDXYZ)),
+     &                       MINVAL(ORIPA(1:NDXYZ))
         WRITE(*,*) 'NPART(0)=',IR, NPART(IR),CONTA
 
 
@@ -222,11 +221,11 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
 
         READ(32) (UBAS2(IX),IX=1,NPART(IR))
         IF (NPART(IR).GT.0)
-     &   ORIPA2(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
+     &   ORIPA(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
 
         IF (NPART(IR).GT.0) THEN
-        WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(CONTA+1:CONTA+NPART(IR))),
-     &                       MINVAL(ORIPA2(CONTA+1:CONTA+NPART(IR)))
+        WRITE(*,*) 'ORIPA=',MAXVAL(ORIPA(CONTA+1:CONTA+NPART(IR))),
+     &                       MINVAL(ORIPA(CONTA+1:CONTA+NPART(IR)))
         END IF
 
         CONTA=CONTA+NPART(IR)
@@ -251,7 +250,8 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
 
 *********************************************************************
        SUBROUTINE READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,MAP,
-     &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,N_DM,VAR,N_ST)
+     &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
+     &             N_DM,VAR,N_ST)
 *********************************************************************
 *      Reads MASCLET data: grids and DM particles information.
 *      Must be checked depending on the version/flavour of MASCLET
@@ -284,8 +284,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-       INTEGER ORIPA2(PARTIRED)
-       COMMON /PUNTEROS/ ORIPA2
+       INTEGER ORIPA(PARTIRED)
 
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
@@ -351,12 +350,12 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        READ(32) (U2DM(I),I=1,NDXYZ)
        READ(32) (U3DM(I),I=1,NDXYZ)
        READ(32) (U4DM(I),I=1,NDXYZ)
-       READ(32) (ORIPA2(I),I=1,NDXYZ)
+       READ(32) (ORIPA(I),I=1,NDXYZ)
        CONTA=NDXYZ
        MASAP(1:NDXYZ)=MAP
 
-C       WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:NDXYZ)),
-C     &                      MINVAL(ORIPA2(1:NDXYZ))
+C       WRITE(*,*) 'ORIPA=',MAXVAL(ORIPA(1:NDXYZ)),
+C     &                      MINVAL(ORIPA(1:NDXYZ))
        WRITE(*,*) 'NPART(IR)=',0, NPART(0),CONTA
 
        DO IR=1,NL
@@ -385,7 +384,7 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
         MASAP(CONTA+1:CONTA+NPART(IR))=UBAS(1:NPART(IR))
 
         READ(32) (UBAS2(IX),IX=1,NPART(IR))
-        ORIPA2(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
+        ORIPA(CONTA+1:CONTA+NPART(IR))=UBAS2(1:NPART(IR))
 
         CONTA=CONTA+NPART(IR)
         WRITE(*,*) 'NPART(IR)=',IR,NPART(IR),CONTA
@@ -452,7 +451,7 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
          MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
          READ(34)
          READ(34)
-         READ(34)
+         READ(34) ! ORIPAST
          CONTA=CONTA+NBAS
 
          NBAS=NPARTBH(IR)
@@ -492,8 +491,8 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
 
 *********************************************************************
        SUBROUTINE READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
-     &            U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,LADO0,N_GAS,
-     &            N_DM,N_PARTICLES)
+     &            U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,LADO0,
+     &            N_GAS,N_DM,N_PARTICLES)
 *********************************************************************
 *      Reads generic file with particles
 *********************************************************************
@@ -535,8 +534,7 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
        REAL*4 RYPA(PARTIRED)
        REAL*4 RZPA(PARTIRED)
 
-       INTEGER ORIPA2(PARTIRED)
-       COMMON /PUNTEROS/ ORIPA2
+       INTEGER ORIPA(PARTIRED)
 
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
@@ -557,16 +555,16 @@ C     &                      MINVAL(ORIPA2(1:NDXYZ))
        WRITE(*,*)'N_DM,N_GAS=',N_DM,N_GAS
 
        DO I=1,N_DM
-        READ(5,*) ORIPA2(I),RXPA(I),RYPA(I),RZPA(I),
+        READ(5,*) ORIPA(I),RXPA(I),RYPA(I),RZPA(I),
      &            U2DM(I),U3DM(I),U4DM(I),MASAP(I)
        END DO
        DO I=N_DM+1,N_DM+N_GAS
-        READ(5,*) ORIPA2(I),RXPA(I),RYPA(I),RZPA(I),
+        READ(5,*) ORIPA(I),RXPA(I),RYPA(I),RZPA(I),
      &            U2DM(I),U3DM(I),U4DM(I),MASAP(I)
        END DO
 
-       WRITE(*,*) 'ORIPA2=',MAXVAL(ORIPA2(1:N_PARTICLES)),
-     &                      MINVAL(ORIPA2(1:N_PARTICLES))
+       WRITE(*,*) 'ORIPA=',MAXVAL(ORIPA(1:N_PARTICLES)),
+     &                      MINVAL(ORIPA(1:N_PARTICLES))
 
        CLOSE(5)
 
