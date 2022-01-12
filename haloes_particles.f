@@ -431,7 +431,8 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
      &      ORIPA2,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
-     &      VELOCITY_DISPERSION)
+     &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
+     &      DO_COMPUTE_ENERGIES)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -465,8 +466,9 @@ c     &              IX,JY,KZ,FLAG_ITER
        REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),CLUSRZCM(MAXNCLUS)
        REAL*4 MEAN_VR(NMAXNCLUS),INERTIA_TENSOR(6,NMAXNCLUS)
        INTEGER NPATCH(0:NLEVELS),PATCHCLUS(MAXNCLUS)
-       REAL*4 PROFILES(NBINS,2,NMAXNCLUS)
-       REAL*4 VELOCITY_DISPERSION(NMAXNCLUS)
+       REAL*4 PROFILES(NBINS,2,NMAXNCLUS),VELOCITY_DISPERSION(NMAXNCLUS)
+       REAL*4 KINETIC_E(NMAXNCLUS),POTENTIAL_E(NMAXNCLUS)
+       INTEGER DO_COMPUTE_ENERGIES
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -491,14 +493,15 @@ c     &              IX,JY,KZ,FLAG_ITER
        REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
        REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
-       REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
+       REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP,t1,t2
        REAL INERTIA(3,3),BASEIGENVAL(3),RADII_ITER(7),BASVECCM(3)
-       REAL BASVCM(3),BASVX,BASVY,BASVZ,SIGMA_HALO
+       REAL BASVCM(3),BASVX,BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,GCONS
        REAL DENSITOT(0:1000),RADIAL(0:1000),DENSR(0:1000)
        REAL LOGDERIV(0:1000)
        REAL DISTA(0:PARTIRED)
 
        PI=DACOS(-1.D0)
+       GCONS=4.301E-9 ! in Msun*Mpc*km^2*s^-2
 
        DIMEN=3   !DIMENSION DE LOS HALOS
        NCAPAS=0
@@ -539,7 +542,8 @@ c       WRITE(*,*)'=================================='
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
 !$OMP+           M200C,M500C,M2500C,RSUB,MSUB,MINOVERDENS,CLUSRXCM,
 !$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR,PROFILES,
-!$OMP+           VELOCITY_DISPERSION),
+!$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
+!$OMP+           DO_COMPUTE_ENERGIES),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -550,8 +554,8 @@ c       WRITE(*,*)'=================================='
 !$OMP+           COUNT_2,KONTA2PREV,FLAG200C,FLAG200M,FLAG500C,FLAG500M,
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,EACH_PROF,DENSR,LOGDERIV,
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR,BASVX,
-!$OMP+           BASVY,BASVZ,SIGMA_HALO),
-!$OMP+   SCHEDULE(DYNAMIC,2), DEFAULT(NONE)
+!$OMP+           BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,t1,t2),
+!$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
 ****************************
@@ -941,6 +945,8 @@ c         WRITE(*,*) '---'
          BASZ=0.0
          INERTIA=0.0
          SIGMA_HALO=0.0
+         EKIN=0.0
+         EPOT=0.0
 
          DIS=1000000.0
          VMAXCLUS(I)=-1.0
@@ -972,7 +978,8 @@ c         WRITE(*,*) '---'
             BASVCM(3)=U4DM(JJ)-VCMZ
 
             VVV2=BASVCM(1)**2+BASVCM(2)**2+BASVCM(3)**2
-            SIGMA_HALO=SIGMA_HALO+VVV2*(MASAP(JJ)/NORMA)
+            SIGMA_HALO=SIGMA_HALO+VVV2
+            EKIN=EKIN+MASAP(JJ)*VVV2
 
 **          ANGULAR MOMENTUM
             BASX=BASX+MASAP(JJ)*(BASVECCM(2)*BASVCM(3)
@@ -1010,6 +1017,8 @@ c         WRITE(*,*) '---'
      &          (BASVEC(3)/AADM)*BASVCM(3)
              VR=VR+AA*MASAP(JJ)
             END IF
+           ELSE      !AADM.LT.RSHELL
+            CONTADM(J)=1
            END IF    !AADM.LT.RSHELL
           END IF     !CONTADM
          END DO      !KONTA
@@ -1022,6 +1031,16 @@ c         WRITE(*,*) '---'
           REALCLUS(I)=0
           CYCLE
          END IF
+
+         IF (DO_COMPUTE_ENERGIES.EQ.1) THEN
+          CALL COMPUTE_EPOT(KONTA,KONTA2,LIP,RXPA,RYPA,RZPA,MASAP,
+     &                      CONTADM,EPOT)
+          EPOT=EPOT*UM**2*GCONS ! Gravitational Energy in Msun * km^2 * s^-2
+          EKIN=0.5*EKIN*UM*UV**2 ! Kinetic Energy in Msun * km^2 * s^-2
+          KINETIC_E(I)=EKIN
+          POTENTIAL_E(I)=EPOT
+         END IF
+
          MASA(I)=BASMAS*NORMA*UM
          RADIO(I)=RSHELL
          ANGULARM(1,I)=BASX*UV / (BASMAS*NORMA)
@@ -1040,7 +1059,7 @@ c         WRITE(*,*) '---'
          INERTIA_TENSOR(5,I)=INERTIA(2,3)
          INERTIA_TENSOR(6,I)=INERTIA(3,3)
 
-         VELOCITY_DISPERSION(I)=SQRT(SIGMA_HALO/BASMAS)*UV
+         VELOCITY_DISPERSION(I)=SQRT(SIGMA_HALO/FLOAT(KONTA2))*UV
 
          BASEIGENVAL(1:3)=0.0
          IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
@@ -1079,7 +1098,102 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        RETURN
        END
 
+**********************************************************************
+       SUBROUTINE COMPUTE_EPOT(KONTA,KONTA2,LIP,RXPA,RYPA,RZPA,MASAP,
+     &                         CONTADM,EPOT)
+**********************************************************************
+*      Computes the gravitational potential energy of a halo, taking
+*       into account only bound particles, by direct summation (small
+*       halos) or does an estimation by sampling
+**********************************************************************
 
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER KONTA,KONTA2
+       INTEGER LIP(PARTIRED)
+       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       REAL*4 MASAP(PARTIRED)
+       INTEGER CONTADM(PARTIRED)
+       REAL EPOT
+
+       INTEGER J,JJ,K,KK,NSAMPLE!,NPAIRS
+       INTEGER FLAG,JJJ,KKK
+       REAL X1,X2,Y1,Y2,Z1,Z2,M1,M2,U,TEMP
+       INTEGER(8) NPAIRS,NPAIRS_TOTAL,NPAIRS_EXPECT,NBAS64 !this has to be 8-byte because of possible OVERFLOWS
+       !REAL NPAIRS_TOTAL,NPAIRS_EXPECT
+
+       EPOT=0.0
+
+       IF (KONTA2.LT.1000) THEN ! direct summation
+        DO J=1,KONTA
+         JJ=LIP(J)
+         IF (CONTADM(J).EQ.1) CYCLE
+         X1=RXPA(JJ)
+         Y1=RYPA(JJ)
+         Z1=RZPA(JJ)
+         M1=MASAP(JJ)
+         DO K=J+1,KONTA
+          KK=LIP(K)
+          IF (CONTADM(K).EQ.1) CYCLE
+          X2=RXPA(KK)
+          Y2=RYPA(KK)
+          Z2=RZPA(KK)
+          M2=MASAP(KK)
+          EPOT=EPOT-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+         END DO
+        END DO
+       ELSE ! sampling
+        NSAMPLE=MAX(1000,INT(0.01*KONTA2))
+        NBAS64=NSAMPLE
+        NPAIRS_EXPECT=NBAS64*(NBAS64-1)/2
+        NPAIRS=0
+
+        CALL RANDOM_SEED() ! set the seed for random numbers
+
+        DO JJJ=1,NSAMPLE
+         ! Generate a random, valid particle
+         FLAG=0
+         DO WHILE (FLAG.EQ.0)
+          CALL RANDOM_NUMBER(U)
+          J=1+FLOOR(U*KONTA)
+          IF (CONTADM(J).EQ.0) FLAG=1
+         END DO
+         JJ=LIP(J)
+         X1=RXPA(JJ)
+         Y1=RYPA(JJ)
+         Z1=RZPA(JJ)
+         M1=MASAP(JJ)
+
+         DO KKK=JJJ+1,NSAMPLE
+          FLAG=0
+          DO WHILE (FLAG.EQ.0)
+           CALL RANDOM_NUMBER(U)
+           K=1+FLOOR(U*KONTA)
+           IF (CONTADM(K).EQ.0) THEN
+            FLAG=1
+            IF (K.EQ.J) FLAG=0
+           END IF
+          END DO
+          KK=LIP(K)
+          X2=RXPA(KK)
+          Y2=RYPA(KK)
+          Z2=RZPA(KK)
+          M2=MASAP(KK)
+
+          NPAIRS=NPAIRS+1
+          EPOT=EPOT-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+         END DO
+        END DO
+        NBAS64=KONTA
+        NPAIRS_TOTAL=NBAS64*(NBAS64-1)/2
+        ! here NPAIRS_TOTAL is real, to avoid overflows with 4-byte integers
+        TEMP=EPOT
+        EPOT=EPOT*FLOAT(NPAIRS_TOTAL)/FLOAT(NPAIRS)
+       END IF !(KONTA2.LT.1000)
+
+       RETURN
+       END
 
 
 **********************************************************************
