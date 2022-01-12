@@ -196,6 +196,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 VELOCITY_DISPERSION(NMAXNCLUS)
        REAL*4 RMAXSIGMA(NMAXNCLUS),MMAXSIGMA(NMAXNCLUS)
        REAL*4 KINETIC_E(NMAXNCLUS),POTENTIAL_E(NMAXNCLUS)
+       REAL*4 FSUB(NMAXNCLUS) ! fraction of mass in substructures
+       INTEGER NSUBS(NMAXNCLUS) ! number of substructures
 
        INTEGER,ALLOCATABLE::RESORT(:)
 
@@ -470,7 +472,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 !$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
 !$OMP+                   LEVHAL,EIGENVAL,RSUB,MSUB,INERTIA_TENSOR,
 !$OMP+                   MEAN_VR,VELOCITY_DISPERSION,RMAXSIGMA,
-!$OMP+                   MMAXSIGMA,KINETIC_E,POTENTIAL_E),
+!$OMP+                   MMAXSIGMA,KINETIC_E,POTENTIAL_E,FSUB,NSUBS),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
        DO I=1,NMAXNCLUSBAS
@@ -503,6 +505,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         MMAXSIGMA(I)=0.0
         KINETIC_E(I)=0.0
         POTENTIAL_E(I)=0.0
+        FSUB(I)=0.0
+        NSUBS(I)=0
        END DO
 
        MARK(1:NFILE2)=0
@@ -928,13 +932,13 @@ c       WRITE(*,*)'===================================='
 ****************************************************
 ****************************************************
        IF (FLAG_SUBS.EQ.1) THEN
-       WRITE(*,*)
-       WRITE(*,*) '***************************'
-       WRITE(*,*) '** SUBSTRUCTURE SEARCH   **'
-       WRITE(*,*) '***************************'
+        WRITE(*,*)
+        WRITE(*,*) '***************************'
+        WRITE(*,*) '** SUBSTRUCTURE SEARCH   **'
+        WRITE(*,*) '***************************'
 
-       DO IR=1,NL
-        CALL SEARCH_SUBSTRUCTURE_GRID(IR,NL,NX,NY,NZ,NPATCH,PATCHNX,
+        DO IR=1,NL
+         CALL SEARCH_SUBSTRUCTURE_GRID(IR,NL,NX,NY,NZ,NPATCH,PATCHNX,
      &                    PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,CLUSRX,
      &                    CLUSRY,CLUSRZ,REALCLUS,LEVHAL,NHALLEV,BOUND,
@@ -943,15 +947,15 @@ c       WRITE(*,*)'===================================='
      &                    CLUSRYCM,CLUSRZCM,RSUB,MSUB,SUBS_LEV,UM,
      &                    PROFILES)
 
-        open(99, file='./output_files/substructuregrid.res',
-     &       status='unknown')
-        do i=subs_lev(0)+1,nclus
-         write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
-     &              realclus(i)
-        end do
-        close(99)
+         open(99, file='./output_files/substructuregrid.res',
+     &        status='unknown')
+         do i=subs_lev(0)+1,nclus
+          write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
+     &               realclus(i)
+         end do
+         close(99)
 
-        CALL SUBSTRUCTURE_PARTICLES(IR,NL,NCLUS,MASA,RADIO,CLUSRX,
+         CALL SUBSTRUCTURE_PARTICLES(IR,NL,NCLUS,MASA,RADIO,CLUSRX,
      &      CLUSRY,CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,
      &      VY,VZ,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,
      &      M2500M,MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,
@@ -961,14 +965,16 @@ c       WRITE(*,*)'===================================='
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES)
 
-        open(99, file='./output_files/substructureparticles.res',
+         open(99, file='./output_files/substructureparticles.res',
      &       status='unknown')
-        do i=subs_lev(0)+1,nclus
-         write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
+         do i=subs_lev(0)+1,nclus
+          write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
      &              realclus(i)
-        end do
-        close(99)
-       END DO
+         end do
+         close(99)
+        END DO
+
+        CALL FRACTION_MASS_SUBS(NCLUS,REALCLUS,MASA,MSUB,FSUB,NSUBS)
        END IF
 
 ****************************************************

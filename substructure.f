@@ -1741,3 +1741,41 @@ c       END DO
 
        RETURN
        END
+
+***********************************************************
+       SUBROUTINE FRACTION_MASS_SUBS(NCLUS,REALCLUS,MASA,MSUB,FSUB,
+     &                               NSUBS)
+***********************************************************
+*      Computes the fraction of mass in substructure of each
+*       halo.
+***********************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NCLUS
+       INTEGER REALCLUS(MAXNCLUS)
+       REAL*4 MASA(MAXNCLUS)
+       REAL*4 MSUB(MAXNCLUS),FSUB(NMAXNCLUS)
+       INTEGER NSUBS(NMAXNCLUS)
+
+       INTEGER I
+
+       DO I=1,NCLUS
+        IF (REALCLUS(I).GT.0) THEN
+         FSUB(REALCLUS(I))=FSUB(REALCLUS(I))+MSUB(I)
+         NSUBS(REALCLUS(I))=NSUBS(REALCLUS(I))+1
+        END IF
+       END DO
+
+       DO I=1,NCLUS
+        IF (REALCLUS(I).EQ.-1) FSUB(I)=FSUB(I)/MASA(I)
+        IF (REALCLUS(I).GT.0) FSUB(I)=FSUB(I)/MSUB(I)
+       END DO
+
+c       DO I=1,NCLUS
+c        IF (NSUBS(I).GT.0) WRITE(*,*) I,MASA(I)/1.E12,NSUBS(I),FSUB(I)
+c       END DO
+
+       RETURN
+       END
