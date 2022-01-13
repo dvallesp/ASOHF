@@ -133,9 +133,11 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 ZETA,AA2,LIM,BAS, BAS1, BAS2
        REAL*4 RRRR,R111,R222
 
-       CHARACTER*13 FILE1, FILE4
+       CHARACTER*13 FILE1
        CHARACTER*14 FILE3, FILE7
+       CHARACTER*15 FILE4
        CHARACTER*30 FILERR3,FILERR7
+       CHARACTER*31 FILERR4
        INTEGER*4 DATE(3), TIME(3), CONTAERR
        INTEGER MARK(MAXITER2),NFILE2,IFI2
 
@@ -197,6 +199,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 KINETIC_E(NMAXNCLUS),POTENTIAL_E(NMAXNCLUS)
        REAL*4 FSUB(NMAXNCLUS) ! fraction of mass in substructures
        INTEGER NSUBS(NMAXNCLUS) ! number of substructures
+       INTEGER PARTICLES_PER_HALO(PARTIRED)
+       INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS)
 
        INTEGER,ALLOCATABLE::RESORT(:)
 
@@ -471,7 +475,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 !$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
 !$OMP+                   LEVHAL,EIGENVAL,RSUB,MSUB,INERTIA_TENSOR,
 !$OMP+                   MEAN_VR,VELOCITY_DISPERSION,RMAXSIGMA,
-!$OMP+                   MMAXSIGMA,KINETIC_E,POTENTIAL_E,FSUB,NSUBS),
+!$OMP+                   MMAXSIGMA,KINETIC_E,POTENTIAL_E,FSUB,NSUBS,
+!$OMP+                   INDCS_PARTICLES_PER_HALO),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
        DO I=1,NMAXNCLUSBAS
@@ -506,6 +511,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         POTENTIAL_E(I)=0.0
         FSUB(I)=0.0
         NSUBS(I)=0
+        INDCS_PARTICLES_PER_HALO(:,I)=0
        END DO
 
        MARK(1:NFILE2)=0
@@ -601,7 +607,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         SUBHALOS=0
 
 !$OMP PARALLEL DO SHARED(PABAS,U2DM,U3DM,U4DM,RXPA,RYPA,RZPA,
-!$OMP+                   MASAP,ORIPA),
+!$OMP+                   MASAP,ORIPA,PARTICLES_PER_HALO),
 !$OMP+            PRIVATE(I)
         DO I=1,PABAS
          U2DM(I)=0.0
@@ -612,6 +618,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
          RZPA(I)=0.0
          MASAP(I)=0.0
          ORIPA(I)=0
+         PARTICLES_PER_HALO(I)=0
         END DO
 
 ***************************************************
@@ -646,7 +653,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         END IF
 
         CALL SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &                         N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
+     &                         ORIPA,N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
 
 !      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE
        !NPART=0
@@ -864,7 +871,8 @@ c     &                     U11)
      &      ORIPA,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
-     &      DO_COMPUTE_ENERGIES)
+     &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -962,7 +970,8 @@ c       WRITE(*,*)'===================================='
      &      U4DM,ORIPA,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
-     &      DO_COMPUTE_ENERGIES)
+     &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM)
 
          open(99, file='./output_files/substructureparticles.res',
      &       status='unknown')
@@ -996,13 +1005,23 @@ c       WRITE(*,*)'===================================='
        KONTA2=COUNT(REALCLUS(1:NCLUS).NE.0)
        CALL NOMFILE3(ITER,FILE3)
        FILERR3='./output_files/'//FILE3
+       IF (FLAG_WDM.EQ.1) THEN
+        CALL NOMFILE4(ITER,FILE4)
+        FILERR4='./output_files/'//FILE4
+       END IF
+
        OPEN(3,FILE=FILERR3,STATUS='UNKNOWN')
+       IF (FLAG_WDM.EQ.1) THEN
+        OPEN(4,FILE=FILERR4,FORM='UNFORMATTED')
+        WRITE(4) KONTA2
+       END IF
 
        WRITE(3,*) '*********************NEW ITER*******************'
        WRITE(3,*) ITER, NCLUS, KONTA2, ZETA
        WRITE(3,*) '************************************************'
-       KONTA2=0
 
+
+       KONTA2=0
        DO I=1, NCLUS
 
        IF (REALCLUS(I).NE.0) THEN
@@ -1016,11 +1035,21 @@ c       WRITE(*,*)'===================================='
      &         R500M(I),M500M(I),R500C(I),M500C(I),
      &         R2500M(I),M2500M(I),R2500C(I),M2500C(I),
      &         RSUB(I),MSUB(I),VX(I)*UV,VY(I)*UV,VZ(I)*UV
+         IF (FLAG_WDM.EQ.1) THEN
+          WRITE(4) I,(INDCS_PARTICLES_PER_HALO(J,I),J=1,2)
+          KONTA2=MAX(KONTA2,INDCS_PARTICLES_PER_HALO(2,I))
+         END IF
        END IF  !realclus
 
        END DO
 
+       IF (FLAG_WDM.EQ.1) THEN
+        WRITE(4) KONTA2
+        WRITE(4) (PARTICLES_PER_HALO(J),J=1,KONTA2)
+       END IF
+
        CLOSE(3)
+       IF (FLAG_WDM.EQ.1) CLOSE(4)
 
 *==========================================
 *************************************************

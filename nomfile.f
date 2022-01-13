@@ -78,12 +78,12 @@
        END
 
 *****************************************************************
-       SUBROUTINE NOMFILE4(ITER,FILE3)
+       SUBROUTINE NOMFILE4(ITER,FILE4)
 *****************************************************************
 
        IMPLICIT NONE
        INTEGER ITER
-       CHARACTER*14 FILE3
+       CHARACTER*15 FILE4
        CHARACTER*5 NOM
        INTEGER CONTA,I,N10,IT
 
@@ -96,7 +96,7 @@
          NOM(5-I:5-I)=CHAR(48+IT)
        END DO
 
-       FILE3='merger_t'//NOM
+       FILE4='particles'//NOM
 
        RETURN
        END

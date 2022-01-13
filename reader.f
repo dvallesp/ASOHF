@@ -653,7 +653,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
 *********************************************************************
        SUBROUTINE SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,
-     &                              RZPA,N_DM,NPART_ESP,N_ST,
+     &                              RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
      &                              IR_KERN_STARS)
 *********************************************************************
 *      Reorders DM particles by species (assumes there are N_ESP
@@ -666,6 +666,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
        REAL*4 MASAP(PARTIRED)
        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       INTEGER ORIPA(PARTIRED)
        INTEGER N_DM
        INTEGER NPART_ESP(0:N_ESP-1)
        INTEGER N_ST,IR_KERN_STARS
@@ -674,6 +675,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        REAL MLOW,MHIGH,BAS,MAXMASS,MINMASS
        INTEGER,ALLOCATABLE::INDICES(:)
        REAL,ALLOCATABLE::SCR(:,:)
+       INTEGER,ALLOCATABLE::SCRINT(:,:)
 
        WRITE(*,*) 'Sorting particles by mass'
 
@@ -712,10 +714,10 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
         STOP
        END IF
 
-       ALLOCATE(SCR(7,N_DM))
+       ALLOCATE(SCR(7,N_DM),SCRINT(1,N_DM))
 
-!$OMP PARALLEL DO SHARED(SCR,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
-!$OMP+                   INDICES,N_DM),
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
        DO I=1,N_DM
@@ -726,10 +728,13 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
         SCR(5,I)=U3DM(INDICES(I))
         SCR(6,I)=U4DM(INDICES(I))
         SCR(7,I)=MASAP(INDICES(I))
+        SCRINT(1,I)=ORIPA(INDICES(I))
        END DO
 
-!$OMP PARALLEL DO SHARED(SCR,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
-!$OMP+                   INDICES,N_DM),
+       DEALLOCATE(INDICES)
+
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
        DO I=1,N_DM
@@ -740,9 +745,10 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
         U3DM(I)=SCR(5,I)
         U4DM(I)=SCR(6,I)
         MASAP(I)=SCR(7,I)
+        ORIPA(I)=SCRINT(1,I)
        END DO
 
-       DEALLOCATE(INDICES,SCR)
+       DEALLOCATE(SCR,SCRINT)
 
        IF (N_ST.GT.0) THEN
         NPART_ESP(IR_KERN_STARS)=NPART_ESP(IR_KERN_STARS)+N_ST
