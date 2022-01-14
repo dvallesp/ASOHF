@@ -218,6 +218,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 *      ---STAND-ALONE HALO FINDER---
        INTEGER FLAG_SA,FLAG_GAS,FLAG_MASCLET,FLAG_WDM
        INTEGER N_DM,N_PARTICLES,N_ST,N_GAS,IR_KERN_STARS
+       INTEGER SPLIT_SPECIES
        REAL*4 COTA(NCOTAS,0:NLEVELS)
 
 *      ---UNBINDING---
@@ -333,6 +334,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) VAR
        READ(1,*) !Kernel level for stars (if VAR=2) ------------------------------------>
        READ(1,*) IR_KERN_STARS
+       READ(1,*) !Particle especies (0=there are different mass particles, 1=equal mass 
+       READ(1,*) !particles, use local density, 2=equal mass particles, do nothing) --->
+       READ(1,*) SPLIT_SPECIES
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Halo finding parameters block                                 *
        READ(1,*) !***********************************************************************
@@ -652,8 +656,14 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
      &                               N_PARTICLES)
         END IF
 
-        CALL SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &                         ORIPA,N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
+        IF (SPLIT_SPECIES.EQ.0) THEN
+         CALL SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
+     &                          ORIPA,N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
+        ELSE IF (SPLIT_SPECIES.EQ.1) THEN 
+         CALL SORT_DM_PARTICLES_LOCALDENSITY(U2DM,U3DM,U4DM,MASAP,RXPA,
+     &                          RYPA,RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
+     &                          IR_KERN_STARS,RODO,RE0)
+        END IF
 
 !      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE
        !NPART=0
