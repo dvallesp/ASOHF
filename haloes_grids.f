@@ -351,17 +351,17 @@ c       INTEGER R_II
        DO IX=1+BOR,NX-BOR
         IF (U1(IX,JY,KZ).GE.CONTRASTECPEAK) THEN
          BASX =U1(IX+1,JY,KZ)-U1(IX,JY,KZ)
+         IF (BASX.LT.0.0) THEN
          BASY =U1(IX,JY+1,KZ)-U1(IX,JY,KZ)
+         IF (BASY.LT.0.0) THEN
          BASZ =U1(IX,JY,KZ+1)-U1(IX,JY,KZ)
+         IF (BASZ.LT.0.0) THEN
          BASXX=U1(IX,JY,KZ)  -U1(IX-1,JY,KZ)
+         IF (BASXX.GT.0.0) THEN
          BASYY=U1(IX,JY,KZ)  -U1(IX,JY-1,KZ)
+         IF (BASYY.GT.0.0) THEN
          BASZZ=U1(IX,JY,KZ)  -U1(IX,JY,KZ-1)
-         IF (BASX.LT.0) THEN
-         IF (BASY.LT.0) THEN
-         IF (BASZ.LT.0) THEN
-         IF (BASXX.GT.0) THEN
-         IF (BASYY.GT.0) THEN
-         IF (BASZZ.GT.0) THEN ! then it's a local maximum
+         IF (BASZZ.GT.0.0) THEN ! then it's a local maximum
           KK_ENTERO=KK_ENTERO+1
          END IF
          END IF
@@ -396,17 +396,17 @@ c       INTEGER R_II
         BAS=U1(IX,JY,KZ)
         IF (BAS.GE.CONTRASTECPEAK) THEN
          BASX =U1(IX+1,JY,KZ)-U1(IX,JY,KZ)
+         IF (BASX.LT.0.0) THEN
          BASY =U1(IX,JY+1,KZ)-U1(IX,JY,KZ)
+         IF (BASY.LT.0.0) THEN
          BASZ =U1(IX,JY,KZ+1)-U1(IX,JY,KZ)
+         IF (BASZ.LT.0.0) THEN
          BASXX=U1(IX,JY,KZ)  -U1(IX-1,JY,KZ)
+         IF (BASXX.GT.0.0) THEN
          BASYY=U1(IX,JY,KZ)  -U1(IX,JY-1,KZ)
+         IF (BASYY.GT.0.0) THEN
          BASZZ=U1(IX,JY,KZ)  -U1(IX,JY,KZ-1)
-         IF (BASX.LT.0) THEN
-         IF (BASY.LT.0) THEN
-         IF (BASZ.LT.0) THEN
-         IF (BASXX.GT.0) THEN
-         IF (BASYY.GT.0) THEN
-         IF (BASZZ.GT.0) THEN ! then it's a local maximum
+         IF (BASZZ.GT.0.0) THEN ! then it's a local maximum
           II=II+1
           DDD(II)=BAS
           DDDX(II)=IX
@@ -719,17 +719,17 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
            IF (U11(IX,JY,KZ,I).GE.CONTRASTECPEAK.AND.
      &         CONTA1(IX,JY,KZ,I).EQ.1) THEN
             BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
+            IF (BASX.LT.0.0) THEN
             BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
+            IF (BASY.LT.0.0) THEN
             BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
+            IF (BASZ.LT.0.0) THEN
             BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
+            IF (BASXX.GT.0.0) THEN
             BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
+            IF (BASYY.GT.0.0) THEN
             BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
-            IF (BASX.LT.0) THEN
-            IF (BASY.LT.0) THEN
-            IF (BASZ.LT.0) THEN
-            IF (BASXX.GT.0) THEN
-            IF (BASYY.GT.0) THEN
-            IF (BASZZ.GT.0) THEN ! then it's a local maximum
+            IF (BASZZ.GT.0.0) THEN ! then it's a local maximum
              KK_ENTERO=KK_ENTERO+1
             END IF
             END IF
@@ -771,17 +771,17 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
            IF (U11(IX,JY,KZ,I).GE.CONTRASTECPEAK.AND.
      &         CONTA1(IX,JY,KZ,I).EQ.1) THEN
             BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
+            IF (BASX.LT.0.0) THEN
             BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
+            IF (BASY.LT.0.0) THEN
             BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
+            IF (BASZ.LT.0.0) THEN
             BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
+            IF (BASXX.GT.0.0) THEN
             BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
+            IF (BASYY.GT.0.0) THEN
             BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
-            IF (BASX.LT.0) THEN
-            IF (BASY.LT.0) THEN
-            IF (BASZ.LT.0) THEN
-            IF (BASXX.GT.0) THEN
-            IF (BASYY.GT.0) THEN
-            IF (BASZZ.GT.0) THEN ! then it's a local maximum
+            IF (BASZZ.GT.0.0) THEN ! then it's a local maximum
              II=II+1
              DDD(II)=U11(IX,JY,KZ,I)
              DDDX(II)=IX
