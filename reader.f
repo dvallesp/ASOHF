@@ -770,3 +770,194 @@ C       stop
 
        RETURN
        END
+
+*********************************************************************
+       SUBROUTINE SORT_DM_PARTICLES_LOCALDENSITY(U2DM,U3DM,U4DM,MASAP,
+     &                       RXPA,RYPA,RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
+     &                       IR_KERN_STARS,RODO,RE0)
+*********************************************************************
+*      Assigns DM particles in species, according to local density,
+*       and reorders them accordingly.
+*********************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
+       REAL*4 MASAP(PARTIRED)
+       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       INTEGER ORIPA(PARTIRED)
+       INTEGER N_DM
+       INTEGER NPART_ESP(0:N_ESP-1)
+       INTEGER N_ST,IR_KERN_STARS
+       REAL*4 RODO,RE0
+       
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
+
+       INTEGER I,J,K,N,IESP,CONTA,NX,NY,NZ,IX,JY,KZ,PLEV
+       REAL MLOW,MHIGH,BAS,MAXMASS,MINMASS
+       REAL XMIN,YMIN,ZMIN
+       INTEGER,ALLOCATABLE::INDICES(:)
+       REAL,ALLOCATABLE::SCR(:,:)
+       INTEGER,ALLOCATABLE::SCRINT(:,:)
+       REAL,ALLOCATABLE::DENS(:,:,:)
+       INTEGER,ALLOCATABLE::MOCKLEVEL(:)
+       
+       NX=NMAX
+       NY=NMAY
+       NZ=NMAZ
+       
+       ALLOCATE(DENS(NX,NY,NZ))
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,DENS),
+!$OMP+            PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX 
+        DENS(IX,JY,KZ)=0.0
+       END DO 
+       END DO 
+       END DO
+       
+       XMIN=-NX*DX/2.0
+       YMIN=-NY*DY/2.0
+       ZMIN=-NZ*DZ/2.0
+!$OMP PARALLEL DO SHARED(N_DM,RXPA,RYPA,RZPA,XMIN,YMIN,ZMIN,DX,DY,DZ,
+!$OMP+                   MASAP,NX,NY,NZ),
+!$OMP+            PRIVATE(IX,JY,KZ,I),
+!$OMP+            REDUCTION(+:DENS), DEFAULT(NONE)
+       DO I=1,N_DM 
+        IX=INT((RXPA(I)-XMIN)/DX)
+        JY=INT((RYPA(I)-YMIN)/DY)
+        KZ=INT((RZPA(I)-ZMIN)/DZ)
+        IF (IX.LT.1) IX=1
+        IF (IX.GT.NX) IX=NX
+        IF (JY.LT.1) JY=1
+        IF (JY.GT.NX) JY=NY
+        IF (KZ.LT.1) KZ=1
+        IF (KZ.GT.NX) KZ=NZ
+        DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(I)
+       END DO
+       
+       BAS=DX*DY*DZ*RODO*RE0**3
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,DENS,BAS),
+!$OMP+            PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX
+        DENS(IX,JY,KZ)=DENS(IX,JY,KZ)/BAS
+       END DO 
+       END DO 
+       END DO
+       
+       ALLOCATE(MOCKLEVEL(N_DM))
+
+!$OMP PARALLEL DO SHARED(N_DM,RXPA,RYPA,RZPA,XMIN,YMIN,ZMIN,DX,DY,DZ,
+!$OMP+                   NX,NY,NZ,DENS,MOCKLEVEL),
+!$OMP+            PRIVATE(IX,JY,KZ,I,BAS),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM 
+        IX=INT((RXPA(I)-XMIN)/DX)
+        JY=INT((RYPA(I)-YMIN)/DY)
+        KZ=INT((RZPA(I)-ZMIN)/DZ)
+        IF (IX.LT.1) IX=1
+        IF (IX.GT.NX) IX=NX
+        IF (JY.LT.1) JY=1
+        IF (JY.GT.NX) JY=NY
+        IF (KZ.LT.1) KZ=1
+        IF (KZ.GT.NX) KZ=NZ
+        BAS=DENS(IX,JY,KZ)
+        MOCKLEVEL(I)=MIN(INT(LOG(BAS)/LOG(8.0)),N_ESP-1)
+       END DO
+       
+       DEALLOCATE(DENS)
+
+       WRITE(*,*) 'Sorting particles by mass'
+
+       NPART_ESP=0
+       CONTA=0
+       
+       ALLOCATE(INDICES(1:N_DM))
+       DO IESP=0,N_ESP-1
+        DO I=1,N_DM
+         PLEV=MOCKLEVEL(I)
+         IF (PLEV.EQ.IESP) THEN
+          CONTA=CONTA+1
+          INDICES(CONTA)=I
+         END IF
+        END DO
+        IF (IESP.EQ.0) THEN
+         NPART_ESP(IESP)=CONTA
+        ELSE
+         NPART_ESP(IESP)=CONTA-SUM(NPART_ESP(0:IESP-1))
+        END IF
+        IF (NPART_ESP(IESP).GT.0) THEN
+         WRITE(*,*) 'Of species',IESP,', no. particles:',NPART_ESP(IESP)
+        END IF
+       END DO
+       
+       DEALLOCATE(MOCKLEVEL)
+
+       IF (CONTA.NE.N_DM.OR.SUM(NPART_ESP(0:N_ESP-1)).NE.N_DM) THEN
+        WRITE(*,*) 'Wrong sorting, cannot continue',CONTA,N_DM
+        STOP
+       END IF
+
+       ALLOCATE(SCR(7,N_DM),SCRINT(1,N_DM))
+
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        SCR(1,I)=RXPA(INDICES(I))
+        SCR(2,I)=RYPA(INDICES(I))
+        SCR(3,I)=RZPA(INDICES(I))
+        SCR(4,I)=U2DM(INDICES(I))
+        SCR(5,I)=U3DM(INDICES(I))
+        SCR(6,I)=U4DM(INDICES(I))
+        SCR(7,I)=MASAP(INDICES(I))
+        SCRINT(1,I)=ORIPA(INDICES(I))
+       END DO
+
+       DEALLOCATE(INDICES)
+
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        RXPA(I)=SCR(1,I)
+        RYPA(I)=SCR(2,I)
+        RZPA(I)=SCR(3,I)
+        U2DM(I)=SCR(4,I)
+        U3DM(I)=SCR(5,I)
+        U4DM(I)=SCR(6,I)
+        MASAP(I)=SCR(7,I)
+        ORIPA(I)=SCRINT(1,I)
+       END DO
+
+       DEALLOCATE(SCR,SCRINT)
+
+       IF (N_ST.GT.0) THEN
+        NPART_ESP(IR_KERN_STARS)=NPART_ESP(IR_KERN_STARS)+N_ST
+        WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
+     &             ', no. particles:',NPART_ESP(IR_KERN_STARS)
+       END IF
+
+C       WRITE(*,*) 'Checking...'
+*      CHECK
+C       BAS=MASAP(1)
+C       DO I=2,N_DM
+C        IF (MASAP(I).GT.1.0001*BAS) THEN
+C         WRITE(*,*) 'Wrong, I=',I
+C         STOP
+C        END IF
+C        BAS=MASAP(I)
+C       END DO
+C       stop
+
+       RETURN
+       END

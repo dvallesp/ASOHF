@@ -641,6 +641,7 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
          KONTA=0
          MASADM=0.0
 
+         BAS=-1.0
          DO J=1,N_DM
           XP=RXPA(J)
           YP=RYPA(J)
@@ -651,10 +652,11 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
            KONTA=KONTA+1
            LIP(KONTA)=J
            MASADM=MASADM+MP
+           BAS=MAX(BAS,AADM)
           END IF
          END DO
 
-         DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
+         DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*BAS**3)
 
          IF (DELTA2.GT.0.9*MINOVERDENS) RCLUS=1.05*RCLUS
         END DO

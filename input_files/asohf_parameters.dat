@@ -24,7 +24,7 @@
 
 *      Total number of particles (all types) ---------------
        INTEGER PARTIRED
-       PARAMETER (PARTIRED=33105868)
+       PARAMETER (PARTIRED=128**3)
 
 *      If PLOT>1 o FLAG_WDM=1, then >>PARTIRED; if not, 1 ----------
        INTEGER PARTIRED_PLOT
@@ -41,11 +41,11 @@ c       PARAMETER (PARTIRED_PLOT=60000000)
 
 *      Maximum number of tentative halos---------------------------
        INTEGER MAXNCLUS
-       PARAMETER (MAXNCLUS=300000)
+       PARAMETER (MAXNCLUS=10000)
 
 *      Maximum number of final halos-------------------------------
        INTEGER NMAXNCLUS
-       PARAMETER (NMAXNCLUS=70000)
+       PARAMETER (NMAXNCLUS=10000)
 
 *      Maximum number of subhalos per halo-------------------------
        INTEGER NMAXSUB
@@ -53,7 +53,7 @@ c       PARAMETER (PARTIRED_PLOT=60000000)
 
 *      Maximum number of overlaps per halo with other halos---------
        INTEGER NMAXSOLAP
-       PARAMETER (NMAXSOLAP=10000)
+       PARAMETER (NMAXSOLAP=100)
 
 *      Maximum number of parent halos per halo at a given z -------
        INTEGER NMAXDAD
@@ -84,7 +84,7 @@ c       PARAMETER (NMAXCLUS_PLOT=100000)
 
 *      Number of DM especies---------------------------------------
        INTEGER N_ESP
-       PARAMETER (N_ESP=6)
+       PARAMETER (N_ESP=4)
 
 *      Number of conditions to build the AMR grid
        INTEGER NCOTAS
