@@ -791,7 +791,7 @@ C       stop
        INTEGER NPART_ESP(0:N_ESP-1)
        INTEGER N_ST,IR_KERN_STARS
        REAL*4 RODO,RE0
-       
+
        REAL*4 DX,DY,DZ
        COMMON /ESPACIADO/ DX,DY,DZ
 
@@ -803,23 +803,23 @@ C       stop
        INTEGER,ALLOCATABLE::SCRINT(:,:)
        REAL,ALLOCATABLE::DENS(:,:,:)
        INTEGER,ALLOCATABLE::MOCKLEVEL(:)
-       
+
        NX=NMAX
        NY=NMAY
        NZ=NMAZ
-       
+
        ALLOCATE(DENS(NX,NY,NZ))
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,DENS),
 !$OMP+            PRIVATE(IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
        DO KZ=1,NZ
        DO JY=1,NY
-       DO IX=1,NX 
+       DO IX=1,NX
         DENS(IX,JY,KZ)=0.0
-       END DO 
-       END DO 
        END DO
-       
+       END DO
+       END DO
+
        XMIN=-NX*DX/2.0
        YMIN=-NY*DY/2.0
        ZMIN=-NZ*DZ/2.0
@@ -827,7 +827,7 @@ C       stop
 !$OMP+                   MASAP,NX,NY,NZ),
 !$OMP+            PRIVATE(IX,JY,KZ,I),
 !$OMP+            REDUCTION(+:DENS), DEFAULT(NONE)
-       DO I=1,N_DM 
+       DO I=1,N_DM
         IX=INT((RXPA(I)-XMIN)/DX)
         JY=INT((RYPA(I)-YMIN)/DY)
         KZ=INT((RZPA(I)-ZMIN)/DZ)
@@ -839,7 +839,7 @@ C       stop
         IF (KZ.GT.NX) KZ=NZ
         DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(I)
        END DO
-       
+
        BAS=DX*DY*DZ*RODO*RE0**3
 !$OMP PARALLEL DO SHARED(NX,NY,NZ,DENS,BAS),
 !$OMP+            PRIVATE(IX,JY,KZ),
@@ -848,17 +848,17 @@ C       stop
        DO JY=1,NY
        DO IX=1,NX
         DENS(IX,JY,KZ)=DENS(IX,JY,KZ)/BAS
-       END DO 
-       END DO 
        END DO
-       
+       END DO
+       END DO
+
        ALLOCATE(MOCKLEVEL(N_DM))
 
 !$OMP PARALLEL DO SHARED(N_DM,RXPA,RYPA,RZPA,XMIN,YMIN,ZMIN,DX,DY,DZ,
 !$OMP+                   NX,NY,NZ,DENS,MOCKLEVEL),
 !$OMP+            PRIVATE(IX,JY,KZ,I,BAS),
 !$OMP+            DEFAULT(NONE)
-       DO I=1,N_DM 
+       DO I=1,N_DM
         IX=INT((RXPA(I)-XMIN)/DX)
         JY=INT((RYPA(I)-YMIN)/DY)
         KZ=INT((RZPA(I)-ZMIN)/DZ)
@@ -869,16 +869,16 @@ C       stop
         IF (KZ.LT.1) KZ=1
         IF (KZ.GT.NX) KZ=NZ
         BAS=DENS(IX,JY,KZ)
-        MOCKLEVEL(I)=MIN(INT(LOG(BAS)/LOG(8.0)),N_ESP-1)
+        MOCKLEVEL(I)=MAX(MIN(INT(LOG(BAS)/LOG(8.0)),N_ESP-1),0)
        END DO
-       
+
        DEALLOCATE(DENS)
 
        WRITE(*,*) 'Sorting particles by mass'
 
        NPART_ESP=0
        CONTA=0
-       
+
        ALLOCATE(INDICES(1:N_DM))
        DO IESP=0,N_ESP-1
         DO I=1,N_DM
@@ -897,7 +897,7 @@ C       stop
          WRITE(*,*) 'Of species',IESP,', no. particles:',NPART_ESP(IESP)
         END IF
        END DO
-       
+
        DEALLOCATE(MOCKLEVEL)
 
        IF (CONTA.NE.N_DM.OR.SUM(NPART_ESP(0:N_ESP-1)).NE.N_DM) THEN
