@@ -242,24 +242,28 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
         DO IX=1+BORAMR,N1-BORAMR
          IF (U11(IX,JY,KZ,I).GE.CONTRASTECPEAK.AND.
      &       CONTA1(IX,JY,KZ,I).EQ.1) THEN
-          BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
-          BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
-          BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
-          BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
-          BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
-          BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
-          IF (BASX.LT.0) THEN
-          IF (BASY.LT.0) THEN
-          IF (BASZ.LT.0) THEN
-          IF (BASXX.GT.0) THEN
-          IF (BASYY.GT.0) THEN
-          IF (BASZZ.GT.0) THEN ! then it's a local maximum
+c          BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
+c          BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
+c          BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
+c          BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
+c          BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
+c          BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
+c          IF (BASX.LT.0) THEN
+c          IF (BASY.LT.0) THEN
+c          IF (BASZ.LT.0) THEN
+c          IF (BASXX.GT.0) THEN
+c          IF (BASYY.GT.0) THEN
+c          IF (BASZZ.GT.0) THEN ! then it's a local maximum
+c           KK_ENTERO=KK_ENTERO+1
+c          END IF
+c          END IF
+c          END IF
+c          END IF
+c          END IF
+c          END IF
+          IF(U11(IX,JY,KZ,I).GE.MAXVAL(U11(IX-1:IX+1,JY-1:JY+1,
+     &                                     KZ-1:KZ+1,I))) THEN
            KK_ENTERO=KK_ENTERO+1
-          END IF
-          END IF
-          END IF
-          END IF
-          END IF
           END IF
          END IF
         END DO
@@ -294,29 +298,38 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
         DO IX=1+BORAMR,N1-BORAMR
          IF (U11(IX,JY,KZ,I).GE.CONTRASTECPEAK.AND.
      &       CONTA1(IX,JY,KZ,I).EQ.1) THEN
-          BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
-          BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
-          BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
-          BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
-          BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
-          BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
-          IF (BASX.LT.0) THEN
-          IF (BASY.LT.0) THEN
-          IF (BASZ.LT.0) THEN
-          IF (BASXX.GT.0) THEN
-          IF (BASYY.GT.0) THEN
-          IF (BASZZ.GT.0) THEN ! then it's a local maximum
+C           BASX =U11(IX+1,JY,KZ,I)-U11(IX,JY,KZ,I)
+C           IF (BASX.LT.0.0) THEN
+C           BASY =U11(IX,JY+1,KZ,I)-U11(IX,JY,KZ,I)
+C           IF (BASY.LT.0.0) THEN
+C           BASZ =U11(IX,JY,KZ+1,I)-U11(IX,JY,KZ,I)
+C           IF (BASZ.LT.0.0) THEN
+C           BASXX=U11(IX,JY,KZ,I)  -U11(IX-1,JY,KZ,I)
+C           IF (BASXX.GT.0.0) THEN
+C           BASYY=U11(IX,JY,KZ,I)  -U11(IX,JY-1,KZ,I)
+C           IF (BASYY.GT.0.0) THEN
+C           BASZZ=U11(IX,JY,KZ,I)  -U11(IX,JY,KZ-1,I)
+C           IF (BASZZ.GT.0.0) THEN ! then it's a local maximum
+C           II=II+1
+C           DDD(II)=U11(IX,JY,KZ,I)
+C           DDDX(II)=IX
+C           DDDY(II)=JY
+C           DDDZ(II)=KZ
+C           DDDP(II)=I
+C          END IF
+C          END IF
+C          END IF
+C          END IF
+C          END IF
+C          END IF
+          IF (U11(IX,JY,KZ,I).GE.MAXVAL(U11(IX-1:IX+1,JY-1:JY+1,
+     &                                      KZ-1:KZ+1,I))) THEN
            II=II+1
            DDD(II)=U11(IX,JY,KZ,I)
            DDDX(II)=IX
            DDDY(II)=JY
            DDDZ(II)=KZ
            DDDP(II)=I
-          END IF
-          END IF
-          END IF
-          END IF
-          END IF
           END IF
          END IF
         END DO
@@ -332,7 +345,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
 *        Go through all the center candidates
        DO L1=1,NV_GOOD
 C        write(*,*)
-C        write(*,*) 'new candidate!!!!'
+C        write(*,*) 'new candidate!!!!',l1
         ICEN4(1)=DDDX(L1)
         ICEN4(2)=DDDY(L1)
         ICEN4(3)=DDDZ(L1)
