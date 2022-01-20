@@ -334,7 +334,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) VAR
        READ(1,*) !Kernel level for stars (if VAR=2) ------------------------------------>
        READ(1,*) IR_KERN_STARS
-       READ(1,*) !Particle especies (0=there are different mass particles, 1=equal mass 
+       READ(1,*) !Particle especies (0=there are different mass particles, 1=equal mass
        READ(1,*) !particles, use local density, 2=equal mass particles, do nothing) --->
        READ(1,*) SPLIT_SPECIES
        READ(1,*) !***********************************************************************
@@ -659,7 +659,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         IF (SPLIT_SPECIES.EQ.0) THEN
          CALL SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &                          ORIPA,N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
-        ELSE IF (SPLIT_SPECIES.EQ.1) THEN 
+        ELSE IF (SPLIT_SPECIES.EQ.1) THEN
          CALL SORT_DM_PARTICLES_LOCALDENSITY(U2DM,U3DM,U4DM,MASAP,RXPA,
      &                          RYPA,RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
      &                          IR_KERN_STARS,RODO,RE0)
@@ -689,7 +689,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
      &                    PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
      &                    N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
      &                    REFINE_THR,MIN_PATCHSIZE,MINFRAC_REFINABLE,
-     &                    BOR,BORAMR,BOR_OVLP)
+     &                    BOR,BORAMR,BOR_OVLP,NPART_ESP)
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
 

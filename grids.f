@@ -4,7 +4,7 @@
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,
      &           U4DM,MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
      &           REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,BORAMR,
-     &           BOR_OVLP)
+     &           BOR_OVLP,NPART_ESP)
 ************************************************************************
 *     Creats a mesh hierarchy for the given particle distribution
 ************************************************************************
@@ -26,6 +26,7 @@
       INTEGER REFINE_THR,MIN_PATCHSIZE
       REAL FRAC_REFINABLE
       INTEGER BOR,BORAMR
+      INTEGER NPART_ESP(0:N_ESP-1)
 
 *     COMMON VARIABLES
       REAL DX,DY,DZ
@@ -71,11 +72,15 @@
       MAP=MAXVAL(MASAP(1:N_PARTICLES))
 
       PLEV=0
-!$OMP PARALLEL DO SHARED(N_PARTICLES,PLEV,MAP,MASAP),PRIVATE(I),
-!$OMP+            DEFAULT(NONE)
-      DO I=1,N_PARTICLES
-       PLEV(I)=LOG(MAP/MASAP(I)+.5)/LOG(8.)
+      DO IR=0,N_ESP-1
+       LOW1=SUM(NPART_ESP(0:IR-1))+1
+       LOW2=SUM(NPART_ESP(0:IR))
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PLEV,IR), PRIVATE(I), DEFAULT(NONE)
+       DO I=LOW1,LOW2
+        PLEV(I)=IR
+       END DO
       END DO
+
       WRITE(*,*) 'Particle levels: min and max values:', MINVAL(PLEV),
      &           MAXVAL(PLEV)
 
