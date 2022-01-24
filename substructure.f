@@ -787,15 +787,19 @@ C        WRITE(*,*) 'Not found progenitor'
        INTEGER NCAPAS(NMAXNCLUS),IPATCH,IRR,MINJ,DIR,J_JACOBI,EACH_PROF
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED),MOST_BOUND_IDX
        INTEGER LOWP1,LOWP2
-       REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
-       REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
+       REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS
+       REAL VVV2,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
-       REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP
+       REAL DENSA,DENSB,DENSC,VKK,AA,XP,YP,ZP,MP
        REAL INERTIA(3,3),BASEIGENVAL(3),RADII_ITER(7),BASVECCM(3)
-       REAL BASVCM(3),MHOST,DISTHOST,EQ_JACOBI_R,BASVX,BASVY,BASVZ
+       REAL BASVCM(3),MHOST,DISTHOST
        REAL DENSITOT(0:1000),RADIAL(0:1000),DENSR(0:1000)
-       REAL LOGDERIV(0:1000),SIGMA_HALO,EKIN,EPOT,GCONS
+       REAL LOGDERIV(0:1000),EPOT,GCONS
        REAL DISTA(0:PARTIRED)
+
+*      DOUBLE PRECISION VARIABLES
+       REAL*8 MASADM,BASMAS,VR,BASX,BASY,BASZ,BAS8,BASVX,BASVY,BASVZ
+       REAL*8 SIGMA_HALO,EKIN,INERTIA8(3,3),EQ_JACOBI_R
 
        ! For writing DM particles
        INTEGER,ALLOCATABLE::PARTICLES_PROC(:,:),PROC_NPARTICLES(:)
@@ -858,7 +862,7 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IHOSTHALO,MINJ,DIR,
 !$OMP+           FLAG_JACOBI,MHOST,DISTHOST,EQ_JACOBI_R,IPATCH,IRR,
 !$OMP+           J_JACOBI,EACH_PROF,BASVX,BASVY,BASVZ,SIGMA_HALO,EPOT,
-!$OMP+           EKIN,MOST_BOUND_IDX,ID_PROC,IPART_PROC),
+!$OMP+           EKIN,MOST_BOUND_IDX,ID_PROC,IPART_PROC,BAS8,INERTIA8),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=LOWH1,LOWH2
@@ -866,16 +870,16 @@ C        WRITE(*,*) 'Not found progenitor'
        KK_ENTERO=REALCLUS(I)
        IF (KK_ENTERO.NE.0) THEN
 
-        INERTIA=0.0
+        INERTIA8=0.D0
         REF_MIN=10.0e+10
         REF_MAX=-1.0
-        MASADM=0.0
+        MASADM=0.D0
         KONTA=0
-        BASMAS=0.0
+        BASMAS=0.D0
         DIS=1.0E+10    !Distance (to the center) of the most central particle
         VCM=0.0
         VVV2=0.0    ! v propia de las particulas respecto al CM
-        VR=0.0      ! v radial
+        VR=0.D0      ! v radial
         CMX=0.0
         CMY=0.0
         CMZ=0.0
@@ -889,9 +893,9 @@ C        WRITE(*,*) 'Not found progenitor'
         CONCEN=0.0       !concentration NFW profile
         RS=0.0           !scale radius NFW profile
         KONTA2=0
-        BASX=0.0
-        BASY=0.0
-        BASZ=0.0
+        BASX=0.D0
+        BASY=0.D0
+        BASZ=0.D0
 
 *********************************************************************
 *       RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
@@ -961,7 +965,7 @@ c        write(*,*) 'mhost,dishost',mhost,disthost
         RCLUS=2.0*RSUB(I)
         DO WHILE (FLAG_JACOBI.EQ.0)
          KONTA=0
-         MASADM=0.0
+         MASADM=0.D0
          DO J=1,N_DM
           AADM=SQRT((RXPA(J)-CX)**2+(RYPA(J)-CY)**2+(RZPA(J)-CZ)**2)
           IF (AADM.LT.RCLUS) THEN
@@ -981,14 +985,14 @@ c         WRITE(*,*) 'CHECK I,KONTA,KONTA2=',I,KONTA,KONTA2
          DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
 
 *        Simplified equation (estimation)
-         MASADM=0.0
+         MASADM=0.D0
          MINJ=MAX(10,KONTA/50)
          DO J=1,KONTA
           MASADM=MASADM+MASAP(LIP(J))
           EQ_JACOBI_R=(DISTA(J)/DISTHOST)-
      &                  ((MASADM*UM)/(MASADM*UM+3*MHOST))**(1.0/3.0)
 c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
-          IF (EQ_JACOBI_R.GT.0.0.AND.J.GT.MINJ) THEN
+          IF (EQ_JACOBI_R.GT.0.D0.AND.J.GT.MINJ) THEN
            J_JACOBI=J
            EXIT
           END IF
@@ -998,11 +1002,11 @@ c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
          BASX=DISTA(J)/DISTHOST
          BASY=MASADM*UM/MHOST
          EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
-         IF (ABS(EQ_JACOBI_R).LT.0.01) THEN
+         IF (ABS(EQ_JACOBI_R).LT.0.D01) THEN
           FLAG_JACOBI=1
          ELSE
           DIR=1
-          IF (EQ_JACOBI_R.LT.0.0) DIR=-1
+          IF (EQ_JACOBI_R.LT.0.D0) DIR=-1
 
           IF (DIR.EQ.1) THEN
            DO J=J_JACOBI+1,KONTA
@@ -1010,7 +1014,7 @@ c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
             MASADM=MASADM+MASAP(LIP(J))
             BASY=MASADM*UM/MHOST
             EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
-            IF (EQ_JACOBI_R.GT.0.0) THEN
+            IF (EQ_JACOBI_R.GT.0.D0) THEN
              J_JACOBI=J
              FLAG_JACOBI=1
              EXIT
@@ -1048,7 +1052,7 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
 
-        IF (MASADM.LE.0.0.OR.KONTA.EQ.0) THEN
+        IF (MASADM.LE.0.D0.OR.KONTA.EQ.0) THEN
          REALCLUS(I)=0
          CYCLE
         END IF
@@ -1179,12 +1183,12 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
 ****************** stopping condition
          SALIDA=0
 ******************
-         BAS=0.0 ! to store cummulative mass profile
+         BAS8=0.D0 ! to store cummulative mass profile
          BAS1=-1.0 ! to store vcmax
          BAS2=0.0 ! to store vc(r)
-         BASVX=0.0 ! to compute CM velocity
-         BASVY=0.0
-         BASVZ=0.0
+         BASVX=0.D0 ! to compute CM velocity
+         BASVY=0.D0
+         BASVZ=0.D0
 *        VCMAX=-1.0
          ! Initialise flags (whether each overdensity has been found)
          FLAG200C=0
@@ -1201,7 +1205,7 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
          JJCORE=INT(MAX(10.0,KONTA2/100.0))
          DO J=1,JJCORE
           JJ=LIP(J)
-          BAS=BAS+(MASAP(JJ)/NORMA)
+          BAS8=BAS8+(MASAP(JJ)/NORMA)
           BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
           BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
           BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
@@ -1209,17 +1213,17 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
          DO J=JJCORE+1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
           JJ=LIP(J)
           VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
-          BAS=BAS+(MASAP(JJ)/NORMA)
+          BAS8=BAS8+(MASAP(JJ)/NORMA)
           BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
           BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
           BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
 
-          DELTA2=NORMA*BAS/VOL/ROTE ! overdensity
+          DELTA2=NORMA*BAS8/VOL/ROTE ! overdensity
 
-          BAS2=BAS/DISTA(J) ! vc(r)
+          BAS2=BAS8/DISTA(J) ! vc(r)
           IF (BAS2.GT.BAS1) THEN
            VCMAX(I)=BAS2
-           MCMAX(I)=BAS
+           MCMAX(I)=BAS8
            RCMAX(I)=DISTA(J)
            BAS1=BAS2
           END IF
@@ -1312,7 +1316,7 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
           ! profile
           IF (MOD(J,FAC).EQ.0) THEN
            NSHELL_2=NSHELL_2+1
-           DENSITOT(NSHELL_2)=NORMA*BAS*UM
+           DENSITOT(NSHELL_2)=NORMA*BAS8*UM
            RADIAL(NSHELL_2)=DISTA(J)
           END IF
 
@@ -1323,13 +1327,13 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
 
          IF (MOD(J,FAC).NE.0) THEN
           NSHELL_2=NSHELL_2+1
-          DENSITOT(NSHELL_2)=NORMA*BAS*UM
+          DENSITOT(NSHELL_2)=NORMA*BAS8*UM
           RADIAL(NSHELL_2)=DISTA(J)
          END IF
 
-         VX(I)=BASVX/BAS
-         VY(I)=BASVY/BAS
-         VZ(I)=BASVZ/BAS
+         VX(I)=BASVX/BAS8
+         VY(I)=BASVY/BAS8
+         VZ(I)=BASVZ/BAS8
 
 c         WRITE(*,*) 'HALO I,KONTA2,NSHELL_2,KK_ENTERO=',
 c     &               I,KONTA2,NSHELL_2,KK_ENTERO
@@ -1350,19 +1354,19 @@ c         WRITE(*,*) '---'
 ***********************************************************
          KONTA=NCAPAS(I) ! DISTANCE TO PARTICLE AT DISTANCE RJ
          KONTA2=0
-         BASMAS=0.0
+         BASMAS=0.D0
          DMPCLUS(I)=0
 
          VCMX=VX(I)
          VCMY=VY(I)
          VCMZ=VZ(I)
 
-         BASX=0.0
-         BASY=0.0
-         BASZ=0.0
-         INERTIA=0.0
-         SIGMA_HALO=0.0
-         EKIN=0.0
+         BASX=0.D0
+         BASY=0.D0
+         BASZ=0.D0
+         INERTIA8=0.D0
+         SIGMA_HALO=0.D0
+         EKIN=0.D0
          EPOT=0.0
 
          DIS=1000000.0
@@ -1409,7 +1413,7 @@ c         WRITE(*,*) '---'
 **          INERTIA TENSOR
             DO JY=1,3
             DO IX=1,3
-              INERTIA(IX,JY)=INERTIA(IX,JY)
+              INERTIA8(IX,JY)=INERTIA8(IX,JY)
      &                       +MASAP(JJ)*BASVECCM(IX)*BASVECCM(JY)
             END DO
             END DO
@@ -1482,7 +1486,8 @@ C            END IF
          ANGULARM(3,I)=BASZ*UV / (BASMAS*NORMA)
          MEAN_VR(I)=VR/(BASMAS*NORMA)
 
-         INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/(BASMAS*NORMA)
+         ! to simple precision
+         INERTIA(1:3,1:3)=INERTIA8(1:3,1:3)/(BASMAS*NORMA)
          INERTIA_TENSOR(1,I)=INERTIA(1,1)
          INERTIA_TENSOR(2,I)=INERTIA(1,2)
          INERTIA_TENSOR(3,I)=INERTIA(1,3)

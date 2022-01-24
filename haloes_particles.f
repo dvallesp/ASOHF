@@ -493,15 +493,19 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER FLAGVIR,EACH_PROF,IPATCH,IRR,MOST_BOUND_IDX,LOWP1,LOWP2
        INTEGER NCAPAS(NMAXNCLUS)
        INTEGER LIP(PARTIRED),CONTADM(PARTIRED)
-       REAL ESP,REF,REF_MIN,REF_MAX,MASADM,BASMAS,DIS,VCM,MINOVERDENS
-       REAL VVV2,VR,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
+       REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS
+       REAL VVV2,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
-       REAL DENSA,DENSB,DENSC,VKK,AA,BASX,BASY,BASZ,XP,YP,ZP,MP,t1,t2
+       REAL DENSA,DENSB,DENSC,VKK,AA,XP,YP,ZP,MP,t1,t2
        REAL INERTIA(3,3),BASEIGENVAL(3),RADII_ITER(7),BASVECCM(3)
-       REAL BASVCM(3),BASVX,BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,GCONS
+       REAL BASVCM(3),EPOT,GCONS
        REAL DENSITOT(0:1000),RADIAL(0:1000),DENSR(0:1000)
        REAL LOGDERIV(0:1000)
        REAL DISTA(0:PARTIRED)
+
+*      DOUBLE PRECISION VARIABLES
+       REAL*8 MASADM,BASMAS,VR,BASX,BASY,BASZ,BAS8,BASVX,BASVY,BASVZ
+       REAL*8 SIGMA_HALO,EKIN,INERTIA8(3,3)
 
        ! For writing DM particles
        INTEGER,ALLOCATABLE::PARTICLES_PROC(:,:),PROC_NPARTICLES(:)
@@ -573,7 +577,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,EACH_PROF,DENSR,LOGDERIV,
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR,BASVX,
 !$OMP+           BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,MOST_BOUND_IDX,
-!$OMP+           ID_PROC,IPART_PROC),
+!$OMP+           ID_PROC,IPART_PROC,BAS8,INERTIA8),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
@@ -581,16 +585,16 @@ c       WRITE(*,*)'=================================='
        KK_ENTERO=REALCLUS(I)
        IF (KK_ENTERO.NE.0) THEN
 
-        INERTIA=0.0
+        INERTIA8=0.D0
         REF_MIN=10.0e+10
         REF_MAX=-1.0
-        MASADM=0.0
+        MASADM=0.D0
         KONTA=0
-        BASMAS=0.0
+        BASMAS=0.D0
         DIS=1.0E+10    !Distance (to the center) of the most central particle
         VCM=0.0
         VVV2=0.0    ! v propia de las particulas respecto al CM
-        VR=0.0      ! v radial
+        VR=0.D0      ! v radial
         CMX=0.0
         CMY=0.0
         CMZ=0.0
@@ -604,9 +608,9 @@ c       WRITE(*,*)'=================================='
         CONCEN=0.0       !concentration NFW profile
         RS=0.0           !scale radius NFW profile
         KONTA2=0
-        BASX=0.0
-        BASY=0.0
-        BASZ=0.0
+        BASX=0.D0
+        BASY=0.D0
+        BASZ=0.D0
 
 *********************************************************************
 *       RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
@@ -639,7 +643,7 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
         RCLUS=RADIO(I)
         DO WHILE (DELTA2.GT.0.9*MINOVERDENS)
          KONTA=0
-         MASADM=0.0
+         MASADM=0.D0
 
          BAS=-1.0
          DO J=1,N_DM
@@ -662,7 +666,7 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
         END DO
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 
-        IF (MASADM.LE.0.0.OR.KONTA.EQ.0) THEN
+        IF (MASADM.LE.0.D0.OR.KONTA.EQ.0) THEN
          REALCLUS(I)=0
          CYCLE
         END IF
@@ -765,12 +769,12 @@ c        write(*,*) '--'
 ****************** stopping condition
          SALIDA=0
 ******************
-         BAS=0.0 ! to store cummulative mass profile
+         BAS8=0.D0 ! to store cummulative mass profile
          BAS1=-1.0 ! to store vcmax
          BAS2=0.0 ! to store vc(r)
-         BASVX=0.0 ! to compute CM velocity
-         BASVY=0.0
-         BASVZ=0.0
+         BASVX=0.D0 ! to compute CM velocity
+         BASVY=0.D0
+         BASVZ=0.D0
 *        VCMAX=-1.0
          ! Initialise flags (whether each overdensity has been found)
          FLAG200C=0
@@ -787,7 +791,7 @@ c        write(*,*) '--'
          JJCORE=INT(MAX(10.0,KONTA2/100.0))
          DO J=1,JJCORE
           JJ=LIP(J)
-          BAS=BAS+(MASAP(JJ)/NORMA)
+          BAS8=BAS8+(MASAP(JJ)/NORMA)
           BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
           BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
           BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
@@ -795,17 +799,17 @@ c        write(*,*) '--'
          DO J=JJCORE+1,KONTA2      !!!!! DEJO 80 por ciento de BINS DE SEGURIDAD
           JJ=LIP(J)
           VOL=PI*(4.0/3.0)*(DISTA(J)*RETE)**3
-          BAS=BAS+(MASAP(JJ)/NORMA)
+          BAS8=BAS8+(MASAP(JJ)/NORMA)
           BASVX=BASVX+(MASAP(JJ)/NORMA)*U2DM(JJ)
           BASVY=BASVY+(MASAP(JJ)/NORMA)*U3DM(JJ)
           BASVZ=BASVZ+(MASAP(JJ)/NORMA)*U4DM(JJ)
 
-          DELTA2=NORMA*BAS/VOL/ROTE ! overdensity
+          DELTA2=NORMA*BAS8/VOL/ROTE ! overdensity
 
-          BAS2=BAS/DISTA(J) ! vc(r)
+          BAS2=BAS8/DISTA(J) ! vc(r)
           IF (BAS2.GT.BAS1) THEN
            VCMAX(I)=BAS2
-           MCMAX(I)=BAS
+           MCMAX(I)=BAS8
            RCMAX(I)=DISTA(J)
            BAS1=BAS2
           END IF
@@ -893,9 +897,9 @@ c        write(*,*) '--'
             MASA(I)=DELTA2*VOL*ROTE*UM
             RADIO(I)=DISTA(J)
 
-            VX(I)=BASVX/BAS
-            VY(I)=BASVY/BAS
-            VZ(I)=BASVZ/BAS
+            VX(I)=BASVX/BAS8
+            VY(I)=BASVY/BAS8
+            VZ(I)=BASVZ/BAS8
 
             NCAPAS(I)=J
             IF (J.EQ.KONTA2) THEN
@@ -910,7 +914,7 @@ c        write(*,*) '--'
           ! profile
           IF (MOD(J,FAC).EQ.0) THEN
            NSHELL_2=NSHELL_2+1
-           DENSITOT(NSHELL_2)=NORMA*BAS*UM
+           DENSITOT(NSHELL_2)=NORMA*BAS8*UM
            RADIAL(NSHELL_2)=DISTA(J)
           END IF
 
@@ -922,7 +926,7 @@ c        write(*,*) '--'
 
          IF (MOD(J,FAC).NE.0) THEN
           NSHELL_2=NSHELL_2+1
-          DENSITOT(NSHELL_2)=NORMA*BAS*UM
+          DENSITOT(NSHELL_2)=NORMA*BAS8*UM
           RADIAL(NSHELL_2)=DISTA(J)
          END IF
 
@@ -954,19 +958,19 @@ c         WRITE(*,*) '---'
           CYCLE
          END IF
          KONTA2=0
-         BASMAS=0.0
+         BASMAS=0.D0
          DMPCLUS(I)=0
 
          VCMX=VX(I)
          VCMY=VY(I)
          VCMZ=VZ(I)
 
-         BASX=0.0
-         BASY=0.0
-         BASZ=0.0
-         INERTIA=0.0
-         SIGMA_HALO=0.0
-         EKIN=0.0
+         BASX=0.D0
+         BASY=0.D0
+         BASZ=0.D0
+         INERTIA8=0.D0
+         SIGMA_HALO=0.D0
+         EKIN=0.D0
          EPOT=0.0
 
          DIS=1000000.0
@@ -1013,8 +1017,8 @@ c         WRITE(*,*) '---'
 **          INERTIA TENSOR
             DO JY=1,3
             DO IX=1,3
-              INERTIA(IX,JY)=INERTIA(IX,JY)
-     &                       +MASAP(JJ)*BASVECCM(IX)*BASVECCM(JY)
+              INERTIA8(IX,JY)=INERTIA8(IX,JY)
+     &                         +MASAP(JJ)*BASVECCM(IX)*BASVECCM(JY)
             END DO
             END DO
 
@@ -1089,7 +1093,8 @@ c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
          ANGULARM(3,I)=BASZ*UV / (BASMAS*NORMA)
          MEAN_VR(I)=VR/(BASMAS*NORMA)
 
-         INERTIA(1:3,1:3)=INERTIA(1:3,1:3)/(BASMAS*NORMA)
+         ! to simple precision
+         INERTIA(1:3,1:3)=INERTIA8(1:3,1:3)/(BASMAS*NORMA)
          INERTIA(1,2)=INERTIA(2,1)
          INERTIA(1,3)=INERTIA(3,1)
          INERTIA(2,3)=INERTIA(3,2)
@@ -1186,19 +1191,22 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
        INTEGER J,JJ,K,KK,NSAMPLE!,NPAIRS
        INTEGER FLAG,JJJ,KKK
-       REAL X1,X2,Y1,Y2,Z1,Z2,M1,M2,U,LARGEST_ENERGY,BAS
-       REAL,ALLOCATABLE::EPOT_PART(:)
+       REAL X1,X2,Y1,Y2,Z1,Z2,M1,M2,U,LARGEST_ENERGY
+
+*      DOUBLE PRECISION / LONG LOCAL VARIABLES
+       REAL*8 BAS,EPOT8
+       REAL*8,ALLOCATABLE::EPOT_PART(:)
        INTEGER(8) NPAIRS,NPAIRS_TOTAL,NPAIRS_EXPECT,NBAS64 !this has to be 8-byte because of possible OVERFLOWS
        !REAL NPAIRS_TOTAL,NPAIRS_EXPECT
 
-       EPOT=0.0
+       EPOT8=0.D0
 
 
        IF (KONTA2.LT.1000) THEN ! direct summation
         ALLOCATE(EPOT_PART(KONTA))
 
         DO J=1,KONTA
-         EPOT_PART(J)=0.0
+         EPOT_PART(J)=0.D0
         END DO
 
         DO J=1,KONTA
@@ -1218,13 +1226,13 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
           BAS=-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
           EPOT_PART(J)=EPOT_PART(J)+BAS
           EPOT_PART(K)=EPOT_PART(K)+BAS
-          EPOT=EPOT+BAS
+          EPOT8=EPOT8+BAS
          END DO
         END DO
 
         DO J=1,KONTA
          IF (CONTADM(J).EQ.1) THEN
-          EPOT_PART(J)=100000.0
+          EPOT_PART(J)=100000.D0
          ELSE
           EPOT_PART(J)=EPOT_PART(J)/MASAP(LIP(J)) ! gravitational energy per unit mass
          END IF
@@ -1255,7 +1263,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
          Z1=RZPA(JJ)
          M1=MASAP(JJ)
 
-         BAS=0.0
+         BAS=0.D0
 
          DO KKK=JJJ+1,NSAMPLE
           FLAG=0
@@ -1277,7 +1285,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
           BAS=BAS-M1*M2/SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
          END DO
 
-         EPOT=EPOT+BAS
+         EPOT8=EPOT8+BAS
 
          BAS=BAS/M1 ! gravitational energy per unit mass
          IF (BAS.LT.LARGEST_ENERGY) THEN
@@ -1289,8 +1297,10 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
         NPAIRS_TOTAL=NBAS64*(NBAS64-1)/2
         ! here NPAIRS_TOTAL is real, to avoid overflows with 4-byte integers
         !TEMP=EPOT
-        EPOT=EPOT*FLOAT(NPAIRS_TOTAL)/FLOAT(NPAIRS)
+        EPOT8=EPOT8*FLOAT(NPAIRS_TOTAL)/FLOAT(NPAIRS)
        END IF !(KONTA2.LT.1000)
+
+       EPOT=EPOT8
 
        RETURN
        END
@@ -1686,10 +1696,13 @@ COJO       REAL*8 POT(KONTA)
        REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
        INTEGER REALCLUS(MAXNCLUS)
 
-       REAL CMX,CMY,CMZ,VXCM,VYCM,VZCM,BAS,SIGMA2,BB,AADM,AADMX,AADMY
+       REAL CMX,CMY,CMZ,VXCM,VYCM,VZCM,BAS,BB,AADM,AADMX,AADMY
        REAL AADMZ,MMM
        INTEGER J,JJ,KONTA2,KONTA3
        REAL,ALLOCATABLE::DESV2(:)
+
+*      DOUBLE PRECISION VARIABLES
+       REAL*8 SIGMA2
 
        BB=MAX(6.0-1.0*(FAC-1), 3.0)
        BB=BB**2 ! This is because we compare velocities squared
@@ -1704,7 +1717,7 @@ COJO       REAL*8 POT(KONTA)
        ALLOCATE(DESV2(1:KONTA2))
 
        IF (KONTA2.GT.0) THEN
-        SIGMA2=0.0
+        SIGMA2=0.D0
         DO J=1,KONTA2
          JJ=LIP(J)
          BAS=(U2DM(JJ)-VXCM)**2+(U3DM(JJ)-VYCM)**2+(U4DM(JJ)-VZCM)**2
