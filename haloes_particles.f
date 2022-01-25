@@ -894,19 +894,29 @@ c        write(*,*) '--'
                      ! but we don't exit straightaway because we still
                      ! want to find 200m
             FLAGVIR=1
-            MASA(I)=DELTA2*VOL*ROTE*UM
-            RADIO(I)=DISTA(J)
+            !MASA(I)=DELTA2*VOL*ROTE*UM
+            !RADIO(I)=DISTA(J)
+            BAS8=BAS8-(MASAP(JJ)/NORMA)
+            BASVX=BASVX-(MASAP(JJ)/NORMA)*U2DM(JJ)
+            BASVX=BASVY-(MASAP(JJ)/NORMA)*U3DM(JJ)
+            BASVX=BASVZ-(MASAP(JJ)/NORMA)*U4DM(JJ)
+
+            MASA(I)=BAS8*NORMA*UM
+            VOL=(NORMA*BAS8)/(CONTRASTEC*ROTE)
+            RADIO(I)=(((3*VOL)/(4*PI))**(1.0/3.0))/RETE
+            !WRITE(*,*) DISTA(J-1),RADIO(I),DISTA(J)
 
             VX(I)=BASVX/BAS8
             VY(I)=BASVY/BAS8
             VZ(I)=BASVZ/BAS8
 
-            NCAPAS(I)=J
-            IF (J.EQ.KONTA2) THEN
-             RSHELL=DISTA(J)
-            ELSE
-             RSHELL=DISTA(J+1)
-            END IF
+            NCAPAS(I)=J-1
+            !IF (J.EQ.KONTA2) THEN
+            ! RSHELL=DISTA(J)
+            !ELSE
+            ! RSHELL=DISTA(J+1)
+            !END IF
+            RSHELL=RADIO(I)
 
            END IF
           END IF
@@ -926,8 +936,8 @@ c        write(*,*) '--'
 
          IF (MOD(J,FAC).NE.0) THEN
           NSHELL_2=NSHELL_2+1
-          DENSITOT(NSHELL_2)=NORMA*BAS8*UM
-          RADIAL(NSHELL_2)=DISTA(J)
+          DENSITOT(NSHELL_2)=MASA(I)
+          RADIAL(NSHELL_2)=RSHELL
          END IF
 
 c         WRITE(*,*) 'HALO I,KONTA2,NSHELL_2,KK_ENTERO=',
@@ -1086,8 +1096,8 @@ c     & RXPA(MOST_BOUND_IDX),RYPA(MOST_BOUND_IDX),RZPA(MOST_BOUND_IDX),
 c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
          END IF
 
-         MASA(I)=BASMAS*NORMA*UM
-         RADIO(I)=RSHELL
+         !MASA(I)=BASMAS*NORMA*UM
+         !RADIO(I)=RSHELL
          ANGULARM(1,I)=BASX*UV / (BASMAS*NORMA)
          ANGULARM(2,I)=BASY*UV / (BASMAS*NORMA)
          ANGULARM(3,I)=BASZ*UV / (BASMAS*NORMA)
