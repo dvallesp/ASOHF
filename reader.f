@@ -828,15 +828,15 @@ C       stop
 !$OMP+            PRIVATE(IX,JY,KZ,I),
 !$OMP+            REDUCTION(+:DENS), DEFAULT(NONE)
        DO I=1,N_DM
-        IX=INT((RXPA(I)-XMIN)/DX)
-        JY=INT((RYPA(I)-YMIN)/DY)
-        KZ=INT((RZPA(I)-ZMIN)/DZ)
+        IX=INT((RXPA(I)-XMIN)/DX)+1
+        JY=INT((RYPA(I)-YMIN)/DY)+1
+        KZ=INT((RZPA(I)-ZMIN)/DZ)+1
         IF (IX.LT.1) IX=1
         IF (IX.GT.NX) IX=NX
         IF (JY.LT.1) JY=1
-        IF (JY.GT.NX) JY=NY
+        IF (JY.GT.NY) JY=NY
         IF (KZ.LT.1) KZ=1
-        IF (KZ.GT.NX) KZ=NZ
+        IF (KZ.GT.NZ) KZ=NZ
         DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(I)
        END DO
 
@@ -859,15 +859,15 @@ C       stop
 !$OMP+            PRIVATE(IX,JY,KZ,I,BAS),
 !$OMP+            DEFAULT(NONE)
        DO I=1,N_DM
-        IX=INT((RXPA(I)-XMIN)/DX)
-        JY=INT((RYPA(I)-YMIN)/DY)
-        KZ=INT((RZPA(I)-ZMIN)/DZ)
+        IX=INT((RXPA(I)-XMIN)/DX)+1
+        JY=INT((RYPA(I)-YMIN)/DY)+1
+        KZ=INT((RZPA(I)-ZMIN)/DZ)+1
         IF (IX.LT.1) IX=1
         IF (IX.GT.NX) IX=NX
         IF (JY.LT.1) JY=1
-        IF (JY.GT.NX) JY=NY
+        IF (JY.GT.NY) JY=NY
         IF (KZ.LT.1) KZ=1
-        IF (KZ.GT.NX) KZ=NZ
+        IF (KZ.GT.NZ) KZ=NZ
         BAS=DENS(IX,JY,KZ)
         MOCKLEVEL(I)=MAX(MIN(INT(LOG(BAS)/LOG(8.0)),N_ESP-1),0)
        END DO
