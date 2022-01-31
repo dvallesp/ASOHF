@@ -332,7 +332,7 @@
 
         INTEGER LIP(PARTIRED),KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP
         INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN
-        REAL RADIO,BAS,XL,YL,ZL,DDXX
+        REAL RADIO,BAS,XL,YL,ZL,DDXX,BASX,BASY,BASZ
         REAL,ALLOCATABLE::DENS(:,:,:)
 
         NUMPARTMIN=32 !4**3/2
@@ -418,6 +418,22 @@ c     &              IX,JY,KZ,FLAG_ITER
         END DO
 
         DEALLOCATE(DENS)
+
+        BAS=0.0
+        BASX=0.0
+        BASY=0.0
+        BASZ=0.0
+        DO I=1,KONTA
+         IP=LIP(I)
+         BAS=BAS+MASAP(IP)
+         BASX=BASX+RXPA(IP)*MASAP(IP)
+         BASY=BASY+RYPA(IP)*MASAP(IP)
+         BASZ=BASZ+RZPA(IP)*MASAP(IP)
+        END DO
+
+        CX=BASX/BAS
+        CY=BASY/BAS
+        CZ=BASZ/BAS
 
         RETURN
         END
