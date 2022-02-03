@@ -356,6 +356,8 @@ C        write(*,*) 'new candidate!!!!',l1
         KZ=ICEN4(3)
         IPATCH=ICEN4(4)
 
+        IF (CONTA1(IX,JY,KZ,IPATCH).EQ.0) CYCLE
+
         XCEN=RX(IX,IPATCH)
         YCEN=RY(JY,IPATCH)
         ZCEN=RZ(KZ,IPATCH)
@@ -1053,7 +1055,7 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
 
-        IF (MASADM.LE.0.D0.OR.KONTA.EQ.0) THEN
+        IF (MASADM.LE.0.D0.OR.KONTA.LT.NUMPARTBAS) THEN
          REALCLUS(I)=0
          CYCLE
         END IF
@@ -1113,6 +1115,11 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 c        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
 c     &             '. Pruned:',count_1,'. Iters:', FAC
 
+        IF (KONTA2.LT.NUMPARTBAS) THEN
+         REALCLUS(I)=0
+         CYCLE
+        END IF
+
 ********************************************************************
 *      UNBINDING: PHASE SPACE
 ********************************************************************
@@ -1138,6 +1145,11 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
 c        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
 c     &             '. Pruned:',count_2,'. Iters:', FAC
 c        write(*,*) '--'
+
+        IF (KONTA2.LT.NUMPARTBAS) THEN
+         REALCLUS(I)=0
+         CYCLE
+        END IF
 
 ********************************************************************
 *      CORRECT RSUB, MSUB AFTER UNBINDING
