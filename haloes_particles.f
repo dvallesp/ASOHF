@@ -971,8 +971,45 @@ c         WRITE(*,*) '---'
          RCMAX(I)=RCMAX(I)   !*RETE
 
          IF (KK_ENTERO.EQ.-1.AND.SALIDA.NE.1) THEN
-          WRITE(*,*) 'PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
-     &               NSHELL_2,RADIAL(NSHELL_2)
+          SALIDA=1
+          FLAGVIR=1
+          !MASA(I)=DELTA2*VOL*ROTE*UM
+          !RADIO(I)=DISTA(J)
+          BAS8=BAS8!-(MASAP(JJ)/NORMA)
+          BASVX=BASVX!-(MASAP(JJ)/NORMA)*U2DM(JJ)
+          BASVX=BASVY!-(MASAP(JJ)/NORMA)*U3DM(JJ)
+          BASVX=BASVZ!-(MASAP(JJ)/NORMA)*U4DM(JJ)
+
+          MASA(I)=BAS8*NORMA*UM
+          VOL=(NORMA*BAS8)/(CONTRASTEC*ROTE)
+          RADIO(I)=(((3*VOL)/(4*PI))**(1.0/3.0))/RETE
+          !WRITE(*,*) DISTA(J-1),RADIO(I),DISTA(J)
+
+          VX(I)=BASVX/BAS8
+          VY(I)=BASVY/BAS8
+          VZ(I)=BASVZ/BAS8
+
+          NCAPAS(I)=J-1
+          !IF (J.EQ.KONTA2) THEN
+          ! RSHELL=DISTA(J)
+          !ELSE
+          ! RSHELL=DISTA(J+1)
+          !END IF
+          RSHELL=RADIO(I)
+
+          IF (FLAG200M.EQ.0) THEN
+           M200M(I)=MASA(I)
+           R200M(I)=RADIO(I)*(CONTRASTEC/200.0)**(1.0/3.0)
+          END IF
+
+          WRITE(*,*) 'POSSIBLE PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
+     &                NSHELL_2,RADIAL(NSHELL_2)
+
+          IF (MOD(J,FAC).NE.0) THEN
+           NSHELL_2=NSHELL_2+1
+           DENSITOT(NSHELL_2)=MASA(I)
+           RADIAL(NSHELL_2)=RSHELL
+          END IF
          END IF
 
 ***********************************************************
