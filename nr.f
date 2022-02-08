@@ -51,7 +51,7 @@
                sm=sm+ABS(A(ip,iq))
             end do
          end do
-         if(sm.lt.1.e-4*sum_elements) return    !normal return
+         if(sm.lt.1.e-4*sum_elements) goto 15    !normal return
          if(i.lt.4) then
             tresh=0.2d0*sm**2
          else
@@ -115,7 +115,7 @@
        end do                    !main i loop
 c       pause ' 50 iterations !'
 
-       DO IP=1,N
+15     DO IP=1,N
         DOUTPUT(IP)=D(IP)
        END DO
        return
