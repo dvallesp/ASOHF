@@ -1086,11 +1086,8 @@ c         WRITE(*,*) '---'
             END DO
 
 **        VELOCITY OF THE FASTEST PARTICLE IN THE HALO
-            VKK=0.0
-            VKK=SQRT(U2DM(JJ)**2+U3DM(JJ)**2+U4DM(J)**2)
-
-            IF (VKK.GT.VMAXCLUS(I)) THEN
-             VMAXCLUS(I)=VKK
+            IF (VVV2.GT.VMAXCLUS(I)) THEN
+             VMAXCLUS(I)=VVV2
             END IF
 
 **        CLOSEST PARTICLE TO THE CENTER OF THE HALO
@@ -1154,7 +1151,7 @@ c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
          ANGULARM(1,I)=BASX*UV / (BASMAS*NORMA)
          ANGULARM(2,I)=BASY*UV / (BASMAS*NORMA)
          ANGULARM(3,I)=BASZ*UV / (BASMAS*NORMA)
-         MEAN_VR(I)=VR/(BASMAS*NORMA)
+         MEAN_VR(I)=VR/(BASMAS*NORMA)*UV
 
          ! to simple precision
          INERTIA(1:3,1:3)=INERTIA8(1:3,1:3)/(BASMAS*NORMA)
@@ -1170,6 +1167,8 @@ c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
 
          VELOCITY_DISPERSION(I)=SQRT(SIGMA_HALO/FLOAT(KONTA2))*UV
 
+         VMAXCLUS(I)=SQRT(VMAXCLUS(I))*UV
+
          BASEIGENVAL(1:3)=0.0
          IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
           CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
@@ -1177,8 +1176,7 @@ c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
          END IF
 
          DO II=1,DIMEN
-          EIGENVAL(II,I)=BASEIGENVAL(II)
-          EIGENVAL(II,I)=SQRT(EIGENVAL(II,I))
+          EIGENVAL(II,I)=SQRT(BASEIGENVAL(II))
          END DO
 
 C         WRITE(*,*)

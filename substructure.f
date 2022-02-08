@@ -1465,11 +1465,8 @@ c         WRITE(*,*) '---'
             END DO
 
 **        VELOCITY OF THE FASTEST PARTICLE IN THE HALO
-            VKK=0.0
-            VKK=SQRT(U2DM(JJ)**2+U3DM(JJ)**2+U4DM(J)**2)
-
-            IF (VKK.GT.VMAXCLUS(I)) THEN
-             VMAXCLUS(I)=VKK
+            IF (VVV2.GT.VMAXCLUS(I)) THEN
+             VMAXCLUS(I)=VVV2
             END IF
 
 **        CLOSEST PARTICLE TO THE CENTER OF THE HALO
@@ -1530,7 +1527,7 @@ C            END IF
          ANGULARM(1,I)=BASX*UV / (BASMAS*NORMA)
          ANGULARM(2,I)=BASY*UV / (BASMAS*NORMA)
          ANGULARM(3,I)=BASZ*UV / (BASMAS*NORMA)
-         MEAN_VR(I)=VR/(BASMAS*NORMA)
+         MEAN_VR(I)=VR/(BASMAS*NORMA)*UV
 
          ! to simple precision
          INERTIA(1:3,1:3)=INERTIA8(1:3,1:3)/(BASMAS*NORMA)
@@ -1542,6 +1539,7 @@ C            END IF
          INERTIA_TENSOR(6,I)=INERTIA(3,3)
 
          VELOCITY_DISPERSION(I)=SQRT(SIGMA_HALO/FLOAT(KONTA2))*UV
+         VMAXCLUS(I)=SQRT(VMAXCLUS(I))*UV
 
          BASEIGENVAL(1:3)=0.0
          IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
