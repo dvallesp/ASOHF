@@ -81,12 +81,13 @@
        REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4,MINDERIV
        REAL VECDENS(1000),VECRAD(1000),DERIVATIVE(1000),BASVOL_SHELL
        REAL MHOST,DISTHOST,EQ_JACOBI_R,DXPAPA,DYPAPA,DZPAPA
-       REAL CONTRASTECPEAK,MAX_R_PREV
+       REAL CONTRASTECPEAK,MAX_R_PREV,BOUNDIR2
 
        REAL*4, ALLOCATABLE::DDD(:)
        INTEGER, ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:),DDDP(:)
 
        CONTRASTECPEAK=CONTRASTEC/6.0
+       IF (IR.GE.2) CONTRASTECPEAK=CONTRASTEC
 
        NCLUS_INI=NCLUS
        WRITE(*,*) 'Looking for substructure at level', IR
@@ -223,7 +224,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
        ESP=0.2*DXPA
        ESP_LOG=1.05
        BORAMR=1
-       MAX_R_PREV=MAXVAL(RADIO(1:NCLUS))
+       MAX_R_PREV=MAXVAL(RADIO(1:SUBS_LEV(0)))
        BOUNDIR=MAX_R_PREV/1.75**IR!MAX(BOUND/1.5**IR,2.0)
 
 *        estimation to allocate
@@ -500,7 +501,7 @@ c           END DO
         BASVOL=0.0     !TOTAL VOLUME OF THE CLUSTER (sphere)
 
         R_INT=0.0
-        R_EXT=0.2*DXPA ! major semidiagonal of a cube (max distance to a cell)
+        R_EXT=0.8*DXPA ! major semidiagonal of a cube (max distance to a cell)
 
 *          increase the radius until density falls below the virial value
         DELTA=10.0*CONTRASTEC*ROTE ! this is to ensure we enter the loop
@@ -516,14 +517,40 @@ c           END DO
          ITER_GROW=ITER_GROW+1
 
          IF (ITER_GROW.GT.1) THEN
-          IF (R_EXT.LE.BOUNDIR) THEN
-           R_INT=R_EXT
-           R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
-          ELSE
-           WRITE(*,*) 'WARNING: growing not converged', r_int, r_ext,
-     &                 boundir,iter_grow,delta/rote,kk_entero,
-     &                 xcen,ycen,zcen
-           STOP
+          R_INT=R_EXT
+          R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
+          IF (R_EXT.GT.BOUNDIR) THEN
+           BOUNDIR2=R_EXT*2.0
+*          tentative reach of the base grid
+           BASX=XCEN-BOUNDIR2
+           NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
+           IF (NX1.LT.1) NX1=1
+
+           BASX=XCEN+BOUNDIR2
+           NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
+           IF (NX2.GT.NX) NX2=NX
+
+           BASY=YCEN-BOUNDIR2
+           NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
+           IF (NY1.LT.1) NY1=1
+
+           BASY=YCEN+BOUNDIR2
+           NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
+           IF (NY2.GT.NY) NY2=NY
+
+           BASZ=ZCEN-BOUNDIR2
+           NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+           IF (NZ1.LT.1) NZ1=1
+
+           BASZ=ZCEN+BOUNDIR2
+           NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+           IF (NZ2.GT.NZ) NZ2=NZ
+
+*          patches that could contain this halo
+           CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
+     &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR2,
+     &                         NL,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
+
           END IF
          END IF
 
@@ -628,7 +655,7 @@ C     &               II
 C         WRITE(*,*) '... ',EQ_JACOBI_R,R_EXT/DISTHOST,
 C     &          ((BASMASS*UM)/(BASMASS*UM+3*MHOST))**(1.0/3.0)
 
-         IF (EQ_JACOBI_R.GT.0.0.AND.II.GT.15.AND.ITER_GROW.GE.4) THEN
+         IF (EQ_JACOBI_R.GT.0.0.AND.II.GT.15) THEN
           FLAG_JACOBI=1
           RSUB(NCLUS)=R_EXT
           MSUB(NCLUS)=BASMASS*UM
@@ -1008,8 +1035,8 @@ c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
          IF (ABS(EQ_JACOBI_R).LT.0.D01) THEN
           FLAG_JACOBI=1
          ELSE
-          DIR=1
-          IF (EQ_JACOBI_R.LT.0.D0) DIR=-1
+          DIR=-1
+          IF (EQ_JACOBI_R.LT.0.D0) DIR=1
 
           IF (DIR.EQ.1) THEN
            DO J=J_JACOBI+1,KONTA
@@ -1039,6 +1066,15 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
           END IF
          END IF !(ABS(EQ_JACOBI_R).LT.0.01) / ELSE
 
+         IF (FLAG_JACOBI.EQ.0) THEN
+          IF (DIR.EQ.1) THEN
+           RCLUS=1.5*RCLUS
+          ELSE IF (DIR.EQ.-1) THEN
+           J_JACOBI=MINJ
+           FLAG_JACOBI=1
+          END IF
+         END IF
+
          IF (FLAG_JACOBI.EQ.1) THEN
           RCLUS=DISTA(J_JACOBI)
           RSUB(I)=RCLUS
@@ -1048,9 +1084,6 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
           KONTA=J_JACOBI
          END IF
 
-         IF (FLAG_JACOBI.EQ.0) THEN
-          RCLUS=1.5*RCLUS
-         END IF
         END DO !(FLAG_JACOBI.EQ.0)
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
