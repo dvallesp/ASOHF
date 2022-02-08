@@ -1030,21 +1030,79 @@ c       WRITE(*,*)'===================================='
        WRITE(3,*) ITER, NCLUS, KONTA2, ZETA
        WRITE(3,*) '************************************************'
 
+111    FORMAT(51A14)
+112    FORMAT(2I14,3F14.6,E14.6,F14.6,E14.6,F14.6,2I14,3F14.6,3F14.6,
+     &        6E14.6,3E14.6,E14.6,3F14.3,2F14.3,2E14.6,F14.3,E14.3,
+     &        F14.6,F14.6,E14.6,F14.6,E14.6,F14.6,E14.6,F14.6,E14.6,
+     &        F14.6,E14.6,F14.6,E14.6,F14.6,I14)
+
+
+       WRITE(3,*) '=====================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &================================================================='
+
+       WRITE(3,111) 'Halo ID'     ,'Substr. of'  ,'Density peak',
+     &            'coordinates' ,'(Mpc)'       ,'Virial mass' ,
+     &            'Virial radi' ,'Substr. mass','Substr. radi',
+     &            'Part. num.'  ,'Most bound'  ,'Center of'   ,
+     &            'mass coords' ,'(Mpc)'       ,'Semiaxes'    ,
+     &            '(Mpc)'       ,''            ,'Inertia'     ,
+     &            'tensor'      ,'components'  ,'(cMpc^2)'    ,
+     &            ''            ,''            ,'Spec. angul.',
+     &            'momentum'    ,'(cMpc km/s)' ,'Veloc. disp.',
+     &            'Bulk velocty','(km/s)'      ,''            ,
+     &            'Max part vel','Mean V_rad'  ,'Kinetic E'   ,
+     &            'Potential E' ,'Vcmax'       ,'Mass@Vcmax'  ,
+     &            'r@Vcmax'     ,'R200m (Mpc)' ,'M200m (Msun)',
+     &            'R200c (Mpc)' ,'M200c (Msun)','R500m (Mpc)' ,
+     &            'M500m (Msun)','R500c (Mpc)' ,'M500c (Msun)',
+     &            'R2500m (Mpc)','M2500m(Msun)','R2500c (Mpc)',
+     &            'M2500c(Msun)','f_sub'       ,'N_subs'
+
+       WRITE(3,111) ''            ,''            ,'x'           ,
+     &            'y'           ,'z'           ,'(Msun)'      ,
+     &            '(Mpc)'       ,'(Msun)'      ,'(Mpc)'       ,
+     &            ''            ,'particle ID' ,'x'           ,
+     &            'y'           ,'z'           ,'Major'       ,
+     &            'Intermediate','Minor'       ,'Ixx'         ,
+     &            'Ixy'         ,'Ixz'         ,'Iyy'         ,
+     &            'Iyz'         ,'Izz'         ,'Lx'          ,
+     &            'Ly'          ,'Lz'          ,'(km/s)'      ,
+     &            'Vx'          ,'Vy'          ,'Vz'          ,
+     &            '(km/s)'      ,'(km/s)'      ,'Msun(km/s)^2',
+     &            'Msun(km/s)^2','(km/s)'      ,'(Msun)'      ,
+     &            '(Mpc)'       ,''            ,''            ,
+     &            ''            ,''            ,''            ,
+     &            ''            ,''            ,''            ,
+     &            ''            ,''            ,''            ,
+     &            ''            ,''            ,''
+
+       WRITE(3,*) '=====================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &================================================================='
 
        KONTA2=0
-       DO I=1, NCLUS
+       DO I=1,NCLUS
 
        IF (REALCLUS(I).NE.0) THEN
-         WRITE(3,*) I,CLUSRX(I),CLUSRY(I),CLUSRZ(I),
-     &         MASA(I),RADIO(I),DMPCLUS(I),
-     &         REALCLUS(I), LEVHAL(I),SUBHALOS(I),
-     &         (EIGENVAL(J,I),J=1,3),(INERTIA_TENSOR(J,I),J=1,6),
-     &         (ANGULARM(J,I),J=1,3),VELOCITY_DISPERSION(I),
-     &         VCMAX(I),MCMAX(I),RCMAX(I),
-     &         R200M(I),M200M(I),R200C(I),M200C(I),
-     &         R500M(I),M500M(I),R500C(I),M500C(I),
-     &         R2500M(I),M2500M(I),R2500C(I),M2500C(I),
-     &         RSUB(I),MSUB(I),VX(I)*UV,VY(I)*UV,VZ(I)*UV
+         WRITE(3,112) I,REALCLUS(I),CLUSRX(I),CLUSRY(I),CLUSRZ(I),
+     &              MASA(I),RADIO(I),MSUB(I),RSUB(I),DMPCLUS(I),
+     &              IPLIP(I),CLUSRXCM(I),CLUSRYCM(I),CLUSRZCM(I),
+     &              (EIGENVAL(J,I),J=1,3),(INERTIA_TENSOR(J,I),J=1,6),
+     &              (ANGULARM(J,I),J=1,3),VELOCITY_DISPERSION(I),
+     &              VX(I)*UV,VY(I)*UV,VZ(I)*UV,VMAXCLUS(I),MEAN_VR(I),
+     &              KINETIC_E(I),POTENTIAL_E(I),
+     &              VCMAX(I),MCMAX(I),RCMAX(I),
+     &              R200M(I),M200M(I),R200C(I),M200C(I),
+     &              R500M(I),M500M(I),R500C(I),M500C(I),
+     &              R2500M(I),M2500M(I),R2500C(I),M2500C(I),
+     &              FSUB(I),NSUBS(I)
          IF (FLAG_WDM.EQ.1) THEN
           WRITE(4) I,(INDCS_PARTICLES_PER_HALO(J,I),J=1,2)
           KONTA2=MAX(KONTA2,INDCS_PARTICLES_PER_HALO(2,I))
