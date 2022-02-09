@@ -756,7 +756,7 @@ C        WRITE(*,*) 'Not found progenitor'
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -795,6 +795,7 @@ C        WRITE(*,*) 'Not found progenitor'
        INTEGER DO_COMPUTE_ENERGIES
        INTEGER PARTICLES_PER_HALO(PARTIRED)
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
+       REAL*4 ZETA
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -838,7 +839,7 @@ C        WRITE(*,*) 'Not found progenitor'
        COMMON /PROCESADORES/ NUM_PROC
 
        PI=DACOS(-1.D0)
-       GCONS=4.301E-9 ! in Msun*Mpc*km^2*s^-2
+       GCONS=4.301E-9 ! in Msun^-1*Mpc*km^2*s^-2
 
        DIMEN=3   !DIMENSION DE LOS HALOS
        NCAPAS=0
@@ -1518,7 +1519,7 @@ C            END IF
           EPOT=EPOT*UM**2*GCONS ! Gravitational Energy in Msun * km^2 * s^-2
           EKIN=0.5*EKIN*UM*UV**2 ! Kinetic Energy in Msun * km^2 * s^-2
           KINETIC_E(I)=EKIN
-          POTENTIAL_E(I)=EPOT
+          POTENTIAL_E(I)=EPOT*(1+ZETA)
           IPLIP(I)=ORIPA(MOST_BOUND_IDX)
          ELSE
           POTENTIAL_E(I)=0.0

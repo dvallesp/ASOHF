@@ -449,7 +449,7 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -488,6 +488,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER DO_COMPUTE_ENERGIES
        INTEGER PARTICLES_PER_HALO(PARTIRED)
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
+       REAL*4 ZETA
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -530,7 +531,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        COMMON /PROCESADORES/ NUM_PROC
 
        PI=DACOS(-1.D0)
-       GCONS=4.301E-9 ! in Msun*Mpc*km^2*s^-2
+       GCONS=4.301E-9 ! in Msun^-1*Mpc*km^2*s^-2
 
        DIMEN=3   !DIMENSION DE LOS HALOS
        NCAPAS=0
@@ -1139,7 +1140,7 @@ C            END IF
           EPOT=EPOT*UM**2*GCONS ! Gravitational Energy in Msun * km^2 * s^-2
           EKIN=0.5*EKIN*UM*UV**2 ! Kinetic Energy in Msun * km^2 * s^-2
           KINETIC_E(I)=EKIN
-          POTENTIAL_E(I)=EPOT
+          POTENTIAL_E(I)=EPOT*(1+ZETA)
           IPLIP(I)=ORIPA(MOST_BOUND_IDX)
 c          WRITE(*,*) 'halo',i,'most bound particle',
 c     & RXPA(MOST_BOUND_IDX),RYPA(MOST_BOUND_IDX),RZPA(MOST_BOUND_IDX),

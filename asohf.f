@@ -882,7 +882,7 @@ c     &                     U11)
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -981,7 +981,7 @@ c       WRITE(*,*)'===================================='
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
 
          open(99, file='./output_files/substructureparticles.res',
      &       status='unknown')
