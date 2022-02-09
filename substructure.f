@@ -847,7 +847,7 @@ C        WRITE(*,*) 'Not found progenitor'
        KONTA1=0
        KONTA2=0
 
-       MINOVERDENS=200.0
+       MINOVERDENS=MIN(200.0,CONTRASTEC)
 
        LOWH1=SUM(SUBS_LEV(0:IR-1))+1
        LOWH2=SUM(SUBS_LEV(0:IR))
