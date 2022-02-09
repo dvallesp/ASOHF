@@ -1144,6 +1144,9 @@ C            END IF
 c          WRITE(*,*) 'halo',i,'most bound particle',
 c     & RXPA(MOST_BOUND_IDX),RYPA(MOST_BOUND_IDX),RZPA(MOST_BOUND_IDX),
 c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
+         ELSE
+          POTENTIAL_E(I)=0.0
+          IPLIP(I)=ORIPA(LIP(1)) ! we take the centralmost particle as the most bound...
          END IF
 
          !MASA(I)=BASMAS*NORMA*UM

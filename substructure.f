@@ -1520,6 +1520,9 @@ C            END IF
           KINETIC_E(I)=EKIN
           POTENTIAL_E(I)=EPOT
           IPLIP(I)=ORIPA(MOST_BOUND_IDX)
+         ELSE
+          POTENTIAL_E(I)=0.0
+          IPLIP(I)=ORIPA(LIP(1)) ! we take the centralmost particle as the most bound...
          END IF
 
          !MASA(I)=BASMAS*NORMA*UM
