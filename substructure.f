@@ -1548,8 +1548,7 @@ C            END IF
          END IF
 
          DO II=1,DIMEN
-          EIGENVAL(II,I)=BASEIGENVAL(II)
-          EIGENVAL(II,I)=SQRT(EIGENVAL(II,I))
+          EIGENVAL(II,I)=SQRT(5.0*BASEIGENVAL(II))
          END DO
 
 C         WRITE(*,*)

@@ -1176,7 +1176,7 @@ c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
          END IF
 
          DO II=1,DIMEN
-          EIGENVAL(II,I)=SQRT(BASEIGENVAL(II))
+          EIGENVAL(II,I)=SQRT(5.0*BASEIGENVAL(II))
          END DO
 
 C         WRITE(*,*)
