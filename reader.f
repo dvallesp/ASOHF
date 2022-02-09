@@ -19,11 +19,6 @@
 
        INTEGER I,J,K,IX,NL,IR,IRR,VAR,N1,N2,N3
 
-       CHARACTER*9 FILNOM1,FILNOM2,FILNOM4
-       CHARACTER*10 FILNOM3
-       CHARACTER*25 FIL1,FIL2,FIL4
-       CHARACTER*26 FIL3
-
 *      VARIABLES
        REAL*4 U1(NMAX,NMAY,NMAZ)
        REAL*4 U1G(NMAX,NMAY,NMAZ)
@@ -59,22 +54,18 @@
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
 
+       CHARACTER*5 ITER_STRING
+
 
 *      READING DATA
-       CALL NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3,FILNOM4)
-       WRITE(*,*) 'Reading iter',ITER,' ',FILNOM1,FILNOM2,FILNOM3,
-     &            FILNOM4
+       WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
+       WRITE(*,*) 'Reading iter',ITER
 
-       FIL1='simu_masclet/'//FILNOM1
-       FIL2='simu_masclet/'//FILNOM2
-       FIL3='simu_masclet/'//FILNOM3
-       FIL4='simu_masclet/'//FILNOM4
-
-
-       OPEN (33,FILE=FIL3,STATUS='UNKNOWN',ACTION='READ')
-       OPEN (31,FILE=FIL1,
+       OPEN (33,FILE='./simu_masclet/grids'//ITER_STRING,
+     &       STATUS='UNKNOWN',ACTION='READ')
+       OPEN (31,FILE='./simu_masclet/clus'//ITER_STRING,
      &       STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
-       OPEN (32,FILE=FIL2,
+       OPEN (32,FILE='./simu_masclet/cldm'//ITER_STRING,
      &       STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
 
 
@@ -268,11 +259,6 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
 
        INTEGER I,J,K,IX,NL,IR,IRR,N1,N2,N3,N_DM,N_ST,NBAS,ARE_BH
 
-       CHARACTER*9 FILNOM1,FILNOM2,FILNOM4
-       CHARACTER*10 FILNOM3
-       CHARACTER*25 FIL1,FIL2,FIL4
-       CHARACTER*26 FIL3
-
        INTEGER,ALLOCATABLE::NPATCH(:)
 
        INTEGER,ALLOCATABLE::NPART(:),NPARTST(:),NPARTBH(:)
@@ -289,20 +275,17 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        REAL*4 UBAS(0:PARTIRED)
        INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
 
+       CHARACTER*5 ITER_STRING
+
        ARE_BH=0 ! Depends on MASCLET version (are there BHs??)
 
 *      READING DATA
-       CALL NOMFILE(ITER,FILNOM1,FILNOM2,FILNOM3,FILNOM4)
-       WRITE(*,*) 'Reading iter',ITER,' ',FILNOM1,FILNOM2,FILNOM3,
-     &                                    FILNOM4
-
-       FIL1='simu_masclet/'//FILNOM1
-       FIL2='simu_masclet/'//FILNOM2
-       FIL3='simu_masclet/'//FILNOM3
-       FIL4='simu_masclet/'//FILNOM4
+       WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
+       WRITE(*,*) 'Reading iter',ITER
 
 *      GRID DATA
-       OPEN (33,FILE=FIL3,STATUS='UNKNOWN',ACTION='READ')
+       OPEN (33,FILE='./simu_masclet/grids'//ITER_STRING,
+     &       STATUS='UNKNOWN',ACTION='READ')
        READ(33,*) IRR,T,NL,MAP
        READ(33,*) ZETA
        READ(33,*) IR,NDXYZ
@@ -339,7 +322,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        CLOSE(33)
 
 **     DARK MATTER
-       OPEN (32,FILE=FIL2,
+       OPEN (32,FILE='./simu_masclet/cldm'//ITER_STRING,
      &       STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
        READ(32)
        !IR=0
@@ -400,7 +383,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
        IF (VAR.EQ.2) THEN
         N_ST=SUM(NPARTST(0:NL))+SUM(NPARTBH(0:NL))
-        OPEN (34,FILE=FIL4,
+        OPEN (34,FILE='./simu_masclet/clst'//ITER_STRING,
      &        STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
 
         READ(34) !ITER,T4,ZETA
@@ -507,11 +490,6 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        INTEGER I,J,K,IX,JY,KZ,NL,IR,IRR,VAR,N1,N2,N3
        INTEGER N_DM,N_GAS,N_PARTICLES
        INTEGER NBAS_DM,NBAS_GAS,NBAS_PARTICLES
-
-       CHARACTER*9 FILNOM1,FILNOM2
-       CHARACTER*10 FILNOM3
-       CHARACTER*25 FIL1,FIL2
-       CHARACTER*26 FIL3
 
        INTEGER NPATCH(0:NLEVELS)
        INTEGER PARE(NPALEV)

@@ -133,13 +133,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 ZETA,AA2,LIM,BAS, BAS1, BAS2
        REAL*4 RRRR,R111,R222
 
-       CHARACTER*13 FILE1
-       CHARACTER*14 FILE3, FILE7
-       CHARACTER*15 FILE4
-       CHARACTER*30 FILERR3,FILERR7
-       CHARACTER*31 FILERR4
        INTEGER*4 DATE(3), TIME(3), CONTAERR
-       INTEGER MARK(MAXITER2),NFILE2,IFI2
+       INTEGER NFILE2,IFI2
 
        INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV),CEN(1),CEL
        INTEGER NV, NV2,FLAG,VID(NPALEV),NV3
@@ -217,9 +212,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
 *      ---STAND-ALONE HALO FINDER---
        INTEGER FLAG_SA,FLAG_GAS,FLAG_MASCLET,FLAG_WDM
-       INTEGER N_DM,N_PARTICLES,N_ST,N_GAS,IR_KERN_STARS
+       INTEGER N_DM,N_PARTICLES,N_ST,N_GAS,IR_KERN_STARS,MIN_NUM_PART
        INTEGER SPLIT_SPECIES
-       REAL*4 COTA(NCOTAS,0:NLEVELS)
 
 *      ---UNBINDING---
        REAL*4 REF_MIN, REF_MAX
@@ -261,8 +255,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR, FLAG_PARALLEL
        COMMON /PROCESADORES/ NUM
 
-       INTEGER NMAXNCLUSBAS,PABAS,NPBAS,NLEVBAS,NUMPARTBAS,NBASPART_PLOT
+       INTEGER NMAXNCLUSBAS,PABAS,NPBAS,NLEVBAS,NBASPART_PLOT
        INTEGER FLAG_SUBS,FLAG_CENTRAL,DO_COMPUTE_ENERGIES
+       INTEGER FW1,FW2,FW3,FW4,FW5
 
        INTEGER, ALLOCATABLE:: IP_PARAL(:,:)
        INTEGER, ALLOCATABLE:: IR_PARAL(:,:)
@@ -271,6 +266,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
+
+       CHARACTER*5 ITER_STRING
 
 **************************************************************
 *      OPENING FILES
@@ -302,6 +299,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FLAG_PARALLEL,NUM
        READ(1,*) !Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
        READ(1,*) FLAG_SA,FLAG_MASCLET,FLAG_GAS
+       READ(1,*) !Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
+       READ(1,*) FW1,FW2,FW3,FW4,FW5
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Mesh building parameters block                                *
        READ(1,*) !***********************************************************************
@@ -352,12 +351,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FLAG_CENTRAL
        READ(1,*) !Compute kinetic and potential energies (=1 yes, =0 no) --------------->
        READ(1,*) DO_COMPUTE_ENERGIES
-       READ(1,*) !***********************************************************************
-       READ(1,*) !*       Merger tree parameters block                                  *
-       READ(1,*) !***********************************************************************
-       READ(1,*) !Merger_tree: 1(no), 2(complete, with %), 3(main line) ---------------->
-       READ(1,*) !PLOT
-
+       READ(1,*) !Minimum number of particles per halo --------------------------------->
+       READ(1,*) MIN_NUM_PART
 
        CLOSE(1)
 
@@ -397,7 +392,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        IF(VAR.EQ.1) WRITE(*,*) 'Analysing only DM'
        IF(VAR.EQ.2) WRITE(*,*) 'Analysing DM+stars'
 
-       WRITE(*,*) 'Min. number of particles per halo ', NUMPART
+       WRITE(*,*) 'Min. number of particles per halo ',MIN_NUM_PART
 
 
 ***************************
@@ -518,8 +513,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         INDCS_PARTICLES_PER_HALO(:,I)=0
        END DO
 
-       MARK(1:NFILE2)=0
-
 *///////// MAIN LOOP (ITERATIONS) /////////
 *//////////////////////////////////////////
        DO IFI2=1, NFILE2                 !/
@@ -535,6 +528,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         WRITE(*,*) '************************************************'
         WRITE(*,*) '************************************************'
         WRITE(*,*)
+        WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
 
         PATCHNX=0
         PATCHNY=0
@@ -689,7 +683,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
      &                    PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
      &                    N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
      &                    REFINE_THR,MIN_PATCHSIZE,MINFRAC_REFINABLE,
-     &                    BOR,BORAMR,BOR_OVLP,NPART_ESP)
+     &                    BOR,BORAMR,BOR_OVLP,NPART_ESP,FW1)
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
 
@@ -772,20 +766,23 @@ c       WRITE(*,*) '***************************'
 
        CALL RENORM_DENSITY(NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
      &                     CR0AMR,CR0AMR11,SOLAP,U1,U11,LADO0,RODO,RE0)
-c
-       OPEN(99,FILE='output_files/density_asohf',STATUS='UNKNOWN',
-     &      FORM='UNFORMATTED')
-         write(99) (((u1(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
-         write(99) (((cr0amr(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
-         do i=1,sum(npatch(0:nl))
-          n1=patchnx(i)
-          n2=patchny(i)
-          n3=patchnz(i)
-          write(99) (((u11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
-          write(99) (((cr0amr11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
-          write(99) (((solap(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
-         end do
-       CLOSE(99)
+
+       IF (FW2.EQ.1) THEN
+        OPEN(99,
+     &       FILE='output_files/density_asohf'//ITER_STRING//'.res',
+     &       STATUS='UNKNOWN',FORM='UNFORMATTED')
+          write(99) (((u1(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
+          write(99) (((cr0amr(ix,jy,kz),ix=1,nx),jy=1,ny),kz=1,nz)
+          do i=1,sum(npatch(0:nl))
+           n1=patchnx(i)
+           n2=patchny(i)
+           n3=patchnz(i)
+           write(99) (((u11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+           write(99) (((cr0amr11(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+           write(99) (((solap(ix,jy,kz,i),ix=1,n1),jy=1,n2),kz=1,n3)
+          end do
+        CLOSE(99)
+       END IF
 *********************************************************************
 
 c       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,SOLAP,
@@ -813,12 +810,16 @@ c     &                     U11)
      &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS,
      &                    VOL_SOLAP_LOW,CLUSRXCM,CLUSRYCM,CLUSRZCM)
 
-       open(55, file='./output_files/haloesgrids.res', status='unknown')
-       do i=1,nclus
-        write(55,*) clusrx(i),clusry(i),clusrz(i),radio(i),masa(i),
-     &              levhal(i), realclus(i), patchclus(i)
-       end do
-       close(55)
+       IF (FW3.EQ.1) THEN
+        open(55,
+     &       file='./output_files/haloesgrids'//ITER_STRING//'.res',
+     &       status='unknown')
+        do i=1,nclus
+         write(55,*) clusrx(i),clusry(i),clusrz(i),radio(i),masa(i),
+     &               levhal(i), realclus(i), patchclus(i)
+        end do
+        close(55)
+       END IF
 
 *******************************************************
 *      SORTING OUT ALL THE CLUSTERS
@@ -847,9 +848,8 @@ c     &                     U11)
 **     (We start here to work with partciles for the 1st time)
 ************************************************************
 
-       NUMPARTBAS=NUMPART
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
+     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,MIN_NUM_PART,
      &                        DMPCLUS,1.0,1)
        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
      &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
@@ -882,7 +882,7 @@ c     &                     U11)
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -911,9 +911,8 @@ c       WRITE(*,*)'===================================='
 ************************************************
 ************ REMOVING POOR HALOES **************
 ************************************************
-       NUMPARTBAS=NUMPART
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,NUMPARTBAS,
+     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,MIN_NUM_PART,
      &                        DMPCLUS,1.0,0)
 
 ************************************************
@@ -954,6 +953,17 @@ c       WRITE(*,*)'===================================='
         WRITE(*,*) '** SUBSTRUCTURE SEARCH   **'
         WRITE(*,*) '***************************'
 
+        IF (FW4.EQ.1) THEN
+         OPEN(99, file='./output_files/substructuregrid'//
+     &        ITER_STRING//'.res',status='unknown')
+         CLOSE(99)
+        END IF
+        IF (FW5.EQ.1) THEN
+         OPEN(99, file='./output_files/substructureparticles'//
+     &        ITER_STRING//'.res',status='unknown')
+         CLOSE(99)
+        END IF
+
         DO IR=1,NL
          CALL SEARCH_SUBSTRUCTURE_GRID(IR,NL,NX,NY,NZ,NPATCH,PATCHNX,
      &                    PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
@@ -964,13 +974,15 @@ c       WRITE(*,*)'===================================='
      &                    CLUSRYCM,CLUSRZCM,RSUB,MSUB,SUBS_LEV,UM,
      &                    PROFILES)
 
-         open(99, file='./output_files/substructuregrid.res',
-     &        status='unknown')
-         do i=subs_lev(0)+1,nclus
-          write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
+         IF (FW4.EQ.1) THEN
+          open(99, file='./output_files/substructuregrid'//
+     &        ITER_STRING//'.res',status='unknown',position='append')
+          do i=subs_lev(0)+1,nclus
+           write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
      &               realclus(i)
-         end do
-         close(99)
+          end do
+          close(99)
+         END IF
 
          CALL SUBSTRUCTURE_PARTICLES(IR,NL,NCLUS,MASA,RADIO,CLUSRX,
      &      CLUSRY,CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,
@@ -981,15 +993,17 @@ c       WRITE(*,*)'===================================='
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART)
 
-         open(99, file='./output_files/substructureparticles.res',
-     &       status='unknown')
-         do i=subs_lev(0)+1,nclus
-          write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
+         IF (FW5.EQ.1) THEN
+          open(99, file='./output_files/substructureparticles'//
+     &        ITER_STRING//'.res', status='unknown',position='append')
+          do i=subs_lev(0)+1,nclus
+           write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
      &              realclus(i)
-         end do
-         close(99)
+          end do
+          close(99)
+         END IF
         END DO
 
         CALL FRACTION_MASS_SUBS(NCLUS,REALCLUS,MASA,MSUB,FSUB,NSUBS)
@@ -1013,16 +1027,12 @@ c       WRITE(*,*)'===================================='
 *************************************************
 *===================Families===============
        KONTA2=COUNT(REALCLUS(1:NCLUS).NE.0)
-       CALL NOMFILE3(ITER,FILE3)
-       FILERR3='./output_files/'//FILE3
-       IF (FLAG_WDM.EQ.1) THEN
-        CALL NOMFILE4(ITER,FILE4)
-        FILERR4='./output_files/'//FILE4
-       END IF
 
-       OPEN(3,FILE=FILERR3,STATUS='UNKNOWN')
+       OPEN(3,FILE='./output_files/families'//ITER_STRING,
+     &      STATUS='UNKNOWN')
        IF (FLAG_WDM.EQ.1) THEN
-        OPEN(4,FILE=FILERR4,FORM='UNFORMATTED')
+        OPEN(4,FILE='./output_files/particles'//ITER_STRING,
+     &       FORM='UNFORMATTED')
         WRITE(4) KONTA2
        END IF
 
@@ -1143,8 +1153,6 @@ c       WRITE(*,*)'===================================='
 ***********************************************************************
 *      Grid building
        INCLUDE 'grids.f'
-*      I/O filenames
-       INCLUDE 'nomfile.f'
 *      Routines from 'Numerical Recipes in Fortran90', Press, Teukoslky et al.
        INCLUDE 'nr.f'
 *      Halo finding procedures using the grid

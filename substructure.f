@@ -756,7 +756,7 @@ C        WRITE(*,*) 'Not found progenitor'
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -796,6 +796,7 @@ C        WRITE(*,*) 'Not found progenitor'
        INTEGER PARTICLES_PER_HALO(PARTIRED)
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
+       INTEGER MIN_NUM_PART
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -810,7 +811,7 @@ C        WRITE(*,*) 'Not found progenitor'
        COMMON /ESPACIADO/ DX,DY,DZ
 
 *      Local variables
-       INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
+       INTEGER DIMEN,KONTA1,KONTA2,I,KK_ENTERO,NROT,II
        INTEGER KONTA,J,CONTAERR,JJ,SALIDA,KONTA3,NSHELL_2,KONTA2PREV
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2,JJCORE
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
@@ -855,8 +856,6 @@ C        WRITE(*,*) 'Not found progenitor'
        WRITE(*,*) 'Refining with particles, haloes:',LOWH1,LOWH2,
      &                                               LOWH2-LOWH1+1
 
-       PABAS=PARTIRED_PLOT
-       NUMPARTBAS=NUMPART
        NORMA=MAXVAL(MASAP)
 
        IF (FLAG_WDM.EQ.1) THEN
@@ -872,8 +871,8 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,NL,MASAP,
 !$OMP+           U2DM,U3DM,U4DM,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
 !$OMP+           MCMAX,RCMAX,CONTRASTEC,OMEGAZ,CGR,UM,UV,DMPCLUS,
-!$OMP+           CONCENTRA,ORIPA,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
-!$OMP+           NUMPARTBAS,RADIO,MASA,VMAXCLUS,N_DM,NORMA,R200M,
+!$OMP+           CONCENTRA,ORIPA,ANGULARM,IPLIP,DIMEN,EIGENVAL,
+!$OMP+           MIN_NUM_PART,RADIO,MASA,VMAXCLUS,N_DM,NORMA,R200M,
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
 !$OMP+           M200C,M500C,M2500C,RSUB,MSUB,MINOVERDENS,CLUSRXCM,
 !$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR,LOWH1,
@@ -1089,7 +1088,7 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
 
-        IF (MASADM.LE.0.D0.OR.KONTA.LT.NUMPARTBAS) THEN
+        IF (MASADM.LE.0.D0.OR.KONTA.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
          CYCLE
         END IF
@@ -1149,7 +1148,7 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 c        write(*,*) 'Unbinding V_ESC',i,'. ',konta,'-->',konta2,
 c     &             '. Pruned:',count_1,'. Iters:', FAC
 
-        IF (KONTA2.LT.NUMPARTBAS) THEN
+        IF (KONTA2.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
          CYCLE
         END IF
@@ -1180,7 +1179,7 @@ c        write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
 c     &             '. Pruned:',count_2,'. Iters:', FAC
 c        write(*,*) '--'
 
-        IF (KONTA2.LT.NUMPARTBAS) THEN
+        IF (KONTA2.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
          CYCLE
         END IF
@@ -1216,7 +1215,7 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
 ********************************************************************
 *      DISCARD POOR HALOES
 ********************************************************************
-        IF (KONTA2.LT.NUMPARTBAS) THEN
+        IF (KONTA2.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
         ELSE
 **************************************************************
@@ -1492,7 +1491,7 @@ C            END IF
 *      SAVING MASSES, RADII, PROFILES AND SHAPES...
 *******************************************************
          DMPCLUS(I)=KONTA2
-         IF (KONTA2.LT.NUMPARTBAS) THEN
+         IF (KONTA2.LT.MIN_NUM_PART) THEN
           REALCLUS(I)=0
           CYCLE
          END IF
@@ -1546,7 +1545,7 @@ C            END IF
          VMAXCLUS(I)=SQRT(VMAXCLUS(I))*UV
 
          BASEIGENVAL(1:3)=0.0
-         IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
+         IF (DMPCLUS(I).GE.MIN_NUM_PART) THEN
           CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
           CALL SORT(BASEIGENVAL,DIMEN,DIMEN)
          END IF
@@ -1570,7 +1569,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 ******************************************
 ************ FIN HALO I ******************
 ******************************************
-        END IF ! (ELSE of KONTA2.LT.NUMPARTBAS) (poor haloes after unbinding)
+        END IF ! (ELSE of KONTA2.LT.MIN_NUM_PART) (poor haloes after unbinding)
        END IF ! (realclus(i).ne.0)
 
 *****************

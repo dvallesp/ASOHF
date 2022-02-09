@@ -4,7 +4,7 @@
      &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,
      &           U4DM,MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
      &           REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,BORAMR,
-     &           BOR_OVLP,NPART_ESP)
+     &           BOR_OVLP,NPART_ESP,FW1)
 ************************************************************************
 *     Creats a mesh hierarchy for the given particle distribution
 ************************************************************************
@@ -26,7 +26,7 @@
       INTEGER REFINE_THR,MIN_PATCHSIZE
       REAL FRAC_REFINABLE
       INTEGER BOR,BORAMR
-      INTEGER NPART_ESP(0:N_ESP-1)
+      INTEGER NPART_ESP(0:N_ESP-1),FW1
 
 *     COMMON VARIABLES
       REAL DX,DY,DZ
@@ -61,8 +61,8 @@
       REAL,ALLOCATABLE::DDD(:)
       INTEGER,ALLOCATABLE::DDDX(:),DDDY(:),DDDZ(:)
 
-      CHARACTER*15 FILE6
-      CHARACTER*30 FILERR
+      CHARACTER*5 ITER_STRING
+      WRITE(ITER_STRING, '(I5.5)') ITER
 
 !     hard-coded parameters (for now, at least)
       INI_EXTENSION=2 !initial extension of a patch around a cell (on each direction)
@@ -644,26 +644,27 @@ C        WRITE(*,*) LVAL(I,IPARE)
       END DO
 
 *     WRITING GRID DATA ON A FILE
-      CALL NOMFILE6(ITER,FILE6)
-      FILERR='./output_files/'//FILE6
-      OPEN(33,FILE=FILERR,STATUS='UNKNOWN')
+      IF (FW1.EQ.1) THEN
+       OPEN(33,FILE='./output_files/grids_asohf'//ITER_STRING//'.res',
+     &      STATUS='UNKNOWN')
 
-      WRITE(33,*) ITER,T,NL_MESH,MAXVAL(MASAP),0.0
-      WRITE(33,*) ZETA
-      WRITE(33,*) 0,0,0,NX,NY,NZ
-      DO IR=1,NL_MESH
-       WRITE(33,*) IR,NPATCH(IR),0,0,0
-       WRITE(33,*) '------ within level l=',IR,'-------'
-       LOW1=SUM(NPATCH(0:IR-1))+1
-       LOW2=SUM(NPATCH(0:IR))
-       DO I=LOW1,LOW2
-        WRITE(33,*) PATCHNX(I),PATCHNY(I),PATCHNZ(I)
-        WRITE(33,*) PATCHX(I),PATCHY(I),PATCHZ(I)
-        WRITE(33,*) PATCHRX(I),PATCHRY(I),PATCHRZ(I)
-        WRITE(33,*) PARE(I)
+       WRITE(33,*) ITER,T,NL_MESH,MAXVAL(MASAP),0.0
+       WRITE(33,*) ZETA
+       WRITE(33,*) 0,0,0,NX,NY,NZ
+       DO IR=1,NL_MESH
+        WRITE(33,*) IR,NPATCH(IR),0,0,0
+        WRITE(33,*) '------ within level l=',IR,'-------'
+        LOW1=SUM(NPATCH(0:IR-1))+1
+        LOW2=SUM(NPATCH(0:IR))
+        DO I=LOW1,LOW2
+         WRITE(33,*) PATCHNX(I),PATCHNY(I),PATCHNZ(I)
+         WRITE(33,*) PATCHX(I),PATCHY(I),PATCHZ(I)
+         WRITE(33,*) PATCHRX(I),PATCHRY(I),PATCHRZ(I)
+         WRITE(33,*) PARE(I)
+        END DO
        END DO
-      END DO
-      CLOSE(33)
+       CLOSE(33)
+      END IF
 
 *     Build the AMR mesh
       DO IR=1,NL_MESH

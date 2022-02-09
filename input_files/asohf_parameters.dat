@@ -1,22 +1,13 @@
 *###################################################################
 *      GENERAL SETTINGS                                            *
 *###################################################################
-
-*      Iterations that we save each time---(ALWAYS must be =2)-----
-       INTEGER MAXITER
-       PARAMETER (MAXITER=2)
-
-*      Real iterations that we read--------------------------------
-       INTEGER MAXITER2
-       PARAMETER (MAXITER2=1)  !test_15
-
 *      Level 0 grid -----------------------------------------------
        INTEGER NMAX,NMAY,NMAZ
        PARAMETER (NMAX=128,NMAY=128,NMAZ=128)
 
 *      Refinements ------------------------------------------------
        INTEGER NPALEV,NLEVELS
-       PARAMETER (NPALEV=10000,NLEVELS=9)
+       PARAMETER (NPALEV=10000,NLEVELS=4)
 
 *      Maximum patch extension ------------------------------------
        INTEGER NAMRX,NAMRY,NAMRZ
@@ -25,15 +16,6 @@
 *      Total number of particles (all types) ---------------
        INTEGER PARTIRED
        PARAMETER (PARTIRED=128**3)
-
-*      If PLOT>1 o FLAG_WDM=1, then >>PARTIRED; if not, 1 ----------
-       INTEGER PARTIRED_PLOT
-c       PARAMETER (PARTIRED_PLOT=60000000)
-       PARAMETER (PARTIRED_PLOT=1)
-
-*	If PLOT>1, NMAXHOST; if not, =1
-        INTEGER NMAXHOST
-        PARAMETER (NMAXHOST=1)
 
 *###################################################################
 *      HALOES PROPERTIES                                           *
@@ -46,28 +28,6 @@ c       PARAMETER (PARTIRED_PLOT=60000000)
 *      Maximum number of final halos-------------------------------
        INTEGER NMAXNCLUS
        PARAMETER (NMAXNCLUS=10000)
-
-*      Maximum number of subhalos per halo-------------------------
-       INTEGER NMAXSUB
-       PARAMETER (NMAXSUB=100)
-
-*      Maximum number of overlaps per halo with other halos---------
-       INTEGER NMAXSOLAP
-       PARAMETER (NMAXSOLAP=100)
-
-*      Maximum number of parent halos per halo at a given z -------
-       INTEGER NMAXDAD
-!       PARAMETER (NMAXDAD=250)  !if PLOT=2
-       PARAMETER (NMAXDAD=1)   !if PLOT=3
-
-*      In case of PLOT>1, set to NMAXNCLUS; otherwise, to 1 -------
-       INTEGER NMAXCLUS_PLOT
-c       PARAMETER (NMAXCLUS_PLOT=100000)
-       PARAMETER (NMAXCLUS_PLOT=1)
-
-*      Minimum number of bound particles per halo------------------
-       INTEGER NUMPART
-       PARAMETER (NUMPART=25)
 
 *      Number of bins for computing profiles-----------------------
        INTEGER NBINS
@@ -85,7 +45,3 @@ c       PARAMETER (NMAXCLUS_PLOT=100000)
 *      Number of DM especies---------------------------------------
        INTEGER N_ESP
        PARAMETER (N_ESP=4)
-
-*      Number of conditions to build the AMR grid
-       INTEGER NCOTAS
-       PARAMETER (NCOTAS=1)

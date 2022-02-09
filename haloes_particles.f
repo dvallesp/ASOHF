@@ -135,7 +135,7 @@
 **********************************************************************
        SUBROUTINE PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                              REALCLUS,RXPA,RYPA,RZPA,N_DM,
-     &                              NUMPARTBAS,DMPCLUS,FACRAD,
+     &                              MIN_NUM_PART,DMPCLUS,FACRAD,
      &                              DO_NEED_TO_COUNT)
 **********************************************************************
 *       Removes haloes with too few particles
@@ -149,7 +149,7 @@
         REAL*4 RADIO(MAXNCLUS)
         INTEGER REALCLUS(MAXNCLUS)
         REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-        INTEGER N_DM,NUMPARTBAS
+        INTEGER N_DM,MIN_NUM_PART
         INTEGER DMPCLUS(NMAXNCLUS)
         REAL FACRAD
         INTEGER DO_NEED_TO_COUNT
@@ -162,7 +162,7 @@
 
         IF (DO_NEED_TO_COUNT.EQ.1) THEN
 !$OMP PARALLEL DO SHARED(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,N_DM,
-!$OMP+                   NUMPARTBAS,REALCLUS,RXPA,RYPA,RZPA,FACRAD,
+!$OMP+                   MIN_NUM_PART,REALCLUS,RXPA,RYPA,RZPA,FACRAD,
 !$OMP+                   DMPCLUS),
 !$OMP+            PRIVATE(I,CMX,CMY,CMZ,RR,BASINT),
 !$OMP+            REDUCTION(+:KONTA2)
@@ -178,7 +178,7 @@
           CALL COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CMX,CMY,CMZ,RR,
      &                              BASINT)
 
-          IF (BASINT.LT.NUMPARTBAS) THEN
+          IF (BASINT.LT.MIN_NUM_PART) THEN
            REALCLUS(I)=0
            KONTA2=KONTA2+1
            !WRITE(*,*) I,BASINT,RR
@@ -191,12 +191,12 @@
 *****************************
          WRITE(*,*)'CHECKING POOR HALOS----->', KONTA2
         ELSE
-!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,NUMPARTBAS,
+!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,MIN_NUM_PART,
 !$OMP+             REALCLUS),PRIVATE(I,BASINT),
 !$OMP+             REDUCTION(+:KONTA2)
          DO I=1, NCLUS
           BASINT=DMPCLUS(I)
-          IF (BASINT.LT.NUMPARTBAS) THEN
+          IF (BASINT.LT.MIN_NUM_PART) THEN
            REALCLUS(I)=0
            KONTA2=KONTA2+1
           END IF
@@ -449,7 +449,7 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -489,6 +489,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER PARTICLES_PER_HALO(PARTIRED)
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
+       INTEGER MIN_NUM_PART
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -503,7 +504,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        COMMON /ESPACIADO/ DX,DY,DZ
 
 *      Local variables
-       INTEGER DIMEN,KONTA1,KONTA2,I,PABAS,NUMPARTBAS,KK_ENTERO,NROT,II
+       INTEGER DIMEN,KONTA1,KONTA2,I,KK_ENTERO,NROT,II
        INTEGER KONTA,IR,J,CONTAERR,JJ,SALIDA,KONTA3,NSHELL_2,KONTA2PREV
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2,JJCORE
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
@@ -559,8 +560,6 @@ c       WRITE(*,*)'=================================='
        WRITE(*,*) 'Min num. of part. in a halo=',KONTA1
        WRITE(*,*) 'NCLUS=', NCLUS
 
-       PABAS=PARTIRED_PLOT
-       NUMPARTBAS=NUMPART
        NORMA=MAXVAL(MASAP)
 
        IF (FLAG_WDM.EQ.1) THEN
@@ -575,8 +574,8 @@ c       WRITE(*,*)'=================================='
 !$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,NL,MASAP,
 !$OMP+           U2DM,U3DM,U4DM,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
 !$OMP+           MCMAX,RCMAX,CONTRASTEC,OMEGAZ,CGR,UM,UV,DMPCLUS,
-!$OMP+           CONCENTRA,ORIPA,ANGULARM,PABAS,IPLIP,DIMEN,EIGENVAL,
-!$OMP+           NUMPARTBAS,RADIO,MASA,VMAXCLUS,N_DM,NORMA,R200M,
+!$OMP+           CONCENTRA,ORIPA,ANGULARM,IPLIP,DIMEN,EIGENVAL,
+!$OMP+           MIN_NUM_PART,RADIO,MASA,VMAXCLUS,N_DM,NORMA,R200M,
 !$OMP+           R500M,R2500M,R200C,R500C,R2500C,M200M,M500M,M2500M,
 !$OMP+           M200C,M500C,M2500C,RSUB,MSUB,MINOVERDENS,CLUSRXCM,
 !$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR,PROFILES,
@@ -772,7 +771,7 @@ c        write(*,*) '--'
 ********************************************************************
 *      DISCARD POOR HALOES
 ********************************************************************
-        IF (KONTA2.LT.NUMPARTBAS) THEN
+        IF (KONTA2.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
         ELSE
 **************************************************************
@@ -1017,7 +1016,7 @@ c         WRITE(*,*) '---'
 *      GUARDAMOS LAS PARTICULAS LIGADAS  DEL HALO I
 ***********************************************************
          KONTA=NCAPAS(I)
-         IF (KONTA.LT.NUMPARTBAS) THEN
+         IF (KONTA.LT.MIN_NUM_PART) THEN
           REALCLUS(I)=0
           CYCLE
          END IF
@@ -1113,7 +1112,7 @@ C            END IF
 *      SAVING MASSES, RADII, PROFILES AND SHAPES...
 *******************************************************
          DMPCLUS(I)=KONTA2
-         IF (KONTA2.LT.NUMPARTBAS) THEN
+         IF (KONTA2.LT.MIN_NUM_PART) THEN
           REALCLUS(I)=0
           CYCLE
          END IF
@@ -1174,7 +1173,7 @@ c     & CLUSRX(I),CLUSRY(I),CLUSRZ(I)
          VMAXCLUS(I)=SQRT(VMAXCLUS(I))*UV
 
          BASEIGENVAL(1:3)=0.0
-         IF (DMPCLUS(I).GE.NUMPARTBAS) THEN
+         IF (DMPCLUS(I).GE.MIN_NUM_PART) THEN
           CALL JACOBI(INERTIA,DIMEN,BASEIGENVAL,NROT)
           CALL SORT(BASEIGENVAL,DIMEN,DIMEN)
          END IF
@@ -1198,7 +1197,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 ******************************************
 ************ FIN HALO I ******************
 ******************************************
-        END IF ! (ELSE of KONTA2.LT.NUMPARTBAS) (poor haloes after unbinding)
+        END IF ! (ELSE of KONTA2.LT.MIN_NUM_PART) (poor haloes after unbinding)
        END IF ! (realclus(i).ne.0)
 
 *****************
