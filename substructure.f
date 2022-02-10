@@ -1016,6 +1016,7 @@ c         WRITE(*,*) 'CHECK I,KONTA,KONTA2=',I,KONTA,KONTA2
 
 *        Simplified equation (estimation)
          MASADM=0.D0
+         J_JACOBI=-1
          MINJ=MAX(10,KONTA/50)
          DO J=1,KONTA
           MASADM=MASADM+MASAP(LIP(J))
@@ -1028,8 +1029,10 @@ c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
           END IF
          END DO
 
+         IF (J_JACOBI.EQ.-1) J_JACOBI=KONTA
+
 *        Exact equation (refining the solution)
-         BASX=DISTA(J)/DISTHOST
+         BASX=DISTA(J_JACOBI)/DISTHOST
          BASY=MASADM*UM/MHOST
          EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
          IF (ABS(EQ_JACOBI_R).LT.0.D01) THEN
@@ -1367,6 +1370,35 @@ c         WRITE(*,*) 'FINALLY, RJ, MJ=',rsub(i),msub(i),konta2
           END IF
 
          END DO ! J=1,KONTA2
+
+         IF (FLAGVIR.EQ.0) THEN
+          RADIO(I)=0.0
+          MASA(I)=0.0
+         END IF
+         IF (FLAG2500C.EQ.0) THEN
+          M2500C(I)=0.0
+          R2500C(I)=0.0
+         END IF
+         IF (FLAG2500M.EQ.0) THEN
+          M2500M(I)=0.0
+          R2500M(I)=0.0
+         END IF
+         IF (FLAG500C.EQ.0) THEN
+          M500C(I)=0.0
+          R500C(I)=0.0
+         END IF
+         IF (FLAG500M.EQ.0) THEN
+          M500M(I)=0.0
+          R500M(I)=0.0
+         END IF
+         IF (FLAG200C.EQ.0) THEN
+          M200C(I)=0.0
+          R200C(I)=0.0
+         END IF
+         IF (FLAG200M.EQ.0) THEN
+          M200M(I)=0.0
+          R200M(I)=0.0
+         END IF
 
          !WRITE(*,*) RADIAL(1:NSHELL_2)
          !WRITE(*,*) DENSITOT(1:NSHELL_2)
