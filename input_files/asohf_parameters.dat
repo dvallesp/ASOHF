@@ -37,11 +37,6 @@
 *      ASOHF LIKE STAND ALONE                                      *
 *###################################################################
 
-*      Number of initial refinements in init. cond.----------------
-       INTEGER ININL
-*       PARAMETER (ININL=9)   !test_15
-       PARAMETER (ININL=1)
-
 *      Number of DM especies---------------------------------------
        INTEGER N_ESP
        PARAMETER (N_ESP=4)
