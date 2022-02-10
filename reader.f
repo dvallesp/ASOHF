@@ -852,7 +852,7 @@ C       stop
 
        DEALLOCATE(DENS)
 
-       WRITE(*,*) 'Sorting particles by mass'
+       WRITE(*,*) 'Sorting particles by local density'
 
        NPART_ESP=0
        CONTA=0
