@@ -678,7 +678,7 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
 
          DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*BAS**3)
 
-         IF (DELTA2.GT.0.9*MINOVERDENS) RCLUS=1.05*RCLUS
+         IF (DELTA2.GT.0.9*MINOVERDENS) RCLUS=1.25*RCLUS
         END DO
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 
