@@ -308,7 +308,7 @@ c       write(*,*) '***',REFINE_COUNT
         PARE(IPATCH)=0
        END IF
 
-       REFINE_COUNT=COUNT(CR0.GE.REFINE_THR)
+       !REFINE_COUNT=COUNT(CR0.GE.REFINE_THR)
        !WRITE(*,*) REFINE_COUNT
 
 
