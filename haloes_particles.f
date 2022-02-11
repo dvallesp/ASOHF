@@ -914,8 +914,8 @@ c        write(*,*) '--'
             !RADIO(I)=DISTA(J)
             BAS8=BAS8-(MASAP(JJ)/NORMA)
             BASVX=BASVX-(MASAP(JJ)/NORMA)*U2DM(JJ)
-            BASVX=BASVY-(MASAP(JJ)/NORMA)*U3DM(JJ)
-            BASVX=BASVZ-(MASAP(JJ)/NORMA)*U4DM(JJ)
+            BASVY=BASVY-(MASAP(JJ)/NORMA)*U3DM(JJ)
+            BASVZ=BASVZ-(MASAP(JJ)/NORMA)*U4DM(JJ)
 
             MASA(I)=BAS8*NORMA*UM
             VOL=(NORMA*BAS8)/(CONTRASTEC*ROTE)
@@ -977,8 +977,8 @@ c         WRITE(*,*) '---'
           !RADIO(I)=DISTA(J)
           BAS8=BAS8!-(MASAP(JJ)/NORMA)
           BASVX=BASVX!-(MASAP(JJ)/NORMA)*U2DM(JJ)
-          BASVX=BASVY!-(MASAP(JJ)/NORMA)*U3DM(JJ)
-          BASVX=BASVZ!-(MASAP(JJ)/NORMA)*U4DM(JJ)
+          BASVY=BASVY!-(MASAP(JJ)/NORMA)*U3DM(JJ)
+          BASVZ=BASVZ!-(MASAP(JJ)/NORMA)*U4DM(JJ)
 
           MASA(I)=BAS8*NORMA*UM
           VOL=(NORMA*BAS8)/(CONTRASTEC*ROTE)
