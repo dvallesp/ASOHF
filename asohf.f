@@ -59,7 +59,6 @@
 *                construir la malla aunque si que lo leemos
 **********************************************************************
 
-       USE MTREE
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
@@ -657,6 +656,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
          CALL SORT_DM_PARTICLES_LOCALDENSITY(U2DM,U3DM,U4DM,MASAP,RXPA,
      &                          RYPA,RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
      &                          IR_KERN_STARS,RODO,RE0)
+        ELSE IF (SPLIT_SPECIES.EQ.2) THEN
+         NPART_ESP(0)=N_DM
         END IF
 
 !      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE
