@@ -1924,6 +1924,11 @@ c       END DO
 
        INTEGER I
 
+       DO I=1,NCLUS 
+        NSUBS(I)=0
+        FSUB(I)=0.0
+       END DO
+
        DO I=1,NCLUS
         IF (REALCLUS(I).GT.0) THEN
          FSUB(REALCLUS(I))=FSUB(REALCLUS(I))+MSUB(I)
