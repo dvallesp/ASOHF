@@ -160,10 +160,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 MASA(MAXNCLUS), RADIO(MAXNCLUS)
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
        REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),CLUSRZCM(MAXNCLUS)
-       INTEGER PATCHCLUS(MAXNCLUS)
-
-       INTEGER REALCLUS(MAXNCLUS)
-       INTEGER HALBORDERS(MAXNCLUS)
+       REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
+       INTEGER PATCHCLUS(MAXNCLUS),REALCLUS(MAXNCLUS)
+       INTEGER HALBORDERS(MAXNCLUS),LEVHAL(MAXNCLUS)
 
        REAL*4 CONCENTRA(NMAXNCLUS)
        REAL*4 ANGULARM(3,NMAXNCLUS)
@@ -185,7 +184,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 M200M(NMAXNCLUS),R200M(NMAXNCLUS)
        REAL*4 M500M(NMAXNCLUS),R500M(NMAXNCLUS)
        REAL*4 M2500M(NMAXNCLUS),R2500M(NMAXNCLUS)
-       REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
 
        REAL*4 PROFILES(NBINS,2,NMAXNCLUS)
        REAL*4 VELOCITY_DISPERSION(NMAXNCLUS)
@@ -202,7 +200,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER DMPCLUS(NMAXNCLUS)
 
 *      ---SUBSTRUCTURE---
-       INTEGER LEVHAL(MAXNCLUS),NHALLEV(0:NLEVELS),SUBS_LEV(0:NLEVELS)
+       INTEGER NHALLEV(0:NLEVELS),SUBS_LEV(0:NLEVELS)
        INTEGER SUBHALOS(NMAXNCLUS)
 
 *      ---HALO SHAPE---
@@ -447,71 +445,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        NFILE2=INT((LAST-FIRST)/EVERY) + 1
        WRITE(*,*)'Number of iterations to analise=',NFILE2
 
-       NMAXNCLUSBAS=NMAXNCLUS
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,CONCENTRA,
-!$OMP+                   ANGULARM,CLUSRX,CLUSRY,CLUSRZ,VMAXCLUS,VX,
-!$OMP+                   VY,VZ,CLUSRXCM,CLUSRYCM,CLUSRZCM),
-!$OMP+            PRIVATE(I)
-       DO I=1,NMAXNCLUSBAS
-        CONCENTRA(I)=0.0
-        ANGULARM(:,I)=0.0
-        CLUSRX(I)=0.0
-        CLUSRY(I)=0.0
-        CLUSRZ(I)=0.0
-        CLUSRXCM(I)=0.0
-        CLUSRYCM(I)=0.0
-        CLUSRZCM(I)=0.0
-        VMAXCLUS(I)=0.0
-
-        VX(I)=0.0
-        VY(I)=0.0
-        VZ(I)=0.0
-       END DO
-
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,VCMAX,MCMAX,RCMAX,DMPCLUS,M200C,
-!$OMP+                   M500C,M2500C,M200M,M500M,M2500M,R200C,R500C,
-!$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
-!$OMP+                   LEVHAL,EIGENVAL,RSUB,MSUB,INERTIA_TENSOR,
-!$OMP+                   MEAN_VR,VELOCITY_DISPERSION,RMAXSIGMA,
-!$OMP+                   MMAXSIGMA,KINETIC_E,POTENTIAL_E,FSUB,NSUBS,
-!$OMP+                   INDCS_PARTICLES_PER_HALO),
-!$OMP+            PRIVATE(I),
-!$OMP+            DEFAULT(NONE)
-       DO I=1,NMAXNCLUSBAS
-        VCMAX(I)=0.0
-        MCMAX(I)=0.0
-        RCMAX(I)=0.0
-        M200C(I)=0.0
-        M500C(I)=0.0
-        M2500C(I)=0.0
-        M200M(I)=0.0
-        M500M(I)=0.0
-        M2500M(I)=0.0
-        MSUB(I)=0.0
-        R200C(I)=0.0
-        R500C(I)=0.0
-        R2500C(I)=0.0
-        R200M(I)=0.0
-        R500M(I)=0.0
-        R2500M(I)=0.0
-        RSUB(I)=0.0
-        IPLIP(I)=0
-        LEVHAL(I)=0
-        DMPCLUS(I)=0
-        REALCLUS(I)=0    !de momento no hay halos
-        EIGENVAL(:,I)=0.0
-        INERTIA_TENSOR(:,I)=0.0
-        MEAN_VR(I)=0.0
-        VELOCITY_DISPERSION(I)=0.0
-        RMAXSIGMA(I)=0.0
-        MMAXSIGMA(I)=0.0
-        KINETIC_E(I)=0.0
-        POTENTIAL_E(I)=0.0
-        FSUB(I)=0.0
-        NSUBS(I)=0
-        INDCS_PARTICLES_PER_HALO(:,I)=0
-       END DO
-
 *///////// MAIN LOOP (ITERATIONS) /////////
 *//////////////////////////////////////////
        DO IFI2=1, NFILE2                 !/
@@ -528,6 +461,80 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         WRITE(*,*) '************************************************'
         WRITE(*,*)
         WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
+
+        NMAXNCLUSBAS=MAXNCLUS
+ !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,CLUSRX,CLUSRY,CLUSRZ,CLUSRXCM,
+ !$OMP+                   CLUSRYCM,CLUSRZCM,MASA,RADIO,MSUB,RSUB,
+ !$OMP+                   PATCHCLUS,REALCLUS,HALBORDERS,LEVHAL),
+ !$OMP+            PRIVATE(I)
+        DO I=1,NMAXNCLUSBAS
+         CLUSRX(I)=0.0
+         CLUSRY(I)=0.0
+         CLUSRZ(I)=0.0
+         CLUSRXCM(I)=0.0
+         CLUSRYCM(I)=0.0
+         CLUSRZCM(I)=0.0
+         MASA(I)=0.0
+         RADIO(I)=0.0
+         MSUB(I)=0.0
+         RSUB(I)=0.0
+         PATCHCLUS(I)=0
+         REALCLUS(I)=0
+         HALBORDERS(I)=0
+         LEVHAL(I)=0
+        END DO
+
+        NMAXNCLUSBAS=NMAXNCLUS
+ !$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,VCMAX,MCMAX,RCMAX,DMPCLUS,M200C,
+ !$OMP+                   M500C,M2500C,M200M,M500M,M2500M,R200C,R500C,
+ !$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
+ !$OMP+                   LEVHAL,EIGENVAL,INERTIA_TENSOR,MEAN_VR,
+ !$OMP+                   VELOCITY_DISPERSION,RMAXSIGMA,MMAXSIGMA,
+ !$OMP+                   KINETIC_E,POTENTIAL_E,FSUB,NSUBS,
+ !$OMP+                   INDCS_PARTICLES_PER_HALO,CONCENTRA,ANGULARM,
+ !$OMP+                   VX,VY,VZ,PROFILES),
+ !$OMP+            PRIVATE(I),
+ !$OMP+            DEFAULT(NONE)
+        DO I=1,NMAXNCLUSBAS
+         VCMAX(I)=0.0
+         MCMAX(I)=0.0
+         RCMAX(I)=0.0
+         M200C(I)=0.0
+         M500C(I)=0.0
+         M2500C(I)=0.0
+         M200M(I)=0.0
+         M500M(I)=0.0
+         M2500M(I)=0.0
+         R200C(I)=0.0
+         R500C(I)=0.0
+         R2500C(I)=0.0
+         R200M(I)=0.0
+         R500M(I)=0.0
+         R2500M(I)=0.0
+         IPLIP(I)=0
+         LEVHAL(I)=0
+         DMPCLUS(I)=0
+         REALCLUS(I)=0    !de momento no hay halos
+         EIGENVAL(:,I)=0.0
+         INERTIA_TENSOR(:,I)=0.0
+         MEAN_VR(I)=0.0
+         VELOCITY_DISPERSION(I)=0.0
+         RMAXSIGMA(I)=0.0
+         MMAXSIGMA(I)=0.0
+         KINETIC_E(I)=0.0
+         POTENTIAL_E(I)=0.0
+         FSUB(I)=0.0
+         NSUBS(I)=0
+         INDCS_PARTICLES_PER_HALO(:,I)=0
+         CONCENTRA(I)=0.0
+         ANGULARM(:,I)=0.0
+         VMAXCLUS(I)=0.0
+         VX(I)=0.0
+         VY(I)=0.0
+         VZ(I)=0.0
+         PROFILES(:,:,I)=0
+         SUBHALOS(I)=0
+        END DO
 
         PATCHNX=0
         PATCHNY=0
