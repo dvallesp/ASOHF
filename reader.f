@@ -21,10 +21,8 @@
 
 *      VARIABLES
        REAL*4 U1(NMAX,NMAY,NMAZ)
-       REAL*4 U1G(NMAX,NMAY,NMAZ)
        REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
-       REAL*4 U11G(NAMRX,NAMRY,NAMRZ,NPALEV)
-       COMMON /VARIA/ U1,U11,U1G,U11G  !!,U12,U13,U14
+       COMMON /VARIA/ U1,U11  !!,U12,U13,U14
 
        INTEGER NPATCH(0:NLEVELS)
        INTEGER PARE(NPALEV)
@@ -104,7 +102,7 @@ C       IF (VAR.EQ.1) THEN
         N1=NX
         N2=NY
         N3=NZ
-        READ(31) (((U1G(I,J,K),I=1,N1),J=1,N2),K=1,N3)
+        READ(31) !(((U1G(I,J,K),I=1,N1),J=1,N2),K=1,N3)
         READ(31) !U2
         READ(31) !U3
         READ(31) !U4
@@ -127,8 +125,8 @@ C       IF (VAR.EQ.1) THEN
         N1=PATCHNX(I)
         N2=PATCHNY(I)
         N3=PATCHNZ(I)
-        READ(31) (((SCR(IX,J,K),IX=1,N1),J=1,N2),K=1,N3)
-           U11G(1:N1,1:N2,1:N3,I)=SCR(1:N1,1:N2,1:N3)
+        READ(31) !(((SCR(IX,J,K),IX=1,N1),J=1,N2),K=1,N3)
+           !U11G(1:N1,1:N2,1:N3,I)=SCR(1:N1,1:N2,1:N3)
         READ(31) !!(((SCR(IX,J,K),IX=1,N1),J=1,N2),K=1,N3)
            !!U12(1:N1,1:N2,1:N3,I)=SCR(1:N1,1:N2,1:N3)
         READ(31) !!(((SCR(IX,J,K),IX=1,N1),J=1,N2),K=1,N3)
