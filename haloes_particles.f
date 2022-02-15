@@ -509,7 +509,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2,JJCORE
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
        INTEGER FLAGVIR,EACH_PROF,IPATCH,IRR,MOST_BOUND_IDX,LOWP1,LOWP2
-       INTEGER NCAPAS(NMAXNCLUS),MAX_NUM_PART,WELL_ALLOCATED
+       INTEGER NCAPAS(NMAXNCLUS),MAX_NUM_PART,WELL_ALLOCATED,IDX_VIR
        REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS
        REAL VVV2,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
@@ -600,7 +600,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR,BASVX,
 !$OMP+           BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,MOST_BOUND_IDX,
 !$OMP+           ID_PROC,IPART_PROC,BAS8,INERTIA8,MAX_NUM_PART,
-!$OMP+           WELL_ALLOCATED),
+!$OMP+           WELL_ALLOCATED,IDX_VIR),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
@@ -722,21 +722,21 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
         END IF
 
         CONTADM(1:KONTA)=0     !en principio todas estas ligadas
-        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
-     &                        RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
-     &                        MASA2,MAX_NUM_PART)
 
-        VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
+        CONTAERR=KONTA
+        DISTA=0.0
+        KONTA2=0
+        CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+     &                 DISTA,KONTA2,1,MAX_NUM_PART,IDX_VIR)
+        REF_MAX=DISTA(KONTA2)
+        REF_MIN=DISTA(1)
 
-        CLUSRXCM(I)=CMX
-        CLUSRYCM(I)=CMY
-        CLUSRZCM(I)=CMZ
-        VX(I)=VCMX
-        VY(I)=VCMY
-        VZ(I)=VCMZ
         RADIO(I)=RCLUS
         MASA(I)=MASADM*UM
         DMPCLUS(I)=KONTA
+
+        CALL FIND_IDX_VIR(DISTA,MASAP,LIP,MAX_NUM_PART,ROTE,RETE,PI,
+     &                    CONTRASTEC,IDX_VIR)
 c        WRITE(*,*) '*',sqrt((cmx-cx)**2+(cmy-cy)**2+(cmz-cz)**2)
 c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 
@@ -748,13 +748,16 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 *      UNBINDING:SCAPE VELOCITY
 ********************************************************************
 
-        CONTAERR=KONTA
-        DISTA=0.0
-        KONTA2=0
-        CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                 DISTA,KONTA2,1,MAX_NUM_PART)
-        REF_MAX=DISTA(KONTA2)
-        REF_MIN=DISTA(1)
+        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
+     &                        RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
+     &                        MASA2,MAX_NUM_PART)
+        VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
+        CLUSRXCM(I)=CMX
+        CLUSRYCM(I)=CMY
+        CLUSRZCM(I)=CMZ
+        VX(I)=VCMX
+        VY(I)=VCMY
+        VZ(I)=VCMZ
 
         FAC=0
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
@@ -763,9 +766,9 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
          CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
      &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRXCM,
      &                   CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,VY,VZ,
-     &                   REALCLUS,KONTA2,MAX_NUM_PART)
+     &                   REALCLUS,KONTA2,MAX_NUM_PART,IDX_VIR)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA,KONTA2,0,MAX_NUM_PART)
+     &                  DISTA,KONTA2,0,MAX_NUM_PART,IDX_VIR)
          REF_MAX=DISTA(KONTA2)
          REF_MIN=DISTA(1)
          CONTAERR=KONTA2PREV-KONTA2
@@ -788,9 +791,10 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
          CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,RXPA,
      &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRXCM,
      &                        CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,
-     &                        VY,VZ,REALCLUS,KONTA2,MAX_NUM_PART)
+     &                        VY,VZ,REALCLUS,KONTA2,MAX_NUM_PART,
+     &                        IDX_VIR)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA,KONTA2,0,MAX_NUM_PART)
+     &                  DISTA,KONTA2,0,MAX_NUM_PART,IDX_VIR)
          REF_MAX=DISTA(KONTA2)
          REF_MIN=DISTA(1)
          CONTAERR=KONTA2PREV-KONTA2
@@ -1268,6 +1272,47 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        END
 
 **********************************************************************
+       SUBROUTINE FIND_IDX_VIR(DISTA,MASAP,LIP,MAX_NUM_PART,ROTE,RETE,
+     &                         PI,CONTRASTEC,IDX_VIR)
+**********************************************************************
+*      Estimates the virial radius (before unbounding)
+**********************************************************************
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       REAL DISTA(0:MAX_NUM_PART)
+       REAL MASAP(PARTIRED)
+       INTEGER LIP(MAX_NUM_PART)
+       REAL ROTE,RETE,PI,CONTRASTEC
+       INTEGER MAX_NUM_PART,IDX_VIR
+
+       INTEGER J,JJCORE
+       REAL DELTA
+       REAL*8 MENC
+
+       MENC=0.0
+       JJCORE=MIN(IDX_VIR/10, 50)
+       DO J=1,JJCORE
+         MENC=MENC+DBLE(MASAP(LIP(J)))
+       END DO
+
+       DO J=JJCORE+1,IDX_VIR
+         MENC=MENC+DBLE(MASAP(LIP(J)))
+         DELTA=MENC/(ROTE*RETE**3*(4*PI/3)*DISTA(J)**3)
+         IF (DELTA.LT.CONTRASTEC) EXIT
+       END DO
+
+       IF (J.EQ.IDX_VIR+1) THEN
+        WRITE(*,*) 'NOT PRE-FOUND VIRIAL RADIUS!'
+        STOP
+       END IF
+
+       IDX_VIR=J
+
+       RETURN
+       END
+
+**********************************************************************
        SUBROUTINE COMPUTE_EPOT(KONTA,KONTA2,LIP,RXPA,RYPA,RZPA,MASAP,
      &                         CONTADM,EPOT,MOST_BOUND_IDX,MAX_NUM_PART)
 **********************************************************************
@@ -1407,7 +1452,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 **********************************************************************
        SUBROUTINE REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                      DISTA,KONTA2,DO_SORT,MAX_NUM_PART)
+     &                      DISTA,KONTA2,DO_SORT,MAX_NUM_PART,IDX_VIR)
 **********************************************************************
 *      Sorts the particles with increasing distance to the center of
 *      the halo. Only particles with CONTADM=0 are sorted (the others
@@ -1420,10 +1465,11 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER I,J,K,KONTA,KONTA2,JJ,DO_SORT,MAX_NUM_PART
+       INTEGER I,J,K,KONTA,KONTA2,JJ,DO_SORT,MAX_NUM_PART,IDX_VIR
 
 *      ---HALOS Y SUBHALOS---
        REAL*4 CX,CY,CZ
+       INTEGER RELOC_VIR
 
 *      ---PARTICULAS E ITERACIONES---
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
@@ -1477,15 +1523,28 @@ c       INTEGER CONTADM(PARTI)
          DISTA(J)=DISTA2(JJ)
          LIP(J)=QUIEN(JJ)
         END DO
+
+        IDX_VIR=KONTA2 ! Yet to be determined
        ELSE ! they are already sorted (since the center does not change)
         KONTA2=0
+        RELOC_VIR=0
         DO J=1,KONTA
          IF (CONTADM(J).EQ.0) THEN
           KONTA2=KONTA2+1
           DISTA(KONTA2)=DISTA(J)
           LIP(KONTA2)=LIP(J)
+
+          IF (RELOC_VIR.EQ.0) THEN
+           IF (J.GE.IDX_VIR) THEN
+            RELOC_VIR=1
+            IDX_VIR=KONTA2
+           END IF
+          END IF
+
          END IF
         END DO
+
+        IF (RELOC_VIR.EQ.0) IDX_VIR=KONTA2
        END IF
 
        CONTADM=1
@@ -1523,7 +1582,7 @@ c       INTEGER CONTADM(PARTI)
 
 *      ---- DOUBLE PRECISION -----------------------
        REAL*8 CMX8,CMY8,CMZ8,VCMX8,VCMY8,VCMZ8,MASA8
-       REAL*8 BAS,!NORMA
+       REAL*8 BAS!,NORMA
 *      ---------------------------------------------
 
 
@@ -1605,7 +1664,7 @@ c       INTEGER CONTADM(PARTI)
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           RADIO,MASA,CLUSRXCM,CLUSRYCM,CLUSRZCM,
      &           LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS,KONTA2,
-     &           MAX_NUM_PART)
+     &           MAX_NUM_PART,IDX_VIR)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -1616,7 +1675,7 @@ c       INTEGER CONTADM(PARTI)
 
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER I,J,K,IX,IMAX,JJ,FAC,MAX_NUM_PART
+       INTEGER I,J,K,IX,IMAX,JJ,FAC,MAX_NUM_PART,IDX_VIR
 
        REAL*4 REI,CGR,PI,PI4ROD
        COMMON /CONS/PI4ROD,REI,CGR,PI
@@ -1726,7 +1785,7 @@ COJO       REAL*8 POT(KONTA)
         END DO
 
 *      NEW CENTER OF MASS AND ITS VELOCITY
-        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
+        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM,MAX_NUM_PART)
 
@@ -1772,7 +1831,7 @@ COJO       REAL*8 POT(KONTA)
      &                            RXPA,RYPA,RZPA,MASAP,RADIO,MASA,
      &                            CLUSRXCM,CLUSRYCM,CLUSRZCM,LIP,KONTA,
      &                            CONTADM,VX,VY,VZ,REALCLUS,KONTA2,
-     &                            MAX_NUM_PART)
+     &                            MAX_NUM_PART,IDX_VIR)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -1795,7 +1854,7 @@ COJO       REAL*8 POT(KONTA)
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
        INTEGER KONTA
        REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
-       INTEGER REALCLUS(MAXNCLUS),KONTA2,MAX_NUM_PART
+       INTEGER REALCLUS(MAXNCLUS),KONTA2,MAX_NUM_PART,IDX_VIR
 
        REAL CMX,CMY,CMZ,VXCM,VYCM,VZCM,BAS,BB,AADM,AADMX,AADMY
        REAL AADMZ,MMM
@@ -1834,7 +1893,7 @@ COJO       REAL*8 POT(KONTA)
         END DO
 
 *       NEW CENTER OF MASS AND ITS VELOCITY
-        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,
+        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           CMX,CMY,CMZ,VXCM,VYCM,VZCM,MMM,MAX_NUM_PART)
 
