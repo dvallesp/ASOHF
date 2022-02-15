@@ -509,7 +509,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER IX,JY,KK1,KK2,FAC,ITER_SHRINK,COUNT_1,COUNT_2,JJCORE
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
        INTEGER FLAGVIR,EACH_PROF,IPATCH,IRR,MOST_BOUND_IDX,LOWP1,LOWP2
-       INTEGER NCAPAS(NMAXNCLUS),MAX_NUM_PART
+       INTEGER NCAPAS(NMAXNCLUS),MAX_NUM_PART,WELL_ALLOCATED
        REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS
        REAL VVV2,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
@@ -599,7 +599,8 @@ c       WRITE(*,*)'=================================='
 !$OMP+           FLAG2500C,FLAG2500M,FLAGVIR,EACH_PROF,DENSR,LOGDERIV,
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR,BASVX,
 !$OMP+           BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,MOST_BOUND_IDX,
-!$OMP+           ID_PROC,IPART_PROC,BAS8,INERTIA8,MAX_NUM_PART),
+!$OMP+           ID_PROC,IPART_PROC,BAS8,INERTIA8,MAX_NUM_PART,
+!$OMP+           WELL_ALLOCATED),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
@@ -608,56 +609,26 @@ c       WRITE(*,*)'=================================='
        IF (KK_ENTERO.NE.0) THEN
 
         MAX_NUM_PART=INT(1.5*DMPCLUS(I))
-        IF (MAX_NUM_PART.LT.20000) MAX_NUM_PART=MAX_NUM_PART*2
         IF (MAX_NUM_PART.LT.4000) MAX_NUM_PART=4000
         IF (MAX_NUM_PART.GT.PARTIRED) MAX_NUM_PART=PARTIRED
+
         !write(*,*) max_num_part
-        IF (ALLOCATED(LIP)) DEALLOCATE(CONTADM,LIP,DISTA)
-        ALLOCATE(LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART))
-        ALLOCATE (DISTA(0:MAX_NUM_PART))
-
-        INERTIA8=0.D0
-        REF_MIN=10.0e+10
-        REF_MAX=-1.0
-        MASADM=0.D0
-        KONTA=0
-        BASMAS=0.D0
-        DIS=1.0E+10    !Distance (to the center) of the most central particle
-        VCM=0.0
-        VVV2=0.0    ! v propia de las particulas respecto al CM
-        VR=0.D0      ! v radial
-        CMX=0.0
-        CMY=0.0
-        CMZ=0.0
-        CX=0.0
-        CY=0.0
-        CZ=0.0
-        VCMX=0.0
-        VCMY=0.0
-        VCMZ=0.0
-        LIP=0
-        CONCEN=0.0       !concentration NFW profile
-        RS=0.0           !scale radius NFW profile
-        KONTA2=0
-        BASX=0.D0
-        BASY=0.D0
-        BASZ=0.D0
 
 *********************************************************************
-*       RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
+*       RECENTERING
 *********************************************************************
-
-        CX=CLUSRX(I)
-        CY=CLUSRY(I)
-        CZ=CLUSRZ(I)
-        BAS=RADIO(I)
-
         ! Find level used for recentering
         IPATCH=PATCHCLUS(I)
         DO IRR=1,NL
          IF (SUM(NPATCH(0:IRR-1))+1.LE.IPATCH.AND.
      &       IPATCH.LE.SUM(NPATCH(0:IRR))) EXIT
         END DO
+
+        CX=CLUSRX(I)
+        CY=CLUSRY(I)
+        CZ=CLUSRZ(I)
+        BAS=RADIO(I)
+
         CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
      &                                       RZPA,MASAP,N_DM,
      &                                       DX/2.0**IRR,MAX_NUM_PART)
@@ -665,42 +636,85 @@ c       WRITE(*,*)'=================================='
         BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
         BAS=SQRT(BAS)
 c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
-
         CLUSRX(I)=CX
         CLUSRY(I)=CY
         CLUSRZ(I)=CZ
 
-        DELTA2=100.0*MINOVERDENS ! just to ensure it enters the loop
-        RCLUS=RADIO(I)
-        DO WHILE (DELTA2.GT.0.99*MINOVERDENS)
-         KONTA=0
+*********************************************************************
+*       ALLOCATING PARTICLES
+*********************************************************************
+        WELL_ALLOCATED=0
+        DO WHILE (WELL_ALLOCATED.EQ.0)
+         IF (ALLOCATED(LIP)) DEALLOCATE(CONTADM,LIP,DISTA)
+         ALLOCATE(LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART))
+         ALLOCATE (DISTA(0:MAX_NUM_PART))
+         WELL_ALLOCATED=1
+
+         INERTIA8=0.D0
+         REF_MIN=10.0e+10
+         REF_MAX=-1.0
          MASADM=0.D0
+         KONTA=0
+         BASMAS=0.D0
+         DIS=1.0E+10    !Distance (to the center) of the most central particle
+         VCM=0.0
+         VVV2=0.0    ! v propia de las particulas respecto al CM
+         VR=0.D0      ! v radial
+         CMX=0.0
+         CMY=0.0
+         CMZ=0.0
+         VCMX=0.0
+         VCMY=0.0
+         VCMZ=0.0
+         LIP=0
+         CONCEN=0.0       !concentration NFW profile
+         RS=0.0           !scale radius NFW profile
+         KONTA2=0
+         BASX=0.D0
+         BASY=0.D0
+         BASZ=0.D0
 
-         BAS=-1.0
-         DO J=1,N_DM
-          XP=RXPA(J)
-          YP=RYPA(J)
-          ZP=RZPA(J)
-          MP=MASAP(J)
-          AADM=SQRT((XP-CX)**2+(YP-CY)**2+(ZP-CZ)**2)
-          IF(AADM.LT.RCLUS) THEN
-           KONTA=KONTA+1
-           LIP(KONTA)=J
-           MASADM=MASADM+MP
-           BAS=MAX(BAS,AADM)
-          END IF
-         END DO
+         CX=CLUSRX(I)
+         CY=CLUSRY(I)
+         CZ=CLUSRZ(I)
+         RCLUS=RADIO(I)
+         DELTA2=100.0*MINOVERDENS ! just to ensure it enters the loop
+         DO WHILE (DELTA2.GT.0.99*MINOVERDENS)
+          KONTA=0
+          MASADM=0.D0
 
-         IF (KONTA.GT.MAX_NUM_PART) THEN
-          WRITE(*,*) 'WARNING: konta>max_num_part',KONTA,MAX_NUM_PART
-          STOP
+          BAS=-1.0
+          DO J=1,N_DM
+           XP=RXPA(J)
+           YP=RYPA(J)
+           ZP=RZPA(J)
+           MP=MASAP(J)
+           AADM=SQRT((XP-CX)**2+(YP-CY)**2+(ZP-CZ)**2)
+           IF(AADM.LT.RCLUS) THEN
+            KONTA=KONTA+1
+            IF (KONTA.GT.MAX_NUM_PART) THEN
+             WELL_ALLOCATED=0
+             EXIT
+            END IF
+            LIP(KONTA)=J
+            MASADM=MASADM+MP
+            BAS=MAX(BAS,AADM)
+           END IF
+          END DO
+
+          IF (WELL_ALLOCATED.EQ.0) EXIT
+
+          DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*BAS**3)
+
+          IF (DELTA2.GT.0.9*MINOVERDENS) RCLUS=1.25*RCLUS
+         END DO ! WHILE (DELTA2.GT.0.99*MINOVERDENS)
+
+         IF (WELL_ALLOCATED.EQ.0) THEN
+          !WRITE(*,*) 'WARNING: konta>max_num_part',KONTA,MAX_NUM_PART,I
+          MAX_NUM_PART=MAX_NUM_PART*2
          END IF
+        END DO ! WHILE (WELL_ALLOCATED.EQ.0)
 
-         DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*BAS**3)
-
-         IF (DELTA2.GT.0.9*MINOVERDENS) RCLUS=1.25*RCLUS
-        END DO
-c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 
         IF (MASADM.LE.0.D0.OR.KONTA.EQ.0) THEN
          REALCLUS(I)=0
