@@ -1523,7 +1523,7 @@ c       INTEGER CONTADM(PARTI)
 
 *      ---- DOUBLE PRECISION -----------------------
        REAL*8 CMX8,CMY8,CMZ8,VCMX8,VCMY8,VCMZ8,MASA8
-       REAL*8 NORMA,BAS
+       REAL*8 BAS,!NORMA
 *      ---------------------------------------------
 
 
@@ -1537,13 +1537,13 @@ c       INTEGER CONTADM(PARTI)
 
        MASA8=0.D0
 
-       NORMA=DBLE(MAXVAL(MASAP))  ! NORMALIZACION MASA
+       !NORMA=DBLE(MAXVAL(MASAP))  ! NORMALIZACION MASA
 
        DO I=1,N
         IF (CONTADM(I).EQ.0) THEN
          J=LIP(I)
 
-         BAS=DBLE(MASAP(J))/NORMA
+         BAS=DBLE(MASAP(J))!/NORMA
 
          CMX8=CMX8 + DBLE(RXPA(J))*BAS
          CMY8=CMY8 + DBLE(RYPA(J))*BAS
@@ -1568,7 +1568,7 @@ c       INTEGER CONTADM(PARTI)
        VCMY8=(VCMY8/MASA8)
        VCMZ8=(VCMZ8/MASA8)
 
-       MASA8=MASA8*NORMA
+       MASA8=MASA8!*NORMA
 
        ELSE
 
