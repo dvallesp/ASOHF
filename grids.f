@@ -373,19 +373,22 @@ c       write(*,*) '***',REFINE_COUNT
         N3=PATCHNZ(IPATCH)
 
         DO I=1,N_PARTICLES
-         IX=INT((RXPA(I)-XL)/DXPA)+1
-         JY=INT((RYPA(I)-YL)/DYPA)+1
-         KZ=INT((RZPA(I)-ZL)/DZPA)+1
-         IF (IX.GE.1.AND.IX.LE.N1.AND.
-     &       JY.GE.1.AND.JY.LE.N2.AND.
-     &       KZ.GE.1.AND.KZ.LE.N3) THEN !*****************************
+         IX=FLOOR((RXPA(I)-XL)/DXPA)+1
+         IF (IX.LT.1.OR.IX.GT.N1) CYCLE
+         JY=FLOOR((RYPA(I)-YL)/DYPA)+1
+         IF (JY.LT.1.OR.JY.GT.N2) CYCLE
+         KZ=FLOOR((RZPA(I)-ZL)/DZPA)+1
+         IF (KZ.LT.1.OR.KZ.GT.N3) CYCLE
+C         IF (IX.GE.1.AND.IX.LE.N1.AND.
+C     &       JY.GE.1.AND.JY.LE.N2.AND.
+C     &       KZ.GE.1.AND.KZ.LE.N3) THEN !*****************************
           !U1(IX,JY,KZ)=U1(IX,JY,KZ)+MASAP(I)
           IF (PLEV(I).LE.IRPA) THEN
            CONTA11(IX,JY,KZ,IPATCH)=CONTA11(IX,JY,KZ,IPATCH)+1
           ELSE
            CONTA11(IX,JY,KZ,IPATCH)=CONTA11(IX,JY,KZ,IPATCH)+REFINE_THR
           END IF
-         END IF !*****************************************************
+C         END IF !*****************************************************
         END DO
 
         DO KZ=1,N3
