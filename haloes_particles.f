@@ -345,7 +345,6 @@
          IF (ALLOCATED(LIP)) DEALLOCATE(LIP)
          ALLOCATE(LIP(MAX_NUM_PART_LOCAL))
          WELL_ALLOCATED=1
-         write(*,*) cx,cy,cz,'allocated with',max_num_part_local
 
          FLAG_LARGER=1
          RADIO=MAX(0.05*R,DXPAMIN)
@@ -353,8 +352,8 @@
           KONTA=0
           DO I=1,N_DM
            IF (CX-RADIO.LT.RXPA(I).AND.RXPA(I).LT.CX+RADIO.AND.
-     &        CY-RADIO.LT.RYPA(I).AND.RYPA(I).LT.CY+RADIO.AND.
-     &        CZ-RADIO.LT.RZPA(I).AND.RZPA(I).LT.CZ+RADIO) THEN
+     &         CY-RADIO.LT.RYPA(I).AND.RYPA(I).LT.CY+RADIO.AND.
+     &         CZ-RADIO.LT.RZPA(I).AND.RZPA(I).LT.CZ+RADIO) THEN
             KONTA=KONTA+1
             IF (KONTA.GT.MAX_NUM_PART_LOCAL) THEN
              WELL_ALLOCATED=0
@@ -378,7 +377,6 @@
          END IF
 
         END DO ! WHILE (WELL_ALLOCATED.EQ.0)
-        write(*,*) cx,cy,cz,'good allocation',max_num_part_local,konta
 
 c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
         NN=4
