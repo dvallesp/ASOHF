@@ -330,33 +330,55 @@
      &         MASAP(PARTIRED),DXPAMIN
         INTEGER N_DM,MAX_NUM_PART
 
-        INTEGER LIP(MAX_NUM_PART),KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP
-        INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN
+        INTEGER KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP,MAX_NUM_PART_LOCAL
+        INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN,WELL_ALLOCATED
         REAL RADIO,BAS,XL,YL,ZL,DDXX,BASX,BASY,BASZ
         REAL,ALLOCATABLE::DENS(:,:,:)
+        INTEGER,ALLOCATABLE::LIP(:)
 
         NUMPARTMIN=32 !4**3/2
 
-c        WRITE(*,*) CX,CY,CZ
+        MAX_NUM_PART_LOCAL=MAX_NUM_PART
+        WELL_ALLOCATED=0
 
-        FLAG_LARGER=1
-        RADIO=MAX(0.05*R,DXPAMIN)
-        DO WHILE(FLAG_LARGER.EQ.1)
-         KONTA=0
-         DO I=1,N_DM
-          IF (CX-RADIO.LT.RXPA(I).AND.RXPA(I).LT.CX+RADIO.AND.
+        DO WHILE (WELL_ALLOCATED.EQ.0)
+         IF (ALLOCATED(LIP)) DEALLOCATE(LIP)
+         ALLOCATE(LIP(MAX_NUM_PART_LOCAL))
+         WELL_ALLOCATED=1
+         write(*,*) cx,cy,cz,'allocated with',max_num_part_local
+
+         FLAG_LARGER=1
+         RADIO=MAX(0.05*R,DXPAMIN)
+         DO WHILE (FLAG_LARGER.EQ.1)
+          KONTA=0
+          DO I=1,N_DM
+           IF (CX-RADIO.LT.RXPA(I).AND.RXPA(I).LT.CX+RADIO.AND.
      &        CY-RADIO.LT.RYPA(I).AND.RYPA(I).LT.CY+RADIO.AND.
      &        CZ-RADIO.LT.RZPA(I).AND.RZPA(I).LT.CZ+RADIO) THEN
-           KONTA=KONTA+1
-           LIP(KONTA)=I
+            KONTA=KONTA+1
+            IF (KONTA.GT.MAX_NUM_PART_LOCAL) THEN
+             WELL_ALLOCATED=0
+             EXIT
+            END IF
+            LIP(KONTA)=I
+           END IF
+          END DO !I=1,N_DM
+
+          IF (WELL_ALLOCATED.EQ.0) EXIT
+
+          IF (KONTA.GT.NUMPARTMIN) THEN
+           FLAG_LARGER=0
+          ELSE
+           RADIO=RADIO*1.2
           END IF
-         END DO
-         IF (KONTA.GT.NUMPARTMIN) THEN
-          FLAG_LARGER=0
-         ELSE
-          RADIO=RADIO*1.2
+         END DO ! WHILE (FLAG_LARGER.EQ.1)
+
+         IF (WELL_ALLOCATED.EQ.0) THEN
+          MAX_NUM_PART_LOCAL=2*MAX_NUM_PART_LOCAL
          END IF
-        END DO
+
+        END DO ! WHILE (WELL_ALLOCATED.EQ.0)
+        write(*,*) cx,cy,cz,'good allocation',max_num_part_local,konta
 
 c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
         NN=4
