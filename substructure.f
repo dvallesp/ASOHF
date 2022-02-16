@@ -816,8 +816,8 @@ C        WRITE(*,*) 'Not found progenitor'
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
        INTEGER FLAGVIR,JMINPROF,LOWH1,LOWH2,IHOSTHALO,FLAG_JACOBI
        INTEGER NCAPAS(NMAXNCLUS),IPATCH,IRR,MINJ,DIR,J_JACOBI,EACH_PROF
-       INTEGER MOST_BOUND_IDX,USELESS_INT
-       INTEGER LOWP1,LOWP2
+       INTEGER MOST_BOUND_IDX,USELESS_INT,WELL_ALLOCATED
+       INTEGER LOWP1,LOWP2,MAX_NUM_PART_COM
        REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS
        REAL VVV2,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
@@ -867,8 +867,8 @@ C        WRITE(*,*) 'Not found progenitor'
         PROC_NPARTICLES(1:NUM_PROC)=0
        END IF
 
-       MAX_NUM_PART=MAXVAL(DMPCLUS(1:NCLUS))/10
-       MAX_NUM_PART=MAX_NUM_PART/IR
+       MAX_NUM_PART_COM=MAXVAL(DMPCLUS(1:NCLUS))/100
+       MAX_NUM_PART_COM=MAX_NUM_PART_COM/IR
 
        ALLOCATE(LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART))
        ALLOCATE (DISTA(0:MAX_NUM_PART))
@@ -886,7 +886,7 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           LOWH2,PATCHCLUS,NPATCH,PROFILES,NCAPAS,
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
-!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,MAX_NUM_PART),
+!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,MAX_NUM_PART_COM),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -900,7 +900,7 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           FLAG_JACOBI,MHOST,DISTHOST,EQ_JACOBI_R,IPATCH,IRR,
 !$OMP+           J_JACOBI,EACH_PROF,BASVX,BASVY,BASVZ,SIGMA_HALO,EPOT,
 !$OMP+           EKIN,MOST_BOUND_IDX,ID_PROC,IPART_PROC,BAS8,INERTIA8,
-!$OMP+           USELESS_INT),
+!$OMP+           USELESS_INT,MAX_NUM_PART,WELL_ALLOCATED),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=LOWH1,LOWH2
@@ -908,41 +908,40 @@ C        WRITE(*,*) 'Not found progenitor'
        KK_ENTERO=REALCLUS(I)
        IF (KK_ENTERO.NE.0) THEN
 
-        INERTIA8=0.D0
-        REF_MIN=10.0e+10
-        REF_MAX=-1.0
-        MASADM=0.D0
-        KONTA=0
-        BASMAS=0.D0
-        DIS=1.0E+10    !Distance (to the center) of the most central particle
-        VCM=0.0
-        VVV2=0.0    ! v propia de las particulas respecto al CM
-        VR=0.D0      ! v radial
-        CMX=0.0
-        CMY=0.0
-        CMZ=0.0
-        CX=0.0
-        CY=0.0
-        CZ=0.0
-        VCMX=0.0
-        VCMY=0.0
-        VCMZ=0.0
-        LIP=0
-        CONCEN=0.0       !concentration NFW profile
-        RS=0.0           !scale radius NFW profile
-        KONTA2=0
-        BASX=0.D0
-        BASY=0.D0
-        BASZ=0.D0
+        MAX_NUM_PART=MAX_NUM_PART_COM
+        IF (MAX_NUM_PART.LT.4000) MAX_NUM_PART=4000
+        IF (MAX_NUM_PART.GT.PARTIRED) MAX_NUM_PART=PARTIRED
 
 *********************************************************************
-*       RECENTERING AND COMPUTING VCM OF HALO I (SHRINKING SPHERE)
+*       RECENTERING
 *********************************************************************
+        ! Find level used for recentering
+        IPATCH=PATCHCLUS(I)
+        DO IRR=1,NL
+         IF (SUM(NPATCH(0:IRR-1))+1.LE.IPATCH.AND.
+     &       IPATCH.LE.SUM(NPATCH(0:IRR))) EXIT
+        END DO
 
         CX=CLUSRX(I)
         CY=CLUSRY(I)
         CZ=CLUSRZ(I)
         BAS=RSUB(I)
+c        WRITE(*,*) CX,CY,CZ,IRR
+        CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
+     &                                       RZPA,MASAP,N_DM,
+     &                                       DX/2.0**IRR,MAX_NUM_PART)
+
+        BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
+        BAS=SQRT(BAS)
+c        WRITE(*,*) 'Recentering shift', i, bas, bas/rsub(i)
+
+        CLUSRX(I)=CX
+        CLUSRY(I)=CY
+        CLUSRZ(I)=CZ
+
+*********************************************************************
+*       CHARACTERIZE HOST
+*********************************************************************
         IHOSTHALO=REALCLUS(I)
         IF (REALCLUS(IHOSTHALO).EQ.-1) THEN
          MHOST=MASA(IHOSTHALO)
@@ -952,7 +951,6 @@ C        WRITE(*,*) 'Not found progenitor'
         DISTHOST=SQRT((CLUSRX(IHOSTHALO)-CX)**2 +
      &                (CLUSRY(IHOSTHALO)-CY)**2 +
      &                (CLUSRZ(IHOSTHALO)-CZ)**2)
-
 
         ! MHOST is the mass inside DISTHOST. Let's interpolate
         DO JJ=1,NBINS
@@ -970,138 +968,152 @@ C        WRITE(*,*) 'Not found progenitor'
          MHOST=PROFILES(NBINS,2,IHOSTHALO)
         END IF
 
+*********************************************************************
+*       ALLOCATING PARTICLES
+*********************************************************************
+        WELL_ALLOCATED=0
+        DO WHILE (WELL_ALLOCATED.EQ.0)
+         IF (ALLOCATED(LIP)) DEALLOCATE(CONTADM,LIP,DISTA)
+         ALLOCATE(LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART))
+         ALLOCATE (DISTA(0:MAX_NUM_PART))
+
+         WELL_ALLOCATED=1
+
+         INERTIA8=0.D0
+         REF_MIN=10.0e+10
+         REF_MAX=-1.0
+         MASADM=0.D0
+         KONTA=0
+         BASMAS=0.D0
+         DIS=1.0E+10    !Distance (to the center) of the most central particle
+         VCM=0.0
+         VVV2=0.0    ! v propia de las particulas respecto al CM
+         VR=0.D0      ! v radial
+         CMX=0.0
+         CMY=0.0
+         CMZ=0.0
+         VCMX=0.0
+         VCMY=0.0
+         VCMZ=0.0
+         LIP=0
+         CONCEN=0.0       !concentration NFW profile
+         RS=0.0           !scale radius NFW profile
+         KONTA2=0
+         BASX=0.D0
+         BASY=0.D0
+         BASZ=0.D0
+
+*        Find jacobi radius (substructure radius; grow if necessary)
+         FLAG_JACOBI=0
+         RCLUS=2.0*RSUB(I)
+         DO WHILE (FLAG_JACOBI.EQ.0)
+          KONTA=0
+          DO J=1,N_DM
+           AADM=SQRT((RXPA(J)-CX)**2+(RYPA(J)-CY)**2+(RZPA(J)-CZ)**2)
+           IF (AADM.LT.RCLUS) THEN
+            KONTA=KONTA+1
+            IF (KONTA.GT.MAX_NUM_PART) THEN
+             WELL_ALLOCATED=0
+             EXIT
+            END IF
+            LIP(KONTA)=J
+           END IF
+          END DO
+          IF (WELL_ALLOCATED.EQ.0) EXIT
+
+          CONTADM=1
+          CONTADM(1:KONTA)=0
+          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
+     &                   DISTA,KONTA2,1,MAX_NUM_PART,USELESS_INT)
+
+c         WRITE(*,*) 'CHECK I,KONTA,KONTA2=',I,KONTA,KONTA2
+*         Simplified equation (estimation)
+          MASADM=0.D0
+          J_JACOBI=-1
+          MINJ=MAX(10,KONTA/50)
+          DO J=1,KONTA
+           MASADM=MASADM+MASAP(LIP(J))
+           EQ_JACOBI_R=(DISTA(J)/DISTHOST)-
+     &                     ((MASADM*UM)/(MASADM*UM+3*MHOST))**(1.0/3.0)
+c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
+           IF (EQ_JACOBI_R.GT.0.D0.AND.J.GT.MINJ) THEN
+            J_JACOBI=J
+            EXIT
+           END IF
+          END DO
+          IF (J_JACOBI.EQ.-1) J_JACOBI=KONTA
+
+*         Exact equation (refining the solution)
+          BASX=DISTA(J_JACOBI)/DISTHOST
+          BASY=MASADM*UM/MHOST
+          EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
+          IF (ABS(EQ_JACOBI_R).LT.0.D01) THEN
+           FLAG_JACOBI=1
+          ELSE
+           DIR=-1
+           IF (EQ_JACOBI_R.LT.0.D0) DIR=1
+
+           IF (DIR.EQ.1) THEN
+            DO J=J_JACOBI+1,KONTA
+             BASX=DISTA(J)/DISTHOST
+             MASADM=MASADM+MASAP(LIP(J))
+             BASY=MASADM*UM/MHOST
+             EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
+             IF (EQ_JACOBI_R.GT.0.D0) THEN
+              J_JACOBI=J
+              FLAG_JACOBI=1
+              EXIT
+             END IF
+            END DO
+           ELSE
+            DO J=J_JACOBI-1,MINJ,-1
+             BASX=DISTA(J)/DISTHOST
+             MASADM=MASADM-MASAP(LIP(J+1))
+             BASY=MASADM*UM/MHOST
+             EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
+c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
+             IF (EQ_JACOBI_R.LT.0.D0) THEN
+              J_JACOBI=J
+              FLAG_JACOBI=1
+              EXIT
+             END IF
+            END DO
+           END IF
+          END IF !(ABS(EQ_JACOBI_R).LT.0.01) / ELSE
+
+          IF (FLAG_JACOBI.EQ.0) THEN
+           IF (DIR.EQ.1) THEN
+            RCLUS=1.5*RCLUS
+           ELSE IF (DIR.EQ.-1) THEN
+            J_JACOBI=MINJ
+            FLAG_JACOBI=1
+           END IF
+          END IF
+
+          IF (FLAG_JACOBI.EQ.1) THEN
+           RCLUS=DISTA(J_JACOBI)
+           RSUB(I)=RCLUS
+           MSUB(I)=MASADM*UM
+           CONTADM(1:KONTA)=1
+           CONTADM(1:J_JACOBI)=0
+           KONTA=J_JACOBI
+          END IF
+
+         END DO ! WHILE (FLAG_JACOBI.EQ.0)
+
+         IF (WELL_ALLOCATED.EQ.0) THEN
+          !WRITE(*,*) 'WARNING: konta>max_num_part',KONTA,MAX_NUM_PART,I
+          MAX_NUM_PART=MAX_NUM_PART*2
+         END IF
+        END DO ! WHILE (WELL_ALLOCATED.EQ.0)
+
+
 c        WRITE(*,*) 'MHOST INTERP', PROFILES(NBINS,2,IHOSTHALO),
 c     &             DISTHOST/PROFILES(NBINS,1,IHOSTHALO),MHOST
 
         ! Find level used for recentering
-        IPATCH=PATCHCLUS(I)
-        DO IRR=1,NL
-         IF (SUM(NPATCH(0:IRR-1))+1.LE.IPATCH.AND.
-     &       IPATCH.LE.SUM(NPATCH(0:IRR))) EXIT
-        END DO
-c        WRITE(*,*) CX,CY,CZ,IRR
-        CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
-     &                                       RZPA,MASAP,N_DM,
-     &                                       DX/2.0**IRR,MAX_NUM_PART)
 
-        BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
-        BAS=SQRT(BAS)
-c        WRITE(*,*) 'Recentering shift', i, bas, bas/rsub(i)
 
-        DISTHOST=SQRT((CLUSRX(IHOSTHALO)-CX)**2 +
-     &                (CLUSRY(IHOSTHALO)-CY)**2 +
-     &                (CLUSRZ(IHOSTHALO)-CZ)**2)
-c        write(*,*) 'mhost,dishost',mhost,disthost
-
-        CLUSRX(I)=CX
-        CLUSRY(I)=CY
-        CLUSRZ(I)=CZ
-
-*       Find jacobi radius (substructure radius; grow if necessary)
-        DELTA2=100.0*MINOVERDENS ! just to ensure it enters the loop
-        FLAG_JACOBI=0
-        RCLUS=2.0*RSUB(I)
-        DO WHILE (FLAG_JACOBI.EQ.0)
-         KONTA=0
-         MASADM=0.D0
-         DO J=1,N_DM
-          AADM=SQRT((RXPA(J)-CX)**2+(RYPA(J)-CY)**2+(RZPA(J)-CZ)**2)
-          IF (AADM.LT.RCLUS) THEN
-           KONTA=KONTA+1
-           LIP(KONTA)=J
-           MASADM=MASADM+MASAP(J)
-          END IF
-         END DO
-
-         IF (KONTA.GT.MAX_NUM_PART) THEN
-          WRITE(*,*) 'WARNING: konta>max_num_part',KONTA,MAX_NUM_PART
-          STOP
-         END IF
-
-         CONTADM=1
-         CONTADM(1:KONTA)=0
-
-         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA,KONTA2,1,MAX_NUM_PART,USELESS_INT)
-
-c         WRITE(*,*) 'CHECK I,KONTA,KONTA2=',I,KONTA,KONTA2
-
-         DELTA2=MASADM/(ROTE*RETE**3*(4*PI/3)*RCLUS**3)
-
-*        Simplified equation (estimation)
-         MASADM=0.D0
-         J_JACOBI=-1
-         MINJ=MAX(10,KONTA/50)
-         DO J=1,KONTA
-          MASADM=MASADM+MASAP(LIP(J))
-          EQ_JACOBI_R=(DISTA(J)/DISTHOST)-
-     &                  ((MASADM*UM)/(MASADM*UM+3*MHOST))**(1.0/3.0)
-c          WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
-          IF (EQ_JACOBI_R.GT.0.D0.AND.J.GT.MINJ) THEN
-           J_JACOBI=J
-           EXIT
-          END IF
-         END DO
-
-         IF (J_JACOBI.EQ.-1) J_JACOBI=KONTA
-
-*        Exact equation (refining the solution)
-         BASX=DISTA(J_JACOBI)/DISTHOST
-         BASY=MASADM*UM/MHOST
-         EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
-         IF (ABS(EQ_JACOBI_R).LT.0.D01) THEN
-          FLAG_JACOBI=1
-         ELSE
-          DIR=-1
-          IF (EQ_JACOBI_R.LT.0.D0) DIR=1
-
-          IF (DIR.EQ.1) THEN
-           DO J=J_JACOBI+1,KONTA
-            BASX=DISTA(J)/DISTHOST
-            MASADM=MASADM+MASAP(LIP(J))
-            BASY=MASADM*UM/MHOST
-            EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
-            IF (EQ_JACOBI_R.GT.0.D0) THEN
-             J_JACOBI=J
-             FLAG_JACOBI=1
-             EXIT
-            END IF
-           END DO
-          ELSE
-           DO J=J_JACOBI-1,MINJ,-1
-            BASX=DISTA(J)/DISTHOST
-            MASADM=MASADM-MASAP(LIP(J+1))
-            BASY=MASADM*UM/MHOST
-            EQ_JACOBI_R=1/(1-BASX)**2-1-BASY/BASX**2+(1+BASY)*BASX
-c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
-            IF (EQ_JACOBI_R.LT.0.0) THEN
-             J_JACOBI=J
-             FLAG_JACOBI=1
-             EXIT
-            END IF
-           END DO
-          END IF
-         END IF !(ABS(EQ_JACOBI_R).LT.0.01) / ELSE
-
-         IF (FLAG_JACOBI.EQ.0) THEN
-          IF (DIR.EQ.1) THEN
-           RCLUS=1.5*RCLUS
-          ELSE IF (DIR.EQ.-1) THEN
-           J_JACOBI=MINJ
-           FLAG_JACOBI=1
-          END IF
-         END IF
-
-         IF (FLAG_JACOBI.EQ.1) THEN
-          RCLUS=DISTA(J_JACOBI)
-          RSUB(I)=RCLUS
-          MSUB(I)=MASADM*UM
-          CONTADM(1:KONTA)=1
-          CONTADM(1:J_JACOBI)=0
-          KONTA=J_JACOBI
-         END IF
-
-        END DO !(FLAG_JACOBI.EQ.0)
 c        WRITE(*,*) DELTA2,MASADM*UM,RCLUS,KONTA
 c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
 
