@@ -517,43 +517,40 @@ c           END DO
          IF (ITER_GROW.GT.1) THEN
           R_INT=R_EXT
           R_EXT=MAX(R_EXT+ESP, R_EXT*ESP_LOG)
-          IF (R_EXT.GT.BOUNDIR) THEN
-           BOUNDIR2=R_EXT*2.0
-*          tentative reach of the base grid
-           BASX=XCEN-BOUNDIR2
-           NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
-           IF (NX1.LT.1) NX1=1
-
-           BASX=XCEN+BOUNDIR2
-           NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
-           IF (NX2.GT.NX) NX2=NX
-
-           BASY=YCEN-BOUNDIR2
-           NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
-           IF (NY1.LT.1) NY1=1
-
-           BASY=YCEN+BOUNDIR2
-           NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
-           IF (NY2.GT.NY) NY2=NY
-
-           BASZ=ZCEN-BOUNDIR2
-           NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
-           IF (NZ1.LT.1) NZ1=1
-
-           BASZ=ZCEN+BOUNDIR2
-           NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
-           IF (NZ2.GT.NZ) NZ2=NZ
-
-*          patches that could contain this halo
-           CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
-     &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR2,
-     &                         NL,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
-
-          END IF
          END IF
 
-         BASMASS_SHELL=0.0
+         BOUNDIR2=R_EXT
+*        tentative reach of the base grid
+         BASX=XCEN-BOUNDIR2
+         NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
+         IF (NX1.LT.1) NX1=1
 
+         BASX=XCEN+BOUNDIR2
+         NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
+         IF (NX2.GT.NX) NX2=NX
+
+         BASY=YCEN-BOUNDIR2
+         NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
+         IF (NY1.LT.1) NY1=1
+
+         BASY=YCEN+BOUNDIR2
+         NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
+         IF (NY2.GT.NY) NY2=NY
+
+         BASZ=ZCEN-BOUNDIR2
+         NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+         IF (NZ1.LT.1) NZ1=1
+
+         BASZ=ZCEN+BOUNDIR2
+         NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+         IF (NZ2.GT.NZ) NZ2=NZ
+
+*          patches that could contain this halo
+         CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
+     &                       PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR2,
+     &                       IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
+
+         BASMASS_SHELL=0.0
          VOLCELL=DX*DY*DZ
 !$0MP PARALLEL DO SHARED(NZ1,NZ2,NY1,NY2,NX1,NX2,RADX,RADY,RADZ,XCEN,
 !$OMP+                   YCEN,ZCEN,R_INT,R_EXT,VOLCELL,U1,CR0AMR),
@@ -594,17 +591,18 @@ c           END DO
           LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
           LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
           VOLCELL=DXPAPA*DYPAPA*DZPAPA
+!$0MP PARALLEL DO SHARED(RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,R_EXT,CONTA1,
+!$OMP+                   VOLCELL,U11,CR0AMR11,SOLAP,LOW1,LOW2,
+!$OMP+                   RELEVANT_PATCHES,PATCHNX,PATCHNY,PATCHNZ),
+!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS,BASINT,N1,N2,N3,IPATCH),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
           DO BASINT=LOW1,LOW2
            IPATCH=RELEVANT_PATCHES(BASINT)
            N1=PATCHNX(IPATCH)
            N2=PATCHNY(IPATCH)
            N3=PATCHNZ(IPATCH)
-!$0MP PARALLEL DO SHARED(N1,N2,N3,RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,IPATCH,
-!$OMP+                   R_EXT,CONTA1,VOLCELL,U11,CR0AMR11,SOLAP),
-!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS),
-!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
-!$OMP+                        BASDELTA,II),
-!$OMP+            DEFAULT(NONE)
            DO KZ=1,N3
            DO JY=1,N2
            DO IX=1,N1

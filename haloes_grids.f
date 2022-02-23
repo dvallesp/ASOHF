@@ -95,6 +95,7 @@
 
        LOWH1=1 !SUM(NHALLEV(0:IR-1))+1
        LOWH2=SUM(NHALLEV(0:IR))
+       LOWH3=SUM(NHALLEV(0:IR-1))+1
 
        ALLOCATE(NSOLAP(LOWH1:LOWH2), SOLAPA(LOWH1:LOWH2,NMAXSOLAP))
 
@@ -110,83 +111,81 @@
        NUM_ITERS=0
        FLAG_ITER=1
 
-       DO WHILE (FLAG_ITER.EQ.1)
-        NUM_ITERS=NUM_ITERS+1
-        CONTA=0
+       CONTA=0
 
 *       1. Look for clusters completely included in other ones, and delete
 *        the smallest ones.
-        DO I=LOWH1,LOWH2
-         BASINT=REALCLUS(I)
-         IF (BASINT.NE.0) THEN
-          R1=RADIO(I)
-          X1=CLUSRX(I)
-          Y1=CLUSRY(I)
-          Z1=CLUSRZ(I)
-          DO J=I+1,LOWH2
-           BASINT2=REALCLUS(J)
-           IF (BASINT2.NE.0) THEN
-            R2=RADIO(J)
-            X2=CLUSRX(J)
-            Y2=CLUSRY(J)
-            Z2=CLUSRZ(J)
-            DIST=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
-            IF (ABS(R1-R2).GE.DIST) THEN
-             ! A sphere is completely included in the other one.
-             ! We shall remove the smallest one.
+       DO I=LOWH1,LOWH2
+        BASINT=REALCLUS(I)
+        IF (BASINT.NE.0) THEN
+         R1=RADIO(I)
+         X1=CLUSRX(I)
+         Y1=CLUSRY(I)
+         Z1=CLUSRZ(I)
+         DO J=MAX(I+1,LOWH3),LOWH2
+          BASINT2=REALCLUS(J)
+          IF (BASINT2.NE.0) THEN
+           R2=RADIO(J)
+           X2=CLUSRX(J)
+           Y2=CLUSRY(J)
+           Z2=CLUSRZ(J)
+           DIST=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+           IF (ABS(R1-R2).GE.DIST) THEN
+            ! A sphere is completely included in the other one.
+            ! We shall remove the smallest one.
+            IMAXCLUS=I
+            IMINCLUS=J
+            IF (R2.GT.R1) THEN
+             IMAXCLUS=J
+             IMINCLUS=I
+            END IF !(R2.GT.R1)
+
+            REALCLUS(IMINCLUS)=0 !The smallest halo is removed
+            CONTA=CONTA+1
+           END IF !(ABS(R1-R2).GE.DIST)
+          END IF !(BASINT2.NE.0)
+         END DO !J=I+1,LOWH2
+        END IF !(BASINT.NE.0) THEN
+       END DO !I=LOWH1,LOWH2
+
+*       2. Look for clusters which overlap a large amount of their
+*        volume, and merge them.
+       DO I=LOWH1,LOWH2
+        BASINT=REALCLUS(I)
+        IF (BASINT.NE.0) THEN
+         R1=RADIO(I)
+         X1=CLUSRX(I)
+         Y1=CLUSRY(I)
+         Z1=CLUSRZ(I)
+         M1=MASA(I)
+         DO J=MAX(I+1,LOWH3),LOWH2
+          BASINT2=REALCLUS(J)
+          IF (BASINT2.NE.0) THEN
+           R2=RADIO(J)
+           X2=CLUSRX(J)
+           Y2=CLUSRY(J)
+           Z2=CLUSRZ(J)
+           M2=MASA(J)
+
+           ! Compute the volume overlap
+           DIST=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
+           BAS=DIST/(R1+R2)
+           IF (BAS.LT.1.0) THEN
+            XI=BAS
+            VINT=(PI/12.0) * (R1+R2)**3 * ((1-XI)**2/XI) *
+     &               (XI**2 + 2*XI - 3*(R1-R2)**2/(R1+R2)**2)
+            VINT=VINT/(4*PI/3*MIN(R1,R2)**3) ! fraction of the smallest cluster volume overlapped
+
+            IF (VINT.GT.SOLAP_LOWER_THR) THEN
              IMAXCLUS=I
              IMINCLUS=J
-             IF (R2.GT.R1) THEN
+             IF (R2.GT.1.5*R1) THEN
               IMAXCLUS=J
               IMINCLUS=I
              END IF !(R2.GT.R1)
 
              REALCLUS(IMINCLUS)=0 !The smallest halo is removed
              CONTA=CONTA+1
-            END IF !(ABS(R1-R2).GE.DIST)
-           END IF !(BASINT2.NE.0)
-          END DO !J=I+1,LOWH2
-         END IF !(BASINT.NE.0) THEN
-        END DO !I=LOWH1,LOWH2
-
-*       2. Look for clusters which overlap a large amount of their
-*        volume, and merge them.
-        DO I=LOWH1,LOWH2
-         BASINT=REALCLUS(I)
-         IF (BASINT.NE.0) THEN
-          R1=RADIO(I)
-          X1=CLUSRX(I)
-          Y1=CLUSRY(I)
-          Z1=CLUSRZ(I)
-          M1=MASA(I)
-          DO J=I+1,LOWH2
-           BASINT2=REALCLUS(J)
-           IF (BASINT2.NE.0) THEN
-            R2=RADIO(J)
-            X2=CLUSRX(J)
-            Y2=CLUSRY(J)
-            Z2=CLUSRZ(J)
-            M2=MASA(J)
-
-            ! Compute the volume overlap
-            DIST=SQRT((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2)
-            BAS=DIST/(R1+R2)
-            IF (BAS.LT.1.0) THEN
-             XI=BAS
-             VINT=(PI/12.0) * (R1+R2)**3 * ((1-XI)**2/XI) *
-     &               (XI**2 + 2*XI - 3*(R1-R2)**2/(R1+R2)**2)
-             VINT=VINT/(4*PI/3*MIN(R1,R2)**3) ! fraction of the smallest cluster volume overlapped
-
-             IF (VINT.GT.SOLAP_LOWER_THR) THEN
-              IMAXCLUS=I
-              IMINCLUS=J
-              IF (R2.GT.1.5*R1) THEN
-               IMAXCLUS=J
-               IMINCLUS=I
-              END IF !(R2.GT.R1)
-
-              REALCLUS(IMINCLUS)=0 !The smallest halo is removed
-              CONTA=CONTA+1
 
 C              RADIO(IMAXCLUS)=(R1**3+R2**3)**(1.0/3.0)
 C              CLUSRX(IMAXCLUS)=(M1*X1+M2*X2)/(M1+M2)
@@ -201,16 +200,13 @@ C              write(*,*) vint
 C              write(*,*) '-->',CLUSRX(IMAXCLUS),CLUSRY(IMAXCLUS),
 C     &                         CLUSRZ(IMAXCLUS),RADIO(IMAXCLUS)
 
-             END IF !(VINT.GT.SOLAP_LOWER_THR)
-            END IF !(BAS.LT.1.0)
-           END IF !(BASINT2.NE.0)
-          END DO !J=I+1,LOWH2
-         END IF !(BASINT.NE.0) THEN
-        END DO !I=LOWH1,LOWH2
+            END IF !(VINT.GT.SOLAP_LOWER_THR)
+           END IF !(BAS.LT.1.0)
+          END IF !(BASINT2.NE.0)
+         END DO !J=I+1,LOWH2
+        END IF !(BASINT.NE.0) THEN
+       END DO !I=LOWH1,LOWH2
 
-        IF (CONTA.EQ.0) FLAG_ITER=0
-        !WRITE(*,*) 'OVERLAPPING',IR,NUM_ITERS,CONTA
-       END DO !WHILE (FLAG_ITER.EQ.1)
 
        BASINT=COUNT(REALCLUS(LOWH1:LOWH2).EQ.0)
        WRITE(*,*) 'REMOVED HALOS_0----->', BASINT
@@ -296,7 +292,7 @@ c       WRITE(*,*)
        INTEGER K1,BORAMR,IRR,BASINT,FLAG_ITER,BOR,FLAG,FLAG_DUP
        REAL PRUEBAX,PRUEBAY,PRUEBAZ,RMIN,BASMASS_SHELL,BASMASS,DELTA
        REAL ESP,ESP_LOG,BAS,KK_REAL,RSHELL,R_INT,R_EXT,RANT,LADO0
-       REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL
+       REAL BASDELTA,AA,PI,VOLCELL,BASX,BASY,BASZ,BASVOL,BOUNDIR2
        REAL X1,X2,Y1,Y2,Z1,Z2,DXPA,DYPA,DZPA,BASXX,BASYY,BASZZ
        REAL XCEN,YCEN,ZCEN,BOUNDIR,X3,Y3,Z3,X4,Y4,Z4,MINDERIV
        REAL VECDENS(1000),VECRAD(1000),DERIVATIVE(1000),BASVOL_SHELL
@@ -480,29 +476,6 @@ c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
 
 *        tentative reach of the halo ---> build a mini box around it
 *        (by excess, set as a parameter in asohf.dat)
-         BASX=XCEN-BOUND
-         NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
-         IF (NX1.LT.1) NX1=1
-
-         BASX=XCEN+BOUND
-         NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
-         IF (NX2.GT.NX) NX2=NX
-
-         BASY=YCEN-BOUND
-         NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
-         IF (NY1.LT.1) NY1=1
-
-         BASY=YCEN+BOUND
-         NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
-         IF (NY2.GT.NY) NY2=NY
-
-         BASZ=ZCEN-BOUND
-         NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
-         IF (NZ1.LT.1) NZ1=1
-
-         BASZ=ZCEN+BOUND
-         NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
-         IF (NZ2.GT.NZ) NZ2=NZ
 
 *        Now, we extend the cluster radially from its center
          BASX=0.0
@@ -534,6 +507,30 @@ c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
             STOP
            END IF
           END IF
+
+          BASX=XCEN-R_EXT
+          NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
+          IF (NX1.LT.1) NX1=1
+
+          BASX=XCEN+R_EXT
+          NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
+          IF (NX2.GT.NX) NX2=NX
+
+          BASY=YCEN-R_EXT
+          NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
+          IF (NY1.LT.1) NY1=1
+
+          BASY=YCEN+R_EXT
+          NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
+          IF (NY2.GT.NY) NY2=NY
+
+          BASZ=ZCEN-R_EXT
+          NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+          IF (NZ1.LT.1) NZ1=1
+
+          BASZ=ZCEN+R_EXT
+          NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+          IF (NZ2.GT.NZ) NZ2=NZ
 
           VOLCELL=DX*DY*DZ
           BASMASS_SHELL=0.0
@@ -835,11 +832,15 @@ c         END DO
 *         Assert we have not yet identified this same halo (dupplicated
 *          due to recentering)
             FLAG_DUP=0
+!$OMP PARALLEL DO SHARED(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,XCEN,YCEN,
+!$OMP+                   ZCEN),
+!$OMP+            PRIVATE(II),
+!$OMP+            REDUCTION(MAX:FLAG_DUP),
+!$OMP+            DEFAULT(NONE)
             DO II=1,NCLUS
              IF ((XCEN-CLUSRX(II))**2+(YCEN-CLUSRY(II))**2+
      &           (ZCEN-CLUSRZ(II))**2.LT.RADIO(II)**2) THEN
               FLAG_DUP=1
-              EXIT
              END IF
             END DO
             IF (FLAG_DUP.EQ.1) CYCLE
@@ -859,36 +860,6 @@ c         END DO
             WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
             STOP
            END IF
-
-*          tentative reach of the base grid
-           BASX=XCEN-BOUNDIR
-           NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
-           IF (NX1.LT.1) NX1=1
-
-           BASX=XCEN+BOUNDIR
-           NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
-           IF (NX2.GT.NX) NX2=NX
-
-           BASY=YCEN-BOUNDIR
-           NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
-           IF (NY1.LT.1) NY1=1
-
-           BASY=YCEN+BOUNDIR
-           NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
-           IF (NY2.GT.NY) NY2=NY
-
-           BASZ=ZCEN-BOUNDIR
-           NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
-           IF (NZ1.LT.1) NZ1=1
-
-           BASZ=ZCEN+BOUNDIR
-           NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
-           IF (NZ2.GT.NZ) NZ2=NZ
-
-*          patches that could contain this halo
-           CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
-     &                         PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR,
-     &                         IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
 
 c           WRITE(*,*) CLUSRX(NCLUS),NX1,NX2,RADX(NX1),RADX(NX2)
 c           DO I=1,NRELEVANT_PATCHES(1)
@@ -932,8 +903,38 @@ c           END DO
              END IF
             END IF
 
-            BASMASS_SHELL=0.0
+            BOUNDIR2=R_EXT
+*           tentative reach of the base grid
+            BASX=XCEN-BOUNDIR2
+            NX1=INT(((BASX-RADX(1))/DX)+0.5)+1
+            IF (NX1.LT.1) NX1=1
 
+            BASX=XCEN+BOUNDIR2
+            NX2=INT(((BASX-RADX(1))/DX)+0.5)+1
+            IF (NX2.GT.NX) NX2=NX
+
+            BASY=YCEN-BOUNDIR2
+            NY1=INT(((BASY-RADY(1))/DY)+0.5)+1
+            IF (NY1.LT.1) NY1=1
+
+            BASY=YCEN+BOUNDIR2
+            NY2=INT(((BASY-RADY(1))/DY)+0.5)+1
+            IF (NY2.GT.NY) NY2=NY
+
+            BASZ=ZCEN-BOUNDIR2
+            NZ1=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+            IF (NZ1.LT.1) NZ1=1
+
+            BASZ=ZCEN+BOUNDIR2
+            NZ2=INT(((BASZ-RADZ(1))/DZ)+0.5)+1
+            IF (NZ2.GT.NZ) NZ2=NZ
+
+*          patches that could contain this halo
+            CALL PATCHES_SPHERE(NPATCH,PATCHRX,PATCHRY,PATCHRZ,PATCHNX,
+     &                          PATCHNY,PATCHNZ,XCEN,YCEN,ZCEN,BOUNDIR2,
+     &                         IR,NL,RELEVANT_PATCHES,NRELEVANT_PATCHES)
+
+            BASMASS_SHELL=0.0
             VOLCELL=DX*DY*DZ
 !$0MP PARALLEL DO SHARED(NZ1,NZ2,NY1,NY2,NX1,NX2,RADX,RADY,RADZ,XCEN,
 !$OMP+                   YCEN,ZCEN,R_INT,R_EXT,VOLCELL,U1,CR0AMR),
@@ -974,17 +975,18 @@ c           END DO
              LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
              LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
              VOLCELL=DXPAPA*DYPAPA*DZPAPA
+!$0MP PARALLEL DO SHARED(RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,R_EXT,CONTA,
+!$OMP+                   VOLCELL,U11,CR0AMR11,SOLAP,RELEVANT_PATCHES,
+!$OMP+	                  PATCHNX,PATCHNY,PATCHNZ,LOW1,LOW2),
+!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS,BASINT,IPATCH,N1,N2,N3),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
              DO BASINT=LOW1,LOW2
               IPATCH=RELEVANT_PATCHES(BASINT)
               N1=PATCHNX(IPATCH)
               N2=PATCHNY(IPATCH)
               N3=PATCHNZ(IPATCH)
-!$0MP PARALLEL DO SHARED(N1,N2,N3,RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,IPATCH,
-!$OMP+                   R_EXT,CONTA,VOLCELL,U11,CR0AMR11,SOLAP),
-!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS),
-!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
-!$OMP+                        BASDELTA,II),
-!$OMP+            DEFAULT(NONE)
               DO KZ=1,N3
               DO JY=1,N2
               DO IX=1,N1
@@ -1022,18 +1024,19 @@ c           END DO
             LOW1=SUM(NRELEVANT_PATCHES(1:IRR-1))+1
             LOW2=SUM(NRELEVANT_PATCHES(1:IRR))
             VOLCELL=DXPAPA*DYPAPA*DZPAPA
+!$0MP PARALLEL DO SHARED(RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,IPATCH,R_EXT,
+!$OMP+                   CONTA1,VOLCELL,U11,SOLAP,LOW1,LOW2,
+!$OMP+		                 RELEVANT_PATCHES,PATCHNX,PATCHNY,PATCHNZ),
+!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS,BASINT,IPATCH,N1,N2,N3),
+!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
+!$OMP+                        BASDELTA,II),
+!$OMP+            DEFAULT(NONE)
             DO BASINT=LOW1,LOW2
              IPATCH=RELEVANT_PATCHES(BASINT)
              !if (ir.gt.1) write(*,*) 'ipatch=',ipatch,low1,low2,basint
              N1=PATCHNX(IPATCH)
              N2=PATCHNY(IPATCH)
              N3=PATCHNZ(IPATCH)
-!$0MP PARALLEL DO SHARED(N1,N2,N3,RX,RY,RZ,XCEN,YCEN,ZCEN,R_INT,IPATCH,
-!$OMP+                   R_EXT,CONTA1,VOLCELL,U11,SOLAP),
-!$OMP+            PRIVATE(IX,JY,KZ,AA,BAS),
-!$OMP+            REDUCTION(+:BASVOL,BASMASS_SHELL,BASX,BASY,BASZ,
-!$OMP+                        BASDELTA,II),
-!$OMP+            DEFAULT(NONE)
              DO KZ=1,N3
              DO JY=1,N2
              DO IX=1,N1
