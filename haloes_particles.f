@@ -119,13 +119,19 @@
          INTEGER NUM_PART_HAL
 
          INTEGER I
-         REAL BASR,R2
+         REAL BASR,R2,BASX2,BASY2,BASZ2
 
          NUM_PART_HAL=0
          R2=R**2
 
          DO I=1,N_DM
-          BASR=(RXPA(I)-CMX)**2 + (RYPA(I)-CMY)**2 + (RZPA(I)-CMZ)**2
+          BASX2=(RXPA(I)-CMX)**2
+          IF (BASX2.GT.R2) CYCLE
+          BASY2=(RYPA(I)-CMY)**2
+          IF (BASY2.GT.R2) CYCLE
+          BASZ2=(RZPA(I)-CMZ)**2
+          IF (BASZ2.GT.R2) CYCLE
+          BASR=BASX2+BASY2+BASZ2
           IF (BASR.LT.R2) NUM_PART_HAL=NUM_PART_HAL+1
          END DO
 
