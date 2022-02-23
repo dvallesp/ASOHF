@@ -1898,14 +1898,19 @@ COJO       REAL*8 POT(KONTA)
 
        IF (KONTA2.GT.0) THEN
         SIGMA2=0.D0
-        DO J=1,KONTA2
+        DO J=1,IDX_VIR
          JJ=LIP(J)
          BAS=(U2DM(JJ)-VXCM)**2+(U3DM(JJ)-VYCM)**2+(U4DM(JJ)-VZCM)**2
          DESV2(J)=BAS
          SIGMA2=SIGMA2+BAS
         END DO
+        DO J=IDX_VIR+1,KONTA2
+         JJ=LIP(J)
+         BAS=(U2DM(JJ)-VXCM)**2+(U3DM(JJ)-VYCM)**2+(U4DM(JJ)-VZCM)**2
+         DESV2(J)=BAS
+        END DO
 
-        IF (KONTA2.GT.1) SIGMA2=SIGMA2/(KONTA2-1)
+        IF (IDX_VIR.GT.1) SIGMA2=SIGMA2/(IDX_VIR-1)
 
 *       Find particles with too large relative velocity
         DO J=1,KONTA2
