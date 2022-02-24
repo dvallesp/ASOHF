@@ -1162,10 +1162,11 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
          FAC=FAC+1
          KONTA2PREV=KONTA2
+         USELESS_INT=KONTA2
          CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
      &                   MASAP,RXPA,RYPA,RZPA,RSUB,MSUB,CLUSRXCM,
      &                   CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,VY,VZ,
-     &                   REALCLUS,KONTA2,MAX_NUM_PART,KONTA)
+     &                   REALCLUS,KONTA2,MAX_NUM_PART,USELESS_INT)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA,KONTA2,0,MAX_NUM_PART,USELESS_INT)
          REF_MAX=DISTA(KONTA2)
@@ -1192,10 +1193,12 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
          FAC=FAC+1
          KONTA2PREV=KONTA2
+         USELESS_INT=KONTA2
          CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,RXPA,
      &                        RYPA,RZPA,MASAP,RSUB,MSUB,CLUSRXCM,
      &                        CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,
-     &                        VY,VZ,REALCLUS,KONTA2,MAX_NUM_PART,KONTA)
+     &                        VY,VZ,REALCLUS,KONTA2,MAX_NUM_PART,
+     &                        USELESS_INT)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA,KONTA2,0,MAX_NUM_PART,USELESS_INT)
          REF_MAX=DISTA(KONTA2)

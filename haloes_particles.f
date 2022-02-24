@@ -407,6 +407,12 @@ c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
           IX=INT((RXPA(IP)-XL)/DDXX)+1
           JY=INT((RYPA(IP)-YL)/DDXX)+1
           KZ=INT((RZPA(IP)-ZL)/DDXX)+1
+          IF (IX.LT.1) IX=1
+          IF (IX.GT.NN) IX=NN
+          IF (JY.LT.1) JY=1
+          IF (JY.GT.NN) JY=NN
+          IF (KZ.LT.1) KZ=1
+          IF (KZ.GT.NN) KZ=NN
           !IF (JY.EQ.0) WRITE(*,*) (RYPA(IP)-YL)/DDXX
           DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(IP)
          END DO
