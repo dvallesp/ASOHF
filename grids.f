@@ -2228,8 +2228,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
 
 ************************************************************************
         SUBROUTINE VEINSGRID(IR,NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,
-     &             PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,SOLAP,
-     &             VECINO,NVECI)
+     &             PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,SOLAP)
 ************************************************************************
 *       Finds the overlaps between patches in a given level of the
 *       grid hierarchy

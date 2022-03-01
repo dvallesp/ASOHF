@@ -3,9 +3,9 @@
      &             PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
      &             PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
      &             CLUSRZ,REALCLUS,LEVHAL,NHALLEV,BOUND,CONTRASTEC,RODO,
-     &             SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS,
-     &             VOL_SOLAP_LOW,CLUSRXCM,CLUSRYCM,CLUSRZCM,RSUB,MSUB,
-     &             SUBS_LEV,UM,PROFILES)
+     &             SOLAP,CR0AMR,CR0AMR11,PATCHCLUS,VOL_SOLAP_LOW,
+     &             CLUSRXCM,CLUSRYCM,CLUSRZCM,RSUB,MSUB,SUBS_LEV,UM,
+     &             PROFILES)
 ********************************************************************
 *      Pipeline for tentative halo finding over the grid
 ********************************************************************
@@ -29,7 +29,6 @@
        INTEGER NHALLEV(0:NLEVELS)
        REAL BOUND,CONTRASTEC,RODO
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
-       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL VOL_SOLAP_LOW

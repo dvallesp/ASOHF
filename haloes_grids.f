@@ -29,8 +29,7 @@
      &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
-     &                        VECINO,NVECI,CR0AMR,CR0AMR11,
-     &                        VOL_SOLAP_LOW)
+     &                        CR0AMR,CR0AMR11,VOL_SOLAP_LOW)
 ********************************************************************
 *      Detect and correct overlaps on the cluster catalogue
 ********************************************************************
@@ -52,7 +51,6 @@
        INTEGER NHALLEV(0:NLEVELS)
        REAL BOUND,CONTRASTEC,RODO
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
-       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL VOL_SOLAP_LOW
@@ -227,9 +225,8 @@ c       WRITE(*,*)
      &                          PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
      &                          CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
      &                          NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
-     &                          VECINO,NVECI,CR0AMR,CR0AMR11,PATCHCLUS,
-     &                          VOL_SOLAP_LOW,CLUSRXCM,CLUSRYCM,
-     &                          CLUSRZCM)
+     &                          CR0AMR,CR0AMR11,PATCHCLUS,VOL_SOLAP_LOW,
+     &                          CLUSRXCM,CLUSRYCM,CLUSRZCM)
 ********************************************************************
 *      Pipeline for tentative halo finding over the grid
 ********************************************************************
@@ -253,7 +250,6 @@ c       WRITE(*,*)
        INTEGER NHALLEV(0:NLEVELS)
        REAL BOUND,CONTRASTEC,RODO
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
-       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV)
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL VOL_SOLAP_LOW
@@ -598,7 +594,7 @@ C     &                            (CLUSRZ(NCLUS)-CLUSRZCM(NCLUS))**2)
      &                  PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
      &                  PARE,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
      &                  REALCLUS,LEVHAL,NHALLEV,BOUND,CONTRASTEC,RODO,
-     &                  SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,
+     &                  SOLAP,CR0AMR,CR0AMR11,
      &                  VOL_SOLAP_LOW)
 
        WRITE(*,*) 'End of base level', 0
@@ -1097,8 +1093,7 @@ c     &                RADIO(NCLUS),MASA(NCLUS)*9.1717E18,IR
      &                    PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,
      &                    PARE,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,
      &                    REALCLUS,LEVHAL,NHALLEV,BOUND,CONTRASTEC,RODO,
-     &                    SOLAP,VECINO,NVECI,CR0AMR,CR0AMR11,
-     &                    VOL_SOLAP_LOW)
+     &                    SOLAP,CR0AMR,CR0AMR11,VOL_SOLAP_LOW)
 
          WRITE(*,*)
 
@@ -1181,18 +1176,6 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
         END DO !(IR=1,NL)
 
        END IF !(NL.GT.0)
-
-C       DO IR=0,NL
-C        IF (NHALLEV(IR).GT.0) THEN
-C         CALL OVERLAPPING(IR,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
-C     &                        PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
-C     &                        PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
-C     &                        CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
-C     &                        NHALLEV,BOUND,CONTRASTEC,RODO,SOLAP,
-C     &                        VECINO,NVECI,CR0AMR,CR0AMR11,
-C     &                        VOL_SOLAP_LOW)
-C        END IF
-C       END DO
 
        BASINT=COUNT(REALCLUS(1:NCLUS).EQ.-1)
        WRITE(*,*) '====> TOTAL NUMBER OF TENTATIVE FREE HALOES',BASINT
@@ -1440,82 +1423,6 @@ c       WRITE(*,*) '-----'
         LOW3=LOW3+NRELEVANT_PATCHES(IR)
        END DO
 
-
-       RETURN
-       END
-
-********************************************************************
-       SUBROUTINE FIND_NEIGHBOURING_PATCHES(IR,NL,CEL,PARE,VECINO,
-     &                                      NVECI,NPATCH,VID,NVID)
-********************************************************************
-*      Finds recursively all the patches touching a given one,
-*      and does the same with their parents up to level 1
-*      UNUSED NOW / NOT WORKING
-********************************************************************
-       IMPLICIT NONE
-       INCLUDE 'input_files/asohf_parameters.dat'
-
-       INTEGER IR,NL,CEL
-       INTEGER VECINO(NPALEV,NPALEV),NVECI(NPALEV),NPATCH(0:NLEVELS)
-       INTEGER PARE(NPALEV),VID(NLEVELS,NPALEV),NVID(NLEVELS)
-
-       INTEGER IRR,FLAG,NV,NV2,NV3,II,JJ,LOW1,LOW2,KK_ENTERO,IPATCH
-       INTEGER CONTAP(NPALEV)
-
-       DO II=1,NL
-        NVID(II)=0
-        DO JJ=1,NPALEV
-         VID(II,JJ)=0
-        END DO
-       END DO
-
-       IPATCH=CEL
-
-       DO IRR=IR,1,-1
-
-        FLAG=0
-
-        NV=1        !first neighbour: the patch itself
-        VID(IRR,NV)=IPATCH
-
-        NV2=0
-        NV3=NV
-
-        LOW1=SUM(NPATCH(0:IRR-1))+1
-        LOW2=SUM(NPATCH(0:IRR))
-        write(*,*) irr,low1,low2
-        CONTAP(LOW1:LOW2)=1    !(1 vale, 0 no)
-        CONTAP(VID(IRR,NV))=0      !asi este no se puede autocontar
-        write(*,*) irr,ipatch,nveci(vid(irr,1))
-        DO WHILE (FLAG.EQ.0)
-         DO II=NV2+1, NV3
-          DO JJ=1, NVECI(VID(IRR,II))
-           KK_ENTERO=0
-           KK_ENTERO=CONTAP(VECINO(JJ,VID(IRR,II)))
-           if (irr.eq.1) write(*,*) ii,jj,VECINO(JJ,VID(IRR,II)),
-     &                              VID(IRR,II),kk_entero
-           IF (KK_ENTERO.EQ.1) THEN
-            NV=NV+1
-            VID(IRR,NV)=VECINO(JJ,VID(IRR,II))
-            CONTAP(VECINO(JJ,VID(IRR,II)))=0
-           END IF
-          END DO
-         END DO
-
-         IF (NV.EQ.NV3) THEN
-          FLAG=1
-         ELSE
-          NV2=NV3
-          NV3=NV
-         END IF
-
-        END DO  ! WHILE (FLAG)
-
-        NVID(IRR)=NV
-
-        IF (IRR.GT.1) IPATCH=PARE(IPATCH)
-
-       END DO !IRR=IR,1,-1
 
        RETURN
        END
