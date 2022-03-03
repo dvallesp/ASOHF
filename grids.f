@@ -454,7 +454,8 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
 !$OMP+                    BASINT,NP1,NP2,NP3,I1,I2,J1,J2,K1,K2,N1,N2,N3,
 !$OMP+                    MARCA,NBIS,BAS,I1BIS,I2BIS,J1BIS,J2BIS,K1BIS,
 !$OMP+                    K2BIS),
-!$OMP+            DEFAULT(NONE)
+!$OMP+            DEFAULT(NONE),
+!$OMP+            SCHEDULE(DYNAMIC)
        DO IPARE=LOW1,LOW2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         REFINE_COUNT=COUNT(CR01(:,:,:,IPARE).GE.REFINE_THR)
         IPATCH=0
@@ -2782,7 +2783,127 @@ C        WRITE(*,*) LVAL(I,IPARE)
          END DO
         END DO
 
-
-
         RETURN
         END
+
+
+*********************************************************************
+       SUBROUTINE SORT_DM_PARTICLES_X(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,
+     &                                RZPA,ORIPA,N_DM,NDMPART_X,NX,
+     &                                LADO0)
+*********************************************************************
+*      Reorders DM particles by species (assumes there are N_ESP
+*       especies, each 8 times lighter than the previous one)
+*********************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
+       REAL*4 MASAP(PARTIRED)
+       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
+       INTEGER ORIPA(PARTIRED)
+       INTEGER N_DM,NDMPART_X(0:NMAX),NX
+       REAL*4 LADO0
+
+       INTEGER I,CONTA,IX,IXLAST
+       REAL XL,DX,RADXR(0:NMAX)
+       INTEGER,ALLOCATABLE::INDICES(:)
+       REAL,ALLOCATABLE::SCR(:,:)
+       INTEGER,ALLOCATABLE::SCRINT(:,:)
+
+       WRITE(*,*) 'Sorting particles by X coordinate',
+     &            ' (for faster search)'
+
+       DO I=1,NX
+        NDMPART_X(I)=0
+       END DO
+
+       ALLOCATE(INDICES(1:N_DM))
+       CALL INDEXX(N_DM,RXPA(1:N_DM),INDICES)
+
+       ALLOCATE(SCR(1:7,1:N_DM), SCRINT(1,1:N_DM))
+
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        SCR(1,I)=RXPA(INDICES(I))
+        SCR(2,I)=RYPA(INDICES(I))
+        SCR(3,I)=RZPA(INDICES(I))
+        SCR(4,I)=U2DM(INDICES(I))
+        SCR(5,I)=U3DM(INDICES(I))
+        SCR(6,I)=U4DM(INDICES(I))
+        SCR(7,I)=MASAP(INDICES(I))
+        SCRINT(1,I)=ORIPA(INDICES(I))
+       END DO
+
+       DEALLOCATE(INDICES)
+
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        RXPA(I)=SCR(1,I)
+        RYPA(I)=SCR(2,I)
+        RZPA(I)=SCR(3,I)
+        U2DM(I)=SCR(4,I)
+        U3DM(I)=SCR(5,I)
+        U4DM(I)=SCR(6,I)
+        MASAP(I)=SCR(7,I)
+        ORIPA(I)=SCRINT(1,I)
+       END DO
+
+       DEALLOCATE(SCR,SCRINT)
+
+       XL=-LADO0/2
+       DX=LADO0/NX
+       DO I=0,NX
+        !RADXL(I)=XL+(I-1)*DX ! X left interface of cell I
+        RADXR(I)=XL+I*DX ! X right interface of cell I
+       END DO
+
+       NDMPART_X(0)=0
+       IX=1
+       DO I=1,N_DM
+        IF (RXPA(I).GT.RADXR(IX)) THEN
+         NDMPART_X(IX)=I-1
+         IX=IX+1
+         DO WHILE (RXPA(I).GT.RADXR(IX))
+          NDMPART_X(IX)=I-1
+          IX=IX+1
+         END DO
+        END IF
+       END DO
+
+       IXLAST=IX
+       DO IX=IXLAST,NX
+        NDMPART_X(IX)=I-1
+       END DO
+
+c       WRITE(*,*) 'CHECKING'
+c       DO IX=1,NX
+c        WRITE(*,*) IX,':',NDMPART_X(IX-1)+1,NDMPART_X(IX),':',
+c     &             radxr(ix-1),radxr(ix)
+c        if (ix.eq.1) then
+c         WRITE(*,*) ' --> just before left',' first particle'
+c        else
+c         WRITE(*,*) ' --> just before left',RXPA(NDMPART_X(IX-1))
+c        end if
+c
+c        WRITE(*,*) ' --> just after left', RXPA(NDMPART_X(IX-1)+1)
+c        WRITE(*,*) ' --> just before right',RXPA(NDMPART_X(IX))
+c        if (ix.eq.nx) then
+c         WRITE(*,*) ' --> just after right',' last particle'
+c        else
+c         WRITE(*,*) ' --> just after right',RXPA(NDMPART_X(IX)+1)
+c        end if
+c
+c       END DO
+
+       WRITE(*,*)
+
+       RETURN
+       END

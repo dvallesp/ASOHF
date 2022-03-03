@@ -103,10 +103,39 @@
         RETURN
         END
 
+**********************************************************************
+        SUBROUTINE FIND_PARTICLE_INDICES(CX,R,XLDOM,NDMPART_X,
+     &                                   LOWP1,LOWP2)
+**********************************************************************
+*        Find the relevant particles (left and right bounds of the
+*         particles arrays)
+**********************************************************************
+        IMPLICIT NONE
+        INCLUDE 'input_files/asohf_parameters.dat'
+
+        REAL CX,R,XLDOM
+        INTEGER NDMPART_X(0:NMAX)
+        INTEGER LOWP1,LOWP2
+
+        REAL*4 DX,DY,DZ
+        COMMON /ESPACIADO/ DX,DY,DZ
+
+        INTEGER POS1,POS2
+
+        POS1=INT(((CX-R)-XLDOM)/DX)+1
+        POS2=INT(((CX+R)-XLDOM)/DX)+1
+        IF (POS1.LT.1) POS1=1
+        IF (POS2.GT.NMAX) POS2=NMAX
+        LOWP1=NDMPART_X(POS1-1)
+        LOWP2=NDMPART_X(POS2)
+
+        RETURN
+        END
+
 
 **********************************************************************
-        SUBROUTINE COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,
-     &                                  CMX,CMY,CMZ,R,NUM_PART_HAL)
+        SUBROUTINE COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CX,CY,CZ,
+     &                                  R,NDMPART_X,XLDOM,NUM_PART_HAL)
 **********************************************************************
 *       Counts number of particles inside a halo
 **********************************************************************
@@ -115,21 +144,24 @@
 
          REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
          INTEGER N_DM
-         REAL CMX,CMY,CMZ,R
+         REAL CX,CY,CZ,R
+         INTEGER NDMPART_X(0:NMAX)
+         REAL XLDOM
          INTEGER NUM_PART_HAL
 
-         INTEGER I
+         INTEGER I,LOWP1,LOWP2
          REAL BASR,R2,BASX2,BASY2,BASZ2
 
          NUM_PART_HAL=0
          R2=R**2
 
-         DO I=1,N_DM
-          BASX2=(RXPA(I)-CMX)**2
+         CALL FIND_PARTICLE_INDICES(CX,R,XLDOM,NDMPART_X,LOWP1,LOWP2)
+         DO I=LOWP1,LOWP2
+          BASX2=(RXPA(I)-CX)**2
           IF (BASX2.GT.R2) CYCLE
-          BASY2=(RYPA(I)-CMY)**2
+          BASY2=(RYPA(I)-CY)**2
           IF (BASY2.GT.R2) CYCLE
-          BASZ2=(RZPA(I)-CMZ)**2
+          BASZ2=(RZPA(I)-CZ)**2
           IF (BASZ2.GT.R2) CYCLE
           BASR=BASX2+BASY2+BASZ2
           IF (BASR.LT.R2) NUM_PART_HAL=NUM_PART_HAL+1
@@ -141,8 +173,8 @@
 **********************************************************************
        SUBROUTINE PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                              REALCLUS,RXPA,RYPA,RZPA,N_DM,
-     &                              MIN_NUM_PART,DMPCLUS,FACRAD,
-     &                              DO_NEED_TO_COUNT)
+     &                              MIN_NUM_PART,DMPCLUS,NDMPART_X,
+     &                              LADO0,FACRAD,DO_NEED_TO_COUNT)
 **********************************************************************
 *       Removes haloes with too few particles
 **********************************************************************
@@ -157,19 +189,20 @@
         REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
         INTEGER N_DM,MIN_NUM_PART
         INTEGER DMPCLUS(MAXNCLUS)
-        REAL FACRAD
+        INTEGER NDMPART_X(0:NMAX)
+        REAL LADO0,FACRAD
         INTEGER DO_NEED_TO_COUNT
 
         INTEGER I,BASINT,KONTA2
-        REAL CMX,CMY,CMZ,RR
+        REAL CMX,CMY,CMZ,RR,XLDOM
 
         KONTA2=0
-
+        XLDOM=-LADO0/2
 
         IF (DO_NEED_TO_COUNT.EQ.1) THEN
 !$OMP PARALLEL DO SHARED(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,N_DM,
 !$OMP+                   MIN_NUM_PART,REALCLUS,RXPA,RYPA,RZPA,FACRAD,
-!$OMP+                   DMPCLUS),
+!$OMP+                   DMPCLUS,NDMPART_X,XLDOM),
 !$OMP+            PRIVATE(I,CMX,CMY,CMZ,RR,BASINT),
 !$OMP+            REDUCTION(+:KONTA2)
 !$OMP+            DEFAULT(NONE)
@@ -182,7 +215,7 @@
           RR=FACRAD*RADIO(I)
 
           CALL COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CMX,CMY,CMZ,RR,
-     &                              BASINT)
+     &                              NDMPART_X,XLDOM,BASINT)
 
           IF (BASINT.LT.MIN_NUM_PART) THEN
            REALCLUS(I)=0
@@ -323,21 +356,22 @@
 
 **********************************************************************
         SUBROUTINE RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,R,RXPA,RYPA,
-     &                                             RZPA,MASAP,N_DM,
-     &                                             DXPAMIN,MAX_NUM_PART)
+     &               RZPA,MASAP,N_DM,DXPAMIN,XLDOM,NDMPART_X,
+     &               MAX_NUM_PART)
 **********************************************************************
 *       Recenters density peak using particles
 **********************************************************************
         IMPLICIT NONE
         INCLUDE 'input_files/asohf_parameters.dat'
 
-        REAL CX,CY,CZ,R
+        REAL CX,CY,CZ,R,XLDOM
         REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
      &         MASAP(PARTIRED),DXPAMIN
-        INTEGER N_DM,MAX_NUM_PART
+        INTEGER N_DM,MAX_NUM_PART,NDMPART_X(0:NMAX)
 
         INTEGER KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP,MAX_NUM_PART_LOCAL
         INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN,WELL_ALLOCATED
+        INTEGER LOWP1,LOWP2
         REAL RADIO,BAS,XL,YL,ZL,DDXX,BASX,BASY,BASZ
         REAL,ALLOCATABLE::DENS(:,:,:)
         INTEGER,ALLOCATABLE::LIP(:)
@@ -356,7 +390,9 @@
          RADIO=MAX(0.05*R,DXPAMIN)
          DO WHILE (FLAG_LARGER.EQ.1)
           KONTA=0
-          DO I=1,N_DM
+          CALL FIND_PARTICLE_INDICES(CX,RADIO,XLDOM,NDMPART_X,
+     &                               LOWP1,LOWP2)
+          DO I=LOWP1,LOWP2
            IF (CX-RADIO.LT.RXPA(I).AND.RXPA(I).LT.CX+RADIO.AND.
      &         CY-RADIO.LT.RYPA(I).AND.RYPA(I).LT.CY+RADIO.AND.
      &         CZ-RADIO.LT.RZPA(I).AND.RZPA(I).LT.CZ+RADIO) THEN
@@ -367,7 +403,7 @@
             END IF
             LIP(KONTA)=I
            END IF
-          END DO !I=1,N_DM
+          END DO !I=LOWP1,LOWP2
 
           IF (WELL_ALLOCATED.EQ.0) EXIT
 
@@ -481,7 +517,8 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
+     &      NDMPART_X)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -522,6 +559,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
        INTEGER MIN_NUM_PART
+       INTEGER NDMPART_X(0:NMAX)
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -542,7 +580,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER FLAG200C,FLAG500C,FLAG2500C,FLAG200M,FLAG500M,FLAG2500M
        INTEGER FLAGVIR,EACH_PROF,IPATCH,IRR,MOST_BOUND_IDX,LOWP1,LOWP2
        INTEGER NCAPAS(NMAXNCLUS),MAX_NUM_PART,WELL_ALLOCATED,IDX_VIR
-       REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS
+       REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS,XLDOM
        REAL VVV2,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
        REAL DENSA,DENSB,DENSC,VKK,AA,XP,YP,ZP,MP,t1,t2
@@ -566,6 +604,7 @@ c     &              IX,JY,KZ,FLAG_ITER
 
        PI=DACOS(-1.D0)
        GCONS=4.301E-9 ! in Msun^-1*Mpc*km^2*s^-2
+       XLDOM=-LADO0/2
 
        DIMEN=3   !DIMENSION DE LOS HALOS
        NCAPAS=0
@@ -619,7 +658,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR,PROFILES,
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
-!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA),
+!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,XLDOM,NDMPART_X),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -632,7 +671,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           CX,CY,CZ,JJCORE,RADII_ITER,BASVCM,IPATCH,IRR,BASVX,
 !$OMP+           BASVY,BASVZ,SIGMA_HALO,EKIN,EPOT,MOST_BOUND_IDX,
 !$OMP+           ID_PROC,IPART_PROC,BAS8,INERTIA8,MAX_NUM_PART,
-!$OMP+           WELL_ALLOCATED,IDX_VIR),
+!$OMP+           WELL_ALLOCATED,IDX_VIR,LOWP1,LOWP2),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=1,NCLUS
@@ -662,8 +701,8 @@ c       WRITE(*,*)'=================================='
         BAS=RADIO(I)
 
         CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
-     &                                       RZPA,MASAP,N_DM,
-     &                                       DX/2.0**IRR,MAX_NUM_PART)
+     &          RZPA,MASAP,N_DM,DX/2.0**IRR,XLDOM,NDMPART_X,
+     &          MAX_NUM_PART)
 
         BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
         BAS=SQRT(BAS)
@@ -716,7 +755,9 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
           MASADM=0.D0
 
           BAS=-1.0
-          DO J=1,N_DM
+          CALL FIND_PARTICLE_INDICES(CX,RCLUS,XLDOM,NDMPART_X,
+     &                               LOWP1,LOWP2)
+          DO J=LOWP1,LOWP2
            XP=RXPA(J)
            YP=RYPA(J)
            ZP=RZPA(J)

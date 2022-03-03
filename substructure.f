@@ -755,7 +755,7 @@ C        WRITE(*,*) 'Not found progenitor'
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
      &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
-     &      MAX_NUM_PART)
+     &      MAX_NUM_PART,NDMPART_X)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -796,6 +796,7 @@ C        WRITE(*,*) 'Not found progenitor'
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
        INTEGER MIN_NUM_PART,MAX_NUM_PART
+       INTEGER NDMPART_X(0:NMAX)
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -818,7 +819,7 @@ C        WRITE(*,*) 'Not found progenitor'
        INTEGER NCAPAS(NMAXNCLUS),IPATCH,IRR,MINJ,DIR,J_JACOBI,EACH_PROF
        INTEGER MOST_BOUND_IDX,USELESS_INT,WELL_ALLOCATED
        INTEGER LOWP1,LOWP2,MAX_NUM_PART_COM
-       REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS
+       REAL ESP,REF,REF_MIN,REF_MAX,DIS,VCM,MINOVERDENS,XLDOM
        REAL VVV2,CONCEN,RS,BAS,AADM,CMX,CMY,CMZ,VCMX,VCMY,CX,CY,CZ
        REAL VCMZ,MASA2,NORMA,BAS1,BAS2,VOL,DELTA2,RSHELL,RCLUS,BASVEC(3)
        REAL DENSA,DENSB,DENSC,VKK,AA,XP,YP,ZP,MP
@@ -842,6 +843,7 @@ C        WRITE(*,*) 'Not found progenitor'
 
        PI=DACOS(-1.D0)
        GCONS=4.301E-9 ! in Msun^-1*Mpc*km^2*s^-2
+       XLDOM=-LADO0/2
 
        DIMEN=3   !DIMENSION DE LOS HALOS
        NCAPAS=0
@@ -886,7 +888,8 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           LOWH2,PATCHCLUS,NPATCH,PROFILES,NCAPAS,
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
-!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,MAX_NUM_PART_COM),
+!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,MAX_NUM_PART_COM,XLDOM,
+!$OMP+           NDMPART_X),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -900,7 +903,7 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           FLAG_JACOBI,MHOST,DISTHOST,EQ_JACOBI_R,IPATCH,IRR,
 !$OMP+           J_JACOBI,EACH_PROF,BASVX,BASVY,BASVZ,SIGMA_HALO,EPOT,
 !$OMP+           EKIN,MOST_BOUND_IDX,ID_PROC,IPART_PROC,BAS8,INERTIA8,
-!$OMP+           USELESS_INT,MAX_NUM_PART,WELL_ALLOCATED),
+!$OMP+           USELESS_INT,MAX_NUM_PART,WELL_ALLOCATED,LOWP1,LOWP2),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
        DO I=LOWH1,LOWH2
@@ -928,8 +931,8 @@ C        WRITE(*,*) 'Not found progenitor'
         BAS=RSUB(I)
 c        WRITE(*,*) CX,CY,CZ,IRR
         CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
-     &                                       RZPA,MASAP,N_DM,
-     &                                       DX/2.0**IRR,MAX_NUM_PART)
+     &           RZPA,MASAP,N_DM,DX/2.0**IRR,XLDOM,NDMPART_X,
+     &           MAX_NUM_PART)
 
         BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
         BAS=SQRT(BAS)
@@ -1008,7 +1011,9 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/rsub(i)
          RCLUS=2.0*RSUB(I)
          DO WHILE (FLAG_JACOBI.EQ.0)
           KONTA=0
-          DO J=1,N_DM
+          CALL FIND_PARTICLE_INDICES(CX,RCLUS,XLDOM,NDMPART_X,
+     &                               LOWP1,LOWP2)
+          DO J=LOWP1,LOWP2
            AADM=SQRT((RXPA(J)-CX)**2+(RYPA(J)-CY)**2+(RZPA(J)-CZ)**2)
            IF (AADM.LT.RCLUS) THEN
             KONTA=KONTA+1
@@ -1634,7 +1639,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        END IF ! (realclus(i).ne.0)
 
 *****************
-       END DO   !I=IP,IP2
+       END DO   !I=LOWH1,LOWH2
 ****************
 
        WRITE(*,*) '... Finally, haloes found at level:',IR,

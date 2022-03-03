@@ -117,7 +117,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 MASAP(PARTIRED)
        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
        INTEGER ORIPA(PARTIRED)
-       INTEGER NPART_ESP(0:N_ESP-1)
+       INTEGER NPART_ESP(0:N_ESP-1),NDMPART_X(0:NMAX)
 
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
 
@@ -716,8 +716,8 @@ c     &                     U11)
        WRITE(*,*) '***    HALO FINDING     ***'
        WRITE(*,*) '***************************'
 
-!       CALL SORT_DM_PARTICLES_X(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-!     &                          ORIPA,N_DM,NPART_ESP)
+       CALL SORT_DM_PARTICLES_X(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
+     &                          ORIPA,N_DM,NDMPART_X,NX,LADO0)
 
 
 **********************************************************
@@ -772,7 +772,7 @@ c     &                     U11)
 
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,MIN_NUM_PART,
-     &                        DMPCLUS,1.0,1)
+     &                        DMPCLUS,NDMPART_X,LADO0,1.0,1)
        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
      &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
 
@@ -804,7 +804,8 @@ c     &                     U11)
      &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART)
+     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
+     &      NDMPART_X)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -835,7 +836,7 @@ c       WRITE(*,*)'===================================='
 ************************************************
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,MIN_NUM_PART,
-     &                        DMPCLUS,1.0,0)
+     &                        DMPCLUS,NDMPART_X,LADO0,1.0,0)
 
 ************************************************
 ************** RUBBISH (overlaps) **************
@@ -915,7 +916,7 @@ c       WRITE(*,*)'===================================='
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
      &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
-     &      MAX_NUM_PART)
+     &      MAX_NUM_PART,NDMPART_X)
 
          IF (FW5.EQ.1) THEN
           open(99, file='./output_files/substructureparticles'//
