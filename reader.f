@@ -255,7 +255,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        REAL*4 T,AAA,BBB,CCC,MAP,ZETA
        INTEGER VAR !(=1: only DM; =2: DM+stars)
 
-       INTEGER I,J,K,IX,NL,IR,IRR,N1,N2,N3,N_DM,N_ST,NBAS,ARE_BH
+       INTEGER I,J,K,IX,NL,IR,IRR,N1,N2,N3,N_DM,N_ST,NBAS,ARE_BH,NST0
 
        INTEGER,ALLOCATABLE::NPATCH(:)
 
@@ -275,7 +275,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
 
        CHARACTER*5 ITER_STRING
 
-       ARE_BH=0 ! Depends on MASCLET version (are there BHs??)
+       ARE_BH=1 ! Depends on MASCLET version (are there BHs??)
 
 *      READING DATA
        WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
@@ -286,7 +286,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
      &       STATUS='UNKNOWN',ACTION='READ')
        READ(33,*) IRR,T,NL,MAP
        READ(33,*) ZETA
-       READ(33,*) IR,NDXYZ
+       READ(33,*) IR,NDXYZ,NST0
        !WRITE(*,*) 'IR,NL,NDXYZ,MAP', IR,NL,NDXYZ,MAP
 
        ALLOCATE(NPATCH(0:NL),NPART(0:NL),NPARTST(0:NL),NPARTBH(0:NL))
@@ -316,6 +316,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        END DO
        END DO
        NPART(0)=NDXYZ
+       NPARTST(0)=NST0
 
        CLOSE(33)
 
