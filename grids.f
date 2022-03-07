@@ -752,7 +752,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       INTEGER LOW1,LOW2,IRKERN,IRPART,N1,N2,N3,I2,J2,K2,I3,J3,K3,I4,J4
       INTEGER K4
       REAL BAS,BASX,BASY,BASZ,XL,YL,ZL,XP,YP,ZP,DENBAS,MAXKERNELEXT
-      REAL DXPA,DYPA,DZPA,XR,YR,ZR,XLFIX,YLFIX,ZLFIX
+      REAL DXPA,DYPA,DZPA,XR,YR,ZR,XLFIX,YLFIX,ZLFIX,BAS2
       REAL,ALLOCATABLE::KERN1D(:)
 
       WRITE(*,*) '==== Density interpolation'
@@ -974,14 +974,19 @@ C        WRITE(*,*) LVAL(I,IPARE)
        END DO !IPATCH=LOW1,LOW2
 
        bas=1000000.0
+       bas2=-1000000.0
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHNX,PATCHNY,PATCHNZ,U11),
+!$OMP+            PRIVATE(I,N1,N2,N3),
+!$OMP+            REDUCTION(MIN:BAS), REDUCTION(MAX:BAS2),
+!$OMP+            DEFAULT(NONE)
        do i=low1,low2
         n1=patchnx(i)
         n2=patchny(i)
         n3=patchnz(i)
         bas=min(bas,minval(u11(1:n1,1:n2,1:n3,i)))
+        bas2=max(bas2,maxval(u11(1:n1,1:n2,1:n3,i)))
        end do
-       WRITE(*,*) 'At level',IR,bas,
-     &                          maxval(u11(:,:,:,low1:low2))
+       WRITE(*,*) 'At level',IR,bas,bas2
 
       END DO
 
