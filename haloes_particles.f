@@ -126,7 +126,7 @@
         POS2=INT(((CX+R)-XLDOM)/DX)+1
         IF (POS1.LT.1) POS1=1
         IF (POS2.GT.NMAX) POS2=NMAX
-        LOWP1=NDMPART_X(POS1-1)
+        LOWP1=NDMPART_X(POS1-1)+1
         LOWP2=NDMPART_X(POS2)
 
         RETURN
@@ -1150,6 +1150,7 @@ c         WRITE(*,*) '---'
          DIS=1000000.0
          VMAXCLUS(I)=-1.0
          EACH_PROF=NCAPAS(I)/NBINS
+         IF (EACH_PROF.EQ.0) EACH_PROF=1
          DO J=1,KONTA
           IF (CONTADM(J).EQ.0) THEN
            JJ=LIP(J)
