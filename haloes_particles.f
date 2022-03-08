@@ -518,7 +518,7 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
      &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
-     &      NDMPART_X)
+     &      NDMPART_X,VAR)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -559,7 +559,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
        INTEGER MIN_NUM_PART
-       INTEGER NDMPART_X(0:NMAX)
+       INTEGER NDMPART_X(0:NMAX),VAR
 
        REAL*4 PI,ACHE,T0,RE0,PI4ROD
        COMMON /DOS/ACHE,T0,RE0
@@ -635,7 +635,7 @@ c       WRITE(*,*)'=================================='
 
        NORMA=MAXVAL(MASAP)
 
-       IF (FLAG_WDM.EQ.1) THEN
+       IF (FLAG_WDM.EQ.1.OR.VAR.GT.1) THEN
         ALLOCATE(PARTICLES_PROC(PARTIRED,NUM_PROC),
      &           HALOES_PROC(3,NCLUS),
      &           PROC_NPARTICLES(NUM_PROC))
@@ -658,7 +658,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR,PROFILES,
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
-!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,XLDOM,NDMPART_X),
+!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,XLDOM,NDMPART_X,VAR),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -839,7 +839,7 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
          CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
      &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRXCM,
      &                   CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,VY,VZ,
-     &                   REALCLUS,KONTA2,MAX_NUM_PART,IDX_VIR)
+     &                   REALCLUS,KONTA2,MAX_NUM_PART,IDX_VIR,UM)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA,KONTA2,0,MAX_NUM_PART,IDX_VIR)
          REF_MAX=DISTA(KONTA2)
@@ -865,7 +865,7 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
      &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRXCM,
      &                        CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,
      &                        VY,VZ,REALCLUS,KONTA2,MAX_NUM_PART,
-     &                        IDX_VIR)
+     &                        IDX_VIR,UM)
          CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
      &                  DISTA,KONTA2,0,MAX_NUM_PART,IDX_VIR)
          REF_MAX=DISTA(KONTA2)
@@ -1229,7 +1229,7 @@ C            END IF
           CYCLE
          END IF
 
-         IF (FLAG_WDM.EQ.1) THEN
+         IF (FLAG_WDM.EQ.1.OR.VAR.GT.1) THEN
           ID_PROC=OMP_GET_THREAD_NUM()+1
           IPART_PROC=PROC_NPARTICLES(ID_PROC)
           HALOES_PROC(1,I)=ID_PROC
@@ -1316,7 +1316,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        END DO   !I=IP,IP2
 ****************
 
-       IF (FLAG_WDM.EQ.1) THEN
+       IF (FLAG_WDM.EQ.1.OR.VAR.GT.1) THEN
         J=0
 
         DO I=1,NCLUS
@@ -1738,7 +1738,7 @@ c       INTEGER CONTADM(PARTI)
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           RADIO,MASA,CLUSRXCM,CLUSRYCM,CLUSRZCM,
      &           LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS,KONTA2,
-     &           MAX_NUM_PART,IDX_VIR)
+     &           MAX_NUM_PART,IDX_VIR,UM)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -1758,6 +1758,7 @@ c       INTEGER CONTADM(PARTI)
        COMMON /BACK/ RETE,HTE,ROTE
 
        REAL*4 REF_MIN,REF_MAX
+       REAL UM
 
 *      ---HALOS Y SUBHALOS---
        REAL*4 RADIO(MAXNCLUS)
@@ -1892,7 +1893,7 @@ COJO       REAL*8 POT(KONTA)
         VY(I)=VCMY
         VZ(I)=VCMZ
 
-        MASA(I)=MMM*9.1717e+18
+        MASA(I)=MMM*UM
 
        END IF
 
@@ -1905,7 +1906,7 @@ COJO       REAL*8 POT(KONTA)
      &                            RXPA,RYPA,RZPA,MASAP,RADIO,MASA,
      &                            CLUSRXCM,CLUSRYCM,CLUSRZCM,LIP,KONTA,
      &                            CONTADM,VX,VY,VZ,REALCLUS,KONTA2,
-     &                            MAX_NUM_PART,IDX_VIR)
+     &                            MAX_NUM_PART,IDX_VIR,UM)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -1929,6 +1930,7 @@ COJO       REAL*8 POT(KONTA)
        INTEGER KONTA
        REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
        INTEGER REALCLUS(MAXNCLUS),KONTA2,MAX_NUM_PART,IDX_VIR
+       REAL*4 UM
 
        REAL CMX,CMY,CMZ,VXCM,VYCM,VZCM,BAS,BB,AADM,AADMX,AADMY
        REAL AADMZ,MMM
@@ -2005,7 +2007,7 @@ COJO       REAL*8 POT(KONTA)
         VY(I)=VYCM
         VZ(I)=VZCM
 
-        MASA(I)=MMM*9.1717e+18
+        MASA(I)=MMM*UM
 
        END IF
 
