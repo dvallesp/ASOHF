@@ -345,11 +345,18 @@ C       WRITE(*,*) 'ACCEPTED STELLAR HALO',I,NCLUS_ST,KONTA2
         M8=M8+BASMAS
         IF (M8.GT.MHALFMASS) EXIT
        END DO
-       RHALFMASS=DISTAST(J)
+       IF (J.LT.KONTA2) THEN
+        J_HALFMASS=J
+       ELSE
+        J_HALFMASS=KONTA2
+       END IF
+       RHALFMASS=DISTAST(J_HALFMASS)
 
-C       WRITE(*,*) RHALFMASS,RCLUS
-C       WRITE(*,*) MHALFMASS*UM,MASA(I)
-C       WRITE(*,*) CX,CY,CZ
+c       write(*,*) j_halfmass,konta2,mhalfmass
+c       WRITE(*,*) RHALFMASS,RCLUS
+c       WRITE(*,*) MHALFMASS*UM
+c       WRITE(*,*) CX,CY,CZ
+c       write(*,*) distast(1:konta2)
 
        !***********************************************
        !!! RECENTER
@@ -403,6 +410,7 @@ C       WRITE(*,*) '-->',XPEAK,YPEAK,ZPEAK
        VCMX=VX8/M8
        VCMY=VY8/M8
        VCMZ=VZ8/M8
+C       write(*,*) j_halfmass,konta2,mhalfmass
 C       WRITE(*,*) '-->',RHALFMASS,MHALFMASS
 C       WRITE(*,*) '-->',CMX,CMY,CMZ
 C       WRITE(*,*) '-->',VCMX,VCMY,VCMZ
@@ -656,6 +664,9 @@ C       WRITE(*,*) '-->',VCMX,VCMY,VCMZ
 
         FLAG_ITER=1
         KONTA=LAST_PARTICLE
+
+        IF (KONTA.LT.NUMPARTMIN) FLAG_ITER=0
+
         DO WHILE (FLAG_ITER.EQ.1)
          DO KZ=1,NN
          DO JY=1,NN
@@ -714,21 +725,23 @@ C     &              IX,JY,KZ,FLAG_ITER
 
         DEALLOCATE(DENS)
 
-        BAS=0.0
-        BASX=0.0
-        BASY=0.0
-        BASZ=0.0
-        DO I=1,KONTA
-         IP=LIP(I)
-         BAS=BAS+MASAP(IP)
-         BASX=BASX+RXPA(IP)*MASAP(IP)
-         BASY=BASY+RYPA(IP)*MASAP(IP)
-         BASZ=BASZ+RZPA(IP)*MASAP(IP)
-        END DO
+        IF (KONTA.GT.0) THEN
+         BAS=0.0
+         BASX=0.0
+         BASY=0.0
+         BASZ=0.0
+         DO I=1,KONTA
+          IP=LIP(I)
+          BAS=BAS+MASAP(IP)
+          BASX=BASX+RXPA(IP)*MASAP(IP)
+          BASY=BASY+RYPA(IP)*MASAP(IP)
+          BASZ=BASZ+RZPA(IP)*MASAP(IP)
+         END DO
 
-        CX=BASX/BAS
-        CY=BASY/BAS
-        CZ=BASZ/BAS
+         CX=BASX/BAS
+         CY=BASY/BAS
+         CZ=BASZ/BAS
+        END IF
 
         RETURN
         END
