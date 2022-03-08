@@ -963,7 +963,7 @@ c       WRITE(*,*)'===================================='
      &                      CLUSRX,CLUSRY,CLUSRZ,RXPA,RYPA,RZPA,MASAP,
      &                      U2DM,U3DM,U4DM,ORIPA,N_DM,N_ST,NX,LADO0,
      &                      PARTICLES_PER_HALO,INDCS_PARTICLES_PER_HALO,
-     &                      UM,MIN_NUM_PART_ST)
+     &                      UM,UV,MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA)
        END IF
 
 *************************************************
@@ -985,7 +985,7 @@ c       WRITE(*,*)'===================================='
 
 111    FORMAT(51A14)
 112    FORMAT(2I14,3F14.6,E14.6,F14.6,E14.6,F14.6,2I14,3F14.6,3F14.6,
-     &        6E14.6,3E14.6,E14.6,3F14.3,2F14.3,2E14.6,F14.3,E14.3,
+     &        6E14.6,3E14.6,F14.6,3F14.3,2F14.3,2E14.6,F14.3,E14.3,
      &        F14.6,F14.6,E14.6,F14.6,E14.6,F14.6,E14.6,F14.6,E14.6,
      &        F14.6,E14.6,F14.6,E14.6,F14.6,I14)
 

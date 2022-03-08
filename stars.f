@@ -3,8 +3,8 @@
      &                          DMPCLUS,CLUSRX,CLUSRY,CLUSRZ,RXPA,RYPA,
      &                          RZPA,MASAP,U2DM,U3DM,U4DM,ORIPA,N_DM,
      &                          N_ST,NX,LADO0,PARTICLES_PER_HALO,
-     &                          INDCS_PARTICLES_PER_HALO,UM,
-     &                          MIN_NUM_PART_ST)
+     &                          INDCS_PARTICLES_PER_HALO,UM,UV,
+     &                          MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA)
 ********************************************************************
 
       IMPLICIT NONE
@@ -23,19 +23,45 @@
       REAL*4 LADO0
       INTEGER PARTICLES_PER_HALO(PARTIRED)
       INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS)
-      REAL*4 UM
-      INTEGER MIN_NUM_PART_ST
+      REAL*4 UM,UV
+      INTEGER MIN_NUM_PART_ST,FLAG_WDM,ITER
+      REAL*4 ZETA
 
       INTEGER NSTPART_X(0:NMAX),I,LOWP1,LOWP2,J,JJ,NST_HALO,NDM_HALO
       INTEGER MAX_NUM_PART_LOCAL,WELL_ALLOCATED,MINORIPA,MAXORIPA
-      INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR
-      INTEGER COUNT_1,COUNT_2,KONTA2PREV
+      INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR,IX,JY
+      INTEGER COUNT_1,COUNT_2,KONTA2PREV,NCLUS_ST,J_HALFMASS
       REAL XLDOM,CX,CY,CZ,RCLUS,RCLUS2,XP,YP,ZP,CMX,CMY,CMZ
-      REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX
+      REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX,BASVECCM(3),BASVCM(3)
+      REAL RHALFMASS,MHALFMASS,XPEAK,YPEAK,ZPEAK,VVV2,INERTIA4(3,3)
+      REAL BASEIGENVAL(3)
+
+      REAL*8 M8,X8,Y8,Z8,VX8,VY8,VZ8,LX8,LY8,LZ8,INERTIA8(3,3)
+      REAL*8 SIGMA_HALO8
+
+      INTEGER STPCLUS(NCLUS)
+      REAL ST_HALFMASS(NCLUS),ST_HALFMASSRADIUS(NCLUS)
+      REAL ST_XPEAK(NCLUS),ST_YPEAK(NCLUS),ST_ZPEAK(NCLUS)
+      REAL ST_XCM(NCLUS),ST_YCM(NCLUS),ST_ZCM(NCLUS)
+      REAL ST_VXCM(NCLUS),ST_VYCM(NCLUS),ST_VZCM(NCLUS)
+      REAL ST_ANGULARM(3,NCLUS),ST_INERTIATENSOR(6,NCLUS)
+      REAL ST_EIGENVALUES(3,NCLUS),ST_VELOCITYDISPERSION(NCLUS)
 
       INTEGER,ALLOCATABLE::ORIPADM_LOT(:)
       INTEGER,ALLOCATABLE::LIP(:),CONTADM(:),LIPST(:)
       REAL,ALLOCATABLE::DISTA(:),DISTAST(:)
+
+      ! For writing stellar particles
+      INTEGER,ALLOCATABLE::PARTICLES_PROC(:,:),PROC_NPARTICLES(:)
+      INTEGER,ALLOCATABLE::HALOES_PROC(:,:)
+      INTEGER NUM_PROC,ID_PROC,IPART_PROC,OMP_GET_THREAD_NUM
+      COMMON /PROCESADORES/ NUM_PROC
+
+      INTEGER PARTICLES_PER_HALO_ST(N_ST)
+      INTEGER INDCS_PARTICLES_PER_HALO_ST(2,NCLUS)
+
+      CHARACTER*5 ITER_STRING
+      WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
 
       WRITE(*,*) 'DM, stellar particles:', N_DM, N_ST
 
@@ -67,13 +93,45 @@
        ORIPADM_LOT(ORIPA(I))=I
       END DO
 
-      WRITE(*,*) 'ORIPA LOT DONE',MINORIPA,MAXORIPA
+      !WRITE(*,*) 'ORIPA LOT DONE!',MINORIPA,MAXORIPA
+
+      IF (FLAG_WDM.EQ.1) THEN
+       ALLOCATE(PARTICLES_PROC(N_ST,NUM_PROC),
+     &          HALOES_PROC(3,NCLUS),
+     &          PROC_NPARTICLES(NUM_PROC))
+       PROC_NPARTICLES(1:NUM_PROC)=0
+      END IF
 
 **********************************************************************
 *     Main loop through DM haloes
 **********************************************************************
+      NCLUS_ST=0
 
+!$OMP PARALLEL DO SHARED(NCLUS,REALCLUS,STPCLUS,CLUSRX,CLUSRY,CLUSRZ,
+!$OMP+                   RADIO,RSUB,XLDOM,NSTPART_X,RXPA,RYPA,RZPA,
+!$OMP+                   MIN_NUM_PART_ST,DMPCLUS,ORIPADM_LOT,
+!$OMP+                   PARTICLES_PER_HALO,INDCS_PARTICLES_PER_HALO,
+!$OMP+                   ST_HALFMASS,ST_HALFMASSRADIUS,ST_XPEAK,
+!$OMP+                   ST_YPEAK,ST_ZPEAK,ST_XCM,ST_YCM,ST_ZCM,ST_VXCM,
+!$OMP+                   ST_VYCM,ST_VZCM,ST_ANGULARM,ST_INERTIATENSOR,
+!$OMP+                   ST_EIGENVALUES,ST_VELOCITYDISPERSION,MASAP,
+!$OMP+                   U2DM,U3DM,U4DM,N_DM,UM,UV,FLAG_WDM,
+!$OMP+                   PROC_NPARTICLES,HALOES_PROC,PARTICLES_PROC,
+!$OMP+                   ORIPA),
+!$OMP+            PRIVATE(I,CX,CY,CZ,RCLUS,RCLUS2,LOWP1,LOWP2,
+!$OMP+                    MAX_NUM_PART_LOCAL,J,LIPST,JJ,NDM_HALO,
+!$OMP+                    NST_HALO,NPART_HALO,LIP,CONTADM,DISTA,DISTAST,
+!$OMP+                    KONTA,KONTA2,BASINT,REF_MIN,REF_MAX,FAC,
+!$OMP+                    CONTAERR,KONTA2PREV,COUNT_1,COUNT_2,CMX,CMY,
+!$OMP+                    CMZ,VCMX,VCMY,VCMZ,BASMAS,M8,MHALFMASS,
+!$OMP+                    RHALFMASS,XPEAK,YPEAK,ZPEAK,X8,Y8,Z8,VX8,VY8,
+!$OMP+                    VZ8,LX8,LY8,LZ8,INERTIA8,INERTIA4,J_HALFMASS,
+!$OMP+                    SIGMA_HALO8,VVV2,BASVECCM,BASVCM,BASEIGENVAL,
+!$OMP+                    ID_PROC,IPART_PROC),
+!$OMP+            REDUCTION(+:NCLUS_ST)
+!$OMP+            DEFAULT(NONE), SCHEDULE(DYNAMIC)
       DO I=1,NCLUS
+       STPCLUS(I)=0
        IF (REALCLUS(I).EQ.0) CYCLE
 
        !***********************************************
@@ -181,7 +239,7 @@ C       END IF
        CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
      &                       RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
      &                       BASMAS,NPART_HALO)
-       WRITE(*,*) VCMX,VCMY,VCMZ
+C       WRITE(*,*) VCMX,VCMY,VCMZ
 
        FAC=0
        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
@@ -266,16 +324,414 @@ C       write(*,*) '--'
         CYCLE
        END IF
 
-       WRITE(*,*) 'ACCEPTED STELLAR HALO',I,KONTA2
+       NCLUS_ST=NCLUS_ST+1
+C       WRITE(*,*) 'ACCEPTED STELLAR HALO',I,NCLUS_ST,KONTA2
 
+       !***********************************************
+       !!! PRE-ESTIMATION OF THE HALF-MASS RADIUS
+       !***********************************************
+       M8=0.D0
+       DO J=1,KONTA2
+        JJ=LIPST(J)
+        BASMAS=MASAP(JJ)
+        M8=M8+BASMAS
+       END DO
 
+       MHALFMASS=M8/2.D0
+       M8=0.D0
+       DO J=1,KONTA2
+        JJ=LIPST(J)
+        BASMAS=MASAP(JJ)
+        M8=M8+BASMAS
+        IF (M8.GT.MHALFMASS) EXIT
+       END DO
+       RHALFMASS=DISTAST(J)
+
+C       WRITE(*,*) RHALFMASS,RCLUS
+C       WRITE(*,*) MHALFMASS*UM,MASA(I)
+C       WRITE(*,*) CX,CY,CZ
+
+       !***********************************************
+       !!! RECENTER
+       !***********************************************
+       XPEAK=CX
+       YPEAK=CY
+       ZPEAK=CZ
+
+       CALL RECENTER_DENSITY_PEAK_STARS(XPEAK,YPEAK,ZPEAK,RHALFMASS,
+     &               RXPA,RYPA,RZPA,MASAP,NST_HALO,LIPST,KONTA2)
+
+C       WRITE(*,*) '-->',XPEAK,YPEAK,ZPEAK
+
+       BASINT=NST_HALO
+       KONTA=KONTA2
+       CALL REORDENAR(KONTA,XPEAK,YPEAK,ZPEAK,RXPA,RYPA,RZPA,CONTADM,
+     &                LIPST,DISTAST,KONTA2,1,NST_HALO,BASINT)
+
+       !***********************************************
+       !!! CORRECT HALF-MASS RADIUS, DETERMINE CM PROPERTIES
+       !***********************************************
+       M8=0.D0
+       X8=0.D0
+       Y8=0.D0
+       Z8=0.D0
+       VX8=0.D0
+       VY8=0.D0
+       VZ8=0.D0
+       DO J=1,KONTA2
+        JJ=LIPST(J)
+        BASMAS=MASAP(JJ)
+        M8=M8+BASMAS
+        X8=X8+BASMAS*RXPA(JJ)
+        Y8=Y8+BASMAS*RYPA(JJ)
+        Z8=Z8+BASMAS*RZPA(JJ)
+        VX8=VX8+BASMAS*U2DM(JJ)
+        VY8=VY8+BASMAS*U3DM(JJ)
+        VZ8=VZ8+BASMAS*U4DM(JJ)
+        IF (M8.GT.MHALFMASS) EXIT
+       END DO
+       IF (J.LT.KONTA2) THEN
+        J_HALFMASS=J
+       ELSE
+        J_HALFMASS=KONTA2
+       END IF
+       RHALFMASS=DISTAST(J_HALFMASS)
+       MHALFMASS=M8*UM
+       CMX=X8/M8
+       CMY=Y8/M8
+       CMZ=Z8/M8
+       VCMX=VX8/M8
+       VCMY=VY8/M8
+       VCMZ=VZ8/M8
+C       WRITE(*,*) '-->',RHALFMASS,MHALFMASS
+C       WRITE(*,*) '-->',CMX,CMY,CMZ
+C       WRITE(*,*) '-->',VCMX,VCMY,VCMZ
+
+       LX8=0.D0
+       LY8=0.D0
+       LZ8=0.D0
+       INERTIA8(1:3,1:3)=0.D0
+       SIGMA_HALO8=0.D0
+       DO J=1,J_HALFMASS
+        JJ=LIPST(J)
+
+        BASVECCM(1)=RXPA(JJ)-CMX
+        BASVECCM(2)=RYPA(JJ)-CMY
+        BASVECCM(3)=RZPA(JJ)-CMZ
+
+        BASVCM(1)=U2DM(JJ)-VCMX
+        BASVCM(2)=U3DM(JJ)-VCMY
+        BASVCM(3)=U4DM(JJ)-VCMZ
+
+        VVV2=BASVCM(1)**2+BASVCM(2)**2+BASVCM(3)**2
+        SIGMA_HALO8=SIGMA_HALO8+VVV2
+
+**          ANGULAR MOMENTUM
+        LX8=LX8+MASAP(JJ)*(BASVECCM(2)*BASVCM(3)
+     &                    -BASVECCM(3)*BASVCM(2))
+        LY8=LY8+MASAP(JJ)*(BASVECCM(3)*BASVCM(1)
+     &                    -BASVECCM(1)*BASVCM(3))
+        LZ8=LZ8+MASAP(JJ)*(BASVECCM(1)*BASVCM(2)
+     &                    -BASVECCM(2)*BASVCM(1))
+
+**          INERTIA TENSOR
+        DO JY=1,3
+        DO IX=1,3
+          INERTIA8(IX,JY)=INERTIA8(IX,JY)
+     &                   +MASAP(JJ)*BASVECCM(IX)*BASVECCM(JY)
+        END DO
+        END DO
+       END DO
+
+       STPCLUS(I)=J_HALFMASS
+       ST_HALFMASS(I)=MHALFMASS
+       ST_HALFMASSRADIUS(I)=RHALFMASS
+       ST_XPEAK(I)=XPEAK
+       ST_YPEAK(I)=YPEAK
+       ST_ZPEAK(I)=ZPEAK
+       ST_XCM(I)=CMX
+       ST_YCM(I)=CMY
+       ST_ZCM(I)=CMZ
+       ST_VXCM(I)=VCMX*UV
+       ST_VYCM(I)=VCMY*UV
+       ST_VZCM(I)=VCMZ*UV
+       ST_ANGULARM(1,I)=LX8*UV/M8
+       ST_ANGULARM(2,I)=LY8*UV/M8
+       ST_ANGULARM(3,I)=LZ8*UV/M8
+
+       INERTIA4(1:3,1:3)=INERTIA8(1:3,1:3)/M8
+       INERTIA4(1,2)=INERTIA4(2,1)
+       INERTIA4(1,3)=INERTIA4(3,1)
+       INERTIA4(2,3)=INERTIA4(3,2)
+       ST_INERTIATENSOR(1,I)=INERTIA4(1,1)
+       ST_INERTIATENSOR(2,I)=INERTIA4(1,2)
+       ST_INERTIATENSOR(3,I)=INERTIA4(1,3)
+       ST_INERTIATENSOR(4,I)=INERTIA4(2,2)
+       ST_INERTIATENSOR(5,I)=INERTIA4(2,3)
+       ST_INERTIATENSOR(6,I)=INERTIA4(3,3)
+
+       ST_VELOCITYDISPERSION(I)=SQRT(SIGMA_HALO8/FLOAT(J_HALFMASS))*UV
+       BASEIGENVAL(1:3)=0.0
+       CALL JACOBI(INERTIA4,3,BASEIGENVAL,BASINT)
+       CALL SORT(BASEIGENVAL,3,3)
+       DO IX=1,3
+        ST_EIGENVALUES(IX,I)=SQRT(5.0*BASEIGENVAL(IX))
+       END DO
+
+       IF (FLAG_WDM.EQ.1) THEN
+        ID_PROC=OMP_GET_THREAD_NUM()+1
+        IPART_PROC=PROC_NPARTICLES(ID_PROC)
+        HALOES_PROC(1,I)=ID_PROC
+        HALOES_PROC(2,I)=IPART_PROC+1
+        DO J=1,J_HALFMASS
+         JJ=LIPST(J)
+         IPART_PROC=IPART_PROC+1
+         PARTICLES_PROC(IPART_PROC,ID_PROC)=ORIPA(JJ)
+        END DO
+        PROC_NPARTICLES(ID_PROC)=IPART_PROC
+        HALOES_PROC(3,I)=IPART_PROC
+       END IF
 
 
        DEALLOCATE(LIPST,CONTADM,DISTAST)
+      END DO !(I=1,NCLUS)
+
+      IF (FLAG_WDM.EQ.1) THEN
+       J=0
+       DO I=1,NCLUS
+        IF (STPCLUS(I).EQ.0) THEN
+         INDCS_PARTICLES_PER_HALO_ST(1,I)=-1
+         INDCS_PARTICLES_PER_HALO_ST(2,I)=-1
+         CYCLE
+        END IF
+
+        INDCS_PARTICLES_PER_HALO_ST(1,I)=J+1
+
+        ID_PROC=HALOES_PROC(1,I)
+        LOWP1=HALOES_PROC(2,I)
+        LOWP2=HALOES_PROC(3,I)
+
+        DO IPART_PROC=LOWP1,LOWP2
+         J=J+1
+         PARTICLES_PER_HALO_ST(J)=PARTICLES_PROC(IPART_PROC,ID_PROC)
+        END DO
+
+        INDCS_PARTICLES_PER_HALO_ST(2,I)=J
+       END DO
+
+       DEALLOCATE(HALOES_PROC, PARTICLES_PROC, PROC_NPARTICLES)
+      END IF
+
+      WRITE(*,*) '===> Finally found',NCLUS_ST,'stellar haloes <==='
+      WRITE(*,*)
+
+*****************************************************************
+*     WRITE STARS (we do it inside the routine so as to not
+*                  mess the main program)
+*****************************************************************
+      KONTA2=COUNT(STPCLUS(1:NCLUS).GT.0)
+
+      OPEN(3,FILE='./output_files/stellar_haloes'//ITER_STRING,
+     &       STATUS='UNKNOWN')
+      IF (FLAG_WDM.EQ.1) THEN
+       OPEN(4,FILE='./output_files/stellar_particles'//ITER_STRING,
+     &        FORM='UNFORMATTED')
+       WRITE(4) KONTA2
+      END IF
+
+      WRITE(3,*) '*********************NEW ITER*******************'
+      WRITE(3,*) ITER, NCLUS, KONTA2, ZETA
+      WRITE(3,*) '************************************************'
+
+111   FORMAT(30A14)
+112   FORMAT(2I14,6F14.6,E14.6,F14.6,I14,3F14.6,3F14.6,6E14.6,
+     &        3E14.6,F14.6,3F14.3)
+
+
+      WRITE(3,*) '=====================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &================================================================='
+
+      WRITE(3,111) '* Halo ID'   ,'DM Halo ID'  ,'Density peak',
+     &             'coordinates' ,'(DM, Mpc)'   ,'Density peak',
+     &             'coordinates' ,'(*, Mpc)'    ,'M_1/2'       ,
+     &             'R_1/2'       ,'Part. num.'  ,'Center of'   ,
+     &             'mass coords' ,'(Mpc)'       ,'Semiaxes'    ,
+     &             '(kpc)'       ,''            ,'Inertia'     ,
+     &             'tensor'      ,'components'  ,'(ckpc^2)'    ,
+     &             ''            ,''            ,'Spec. angul.',
+     &             'momentum'    ,'(ckpc km/s)' ,'Veloc. disp.',
+     &             'Bulk velocty','(km/s)'      ,''
+
+      WRITE(3,111) ''            ,''            ,'x'           ,
+     &             'y'           ,'z'           ,'x'           ,
+     &             'y'           ,'z'           ,'(Msun)'      ,
+     &             '(kpc)'       ,'r < R_1/2'   ,'x'           ,
+     &             'y'           ,'z'           ,'Major'       ,
+     &             'Intermediate','Minor'       ,'Ixx'         ,
+     &             'Ixy'         ,'Ixz'         ,'Iyy'         ,
+     &             'Iyz'         ,'Izz'         ,'Lx'          ,
+     &             'Ly'          ,'Lz'          ,'(km/s)'      ,
+     &             'Vx'          ,'Vy'          ,'Vz'
+
+      WRITE(3,*) '=====================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &==================================================================
+     &================================================================='
+
+      KONTA=0
+      KONTA2=0
+      DO I=1,NCLUS
+       IF (STPCLUS(I).GT.0) THEN
+        KONTA=KONTA+1
+        WRITE(3,112) KONTA,I,CLUSRX(I),CLUSRY(I),CLUSRZ(I),ST_XPEAK(I),
+     &               ST_YPEAK(I),ST_ZPEAK(I),ST_HALFMASS(I),
+     &               ST_HALFMASSRADIUS(I)*1000.0,STPCLUS(I),ST_XCM(I),
+     &               ST_YCM(I),ST_ZCM(I),
+     &               (ST_EIGENVALUES(J,I)*1000.0,J=1,3),
+     &               (ST_INERTIATENSOR(J,I)*1000000.0,J=1,6),
+     &               (ST_ANGULARM(J,I)*1000.0,J=1,3),
+     &               ST_VELOCITYDISPERSION(I),
+     &               ST_VXCM(I),ST_VYCM(I),ST_VZCM(I)
+        IF (FLAG_WDM.EQ.1) THEN
+         WRITE(4) I,(INDCS_PARTICLES_PER_HALO(J,I),J=1,2)
+         KONTA2=MAX(KONTA2,INDCS_PARTICLES_PER_HALO(2,I))
+        END IF
+      END IF  !realclus
+
       END DO
+
+      IF (FLAG_WDM.EQ.1) THEN
+       WRITE(4) KONTA2
+       WRITE(4) (PARTICLES_PER_HALO(J),J=1,KONTA2)
+      END IF
+
+      CLOSE(3)
+      IF (FLAG_WDM.EQ.1) CLOSE(4)
 
       RETURN
       END
+
+
+**********************************************************************
+        SUBROUTINE RECENTER_DENSITY_PEAK_STARS(CX,CY,CZ,R,RXPA,RYPA,
+     &               RZPA,MASAP,NST_HALO,LIPST,LAST_PARTICLE)
+**********************************************************************
+*       Recenters density peak using particles
+**********************************************************************
+        IMPLICIT NONE
+        INCLUDE 'input_files/asohf_parameters.dat'
+
+        REAL CX,CY,CZ,R,XLDOM
+        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
+     &         MASAP(PARTIRED)
+        INTEGER NST_HALO,LAST_PARTICLE
+        INTEGER LIPST(NST_HALO)
+
+        INTEGER KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP
+        INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN,WELL_ALLOCATED
+        INTEGER LOWP1,LOWP2
+        REAL RADIO,BAS,XL,YL,ZL,DDXX,BASX,BASY,BASZ
+        REAL,ALLOCATABLE::DENS(:,:,:)
+        INTEGER,ALLOCATABLE::LIP(:)
+
+        NUMPARTMIN=27 !3**3
+        NN=3
+
+        ALLOCATE(DENS(NN,NN,NN), LIP(1:LAST_PARTICLE))
+        RADIO=R
+        DDXX=2.0*RADIO/FLOAT(NN)
+        XL=CX-RADIO
+        YL=CY-RADIO
+        ZL=CZ-RADIO
+
+        DO I=1,LAST_PARTICLE
+         LIP(I)=LIPST(I)
+        END DO
+
+        FLAG_ITER=1
+        KONTA=LAST_PARTICLE
+        DO WHILE (FLAG_ITER.EQ.1)
+         DO KZ=1,NN
+         DO JY=1,NN
+         DO IX=1,NN
+          DENS(IX,JY,KZ)=0.0
+         END DO
+         END DO
+         END DO
+
+         DO I=1,KONTA
+          IP=LIP(I)
+          IX=INT((RXPA(IP)-XL)/DDXX)+1
+          JY=INT((RYPA(IP)-YL)/DDXX)+1
+          KZ=INT((RZPA(IP)-ZL)/DDXX)+1
+          IF (IX.LT.1) IX=1
+          IF (IX.GT.NN) IX=NN
+          IF (JY.LT.1) JY=1
+          IF (JY.GT.NN) JY=NN
+          IF (KZ.LT.1) KZ=1
+          IF (KZ.GT.NN) KZ=NN
+          !IF (JY.EQ.0) WRITE(*,*) (RYPA(IP)-YL)/DDXX
+          DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(IP)
+         END DO
+
+         INMAX=MAXLOC(DENS)
+         IX=INMAX(1)
+         JY=INMAX(2)
+         KZ=INMAX(3)
+         CX=XL+(IX-0.5)*DDXX
+         CY=YL+(JY-0.5)*DDXX
+         CZ=ZL+(KZ-0.5)*DDXX
+         RADIO=RADIO/2.0
+         XL=CX-RADIO
+         YL=CY-RADIO
+         ZL=CZ-RADIO
+         DDXX=DDXX/2.0
+
+         KONTA2=0
+         DO I=1,KONTA
+          IP=LIP(I)
+          IF (CX-RADIO.LT.RXPA(IP).AND.RXPA(IP).LT.CX+RADIO.AND.
+     &        CY-RADIO.LT.RYPA(IP).AND.RYPA(IP).LT.CY+RADIO.AND.
+     &        CZ-RADIO.LT.RZPA(IP).AND.RZPA(IP).LT.CZ+RADIO) THEN
+           KONTA2=KONTA2+1
+           LIP(KONTA2)=IP
+          END IF
+         END DO
+
+         KONTA=KONTA2
+
+         IF (KONTA2.LT.NUMPARTMIN) FLAG_ITER=0
+
+C         WRITE(*,*) RADIO,KONTA2,CX,CY,CZ,DENS(IX,JY,KZ)/DDXX**3,
+C     &              IX,JY,KZ,FLAG_ITER
+        END DO
+
+        DEALLOCATE(DENS)
+
+        BAS=0.0
+        BASX=0.0
+        BASY=0.0
+        BASZ=0.0
+        DO I=1,KONTA
+         IP=LIP(I)
+         BAS=BAS+MASAP(IP)
+         BASX=BASX+RXPA(IP)*MASAP(IP)
+         BASY=BASY+RYPA(IP)*MASAP(IP)
+         BASZ=BASZ+RZPA(IP)*MASAP(IP)
+        END DO
+
+        CX=BASX/BAS
+        CY=BASY/BAS
+        CZ=BASZ/BAS
+
+        RETURN
+        END
 
 ***********************************************************
        SUBROUTINE UNBINDING_SIGMA_STARS(FAC,REF_MIN,REF_MAX,U2DM,U3DM,

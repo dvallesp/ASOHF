@@ -1113,8 +1113,8 @@ c         WRITE(*,*) '---'
            R200M(I)=RADIO(I)*(CONTRASTEC/200.0)**(1.0/3.0)
           END IF
 
-          WRITE(*,*) 'POSSIBLE PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
-     &                NSHELL_2,RADIAL(NSHELL_2)
+c          WRITE(*,*) 'POSSIBLE PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
+c     &                NSHELL_2,RADIAL(NSHELL_2)
 
           IF (MOD(J,FAC).NE.0) THEN
            NSHELL_2=NSHELL_2+1
