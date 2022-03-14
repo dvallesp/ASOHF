@@ -658,6 +658,10 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
         IF ((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2.LT.(R1+R2)**2.AND.
      &      MIN(N1,N2).GT.MAX(N1,N2)/2) THEN 
          BASINT=0
+!$OMP PARALLEL DO SHARED(LOWP1,LOWP2,N1,N2,PARTICLES_PER_HALO_ST),
+!$OMP+            PRIVATE(II,JJ),
+!$OMP+            REDUCTION(+:BASINT),
+!$OMP+            DEFAULT(NONE)
          DO II=LOWP1,LOWP1+N1-1 
           DO JJ=LOWP2,LOWP2+N2-1
            IF (PARTICLES_PER_HALO_ST(II).EQ.
@@ -673,6 +677,7 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
            STPCLUS(J)=0
           ELSE 
            STPCLUS(I)=0
+           EXIT
           END IF
          END IF
         END IF
