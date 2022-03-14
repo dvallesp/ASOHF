@@ -34,12 +34,12 @@
       INTEGER MAX_NUM_PART_LOCAL,WELL_ALLOCATED,MINORIPA,MAXORIPA
       INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR,IX,JY,I1,I2
       INTEGER COUNT_1,COUNT_2,KONTA2PREV,NCLUS_ST,J_HALFMASS,NUMPARTBINS
-      INTEGER IDX_CUT,IDX_CUT_ST
+      INTEGER IDX_CUT,IDX_CUT_ST,N1,N2,II
       REAL XLDOM,CX,CY,CZ,RCLUS,RCLUS2,XP,YP,ZP,CMX,CMY,CMZ
       REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX,BASVECCM(3),BASVCM(3)
       REAL RHALFMASS,MHALFMASS,XPEAK,YPEAK,ZPEAK,VVV2,INERTIA4(3,3)
       REAL BASEIGENVAL(3),FACT_CUT,R1,R2,MMM,DENS,MINDENS,PI,DENS_CUT
-
+      REAL X1,X2,Y1,Y2,Z1,Z2
 
       REAL*8 M8,X8,Y8,Z8,VX8,VY8,VZ8,LX8,LY8,LZ8,INERTIA8(3,3)
       REAL*8 SIGMA_HALO8
@@ -636,7 +636,52 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
        DEALLOCATE(HALOES_PROC, PARTICLES_PROC, PROC_NPARTICLES)
       END IF
 
-      WRITE(*,*) '===> Finally found',NCLUS_ST,'stellar haloes <==='
+      WRITE(*,*) NCLUS_ST,'haloes preidentified'
+
+*     OVERLAPS 
+      DO I=1,NCLUS
+       IF (STPCLUS(I).EQ.0) CYCLE 
+       X1=ST_XPEAK(I)
+       Y1=ST_YPEAK(I)
+       Z1=ST_ZPEAK(I)
+       R1=ST_HALFMASSRADIUS(I)
+       N1=STPCLUS(I)
+       LOWP1=INDCS_PARTICLES_PER_HALO_ST(1,I)
+       DO J=I+1,NCLUS
+        IF (STPCLUS(J).EQ.0) CYCLE
+        X2=ST_XPEAK(J)
+        Y2=ST_YPEAK(J)
+        Z2=ST_ZPEAK(J)
+        R2=ST_HALFMASSRADIUS(J)
+        N2=STPCLUS(J)
+        LOWP2=INDCS_PARTICLES_PER_HALO_ST(1,J)
+        IF ((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2.LT.(R1+R2)**2.AND.
+     &      MIN(N1,N2).GT.MAX(N1,N2)/2) THEN 
+         BASINT=0
+         DO II=LOWP1,LOWP1+N1-1 
+          DO JJ=LOWP2,LOWP2+N2-1
+           IF (PARTICLES_PER_HALO_ST(II).EQ.
+     &         PARTICLES_PER_HALO_ST(JJ)) THEN
+            BASINT=BASINT+1 
+            EXIT
+           END IF
+          END DO
+         END DO
+
+         IF (BASINT.GT.0.75*MIN(N1,N2)) THEN
+          IF (N1.GE.N2) THEN 
+           STPCLUS(J)=0
+          ELSE 
+           STPCLUS(I)=0
+          END IF
+         END IF
+        END IF
+       END DO
+      END DO
+
+      KONTA2=COUNT(STPCLUS(1:NCLUS).GT.0)
+
+      WRITE(*,*) '===> Finally found',KONTA2,'stellar haloes <==='
       WRITE(*,*)
 
 *****************************************************************
@@ -654,7 +699,7 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
       END IF
 
       WRITE(3,*) '*********************NEW ITER*******************'
-      WRITE(3,*) ITER, NCLUS, KONTA2, ZETA
+      WRITE(3,*) ITER, NCLUS_ST, KONTA2, ZETA
       WRITE(3,*) '************************************************'
 
 111   FORMAT(30A14)
