@@ -313,6 +313,8 @@ C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
         END IF
        END DO
 
+       CONTADM(IDX_CUT+1:KONTA)=1
+       KONTA2=IDX_CUT
 c       IF (IDX_CUT.GT.0) THEN
 c        WRITE(*,*) 'have cut halo',i,IDX_CUT,I1,NST_HALO,DISTA(J),
 c     &                             DISTA(KONTA)
@@ -323,7 +325,7 @@ c       END IF
        !***********************************************
 
        REF_MIN=DISTA(1)
-       REF_MAX=DISTA(NPART_HALO)
+       REF_MAX=DISTA(KONTA2)
 
        CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
      &                       RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
