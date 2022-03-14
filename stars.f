@@ -27,6 +27,9 @@
       INTEGER MIN_NUM_PART_ST,FLAG_WDM,ITER
       REAL*4 ZETA
 
+      REAL*4 RETE,HTE,ROTE
+      COMMON /BACK/ RETE,HTE,ROTE
+      
       INTEGER NSTPART_X(0:NMAX),I,LOWP1,LOWP2,J,JJ,NST_HALO,NDM_HALO
       INTEGER MAX_NUM_PART_LOCAL,WELL_ALLOCATED,MINORIPA,MAXORIPA
       INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR,IX,JY,I1,I2
@@ -35,7 +38,7 @@
       REAL XLDOM,CX,CY,CZ,RCLUS,RCLUS2,XP,YP,ZP,CMX,CMY,CMZ
       REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX,BASVECCM(3),BASVCM(3)
       REAL RHALFMASS,MHALFMASS,XPEAK,YPEAK,ZPEAK,VVV2,INERTIA4(3,3)
-      REAL BASEIGENVAL(3),FACT_CUT,R1,R2,MMM,DENS,MINDENS,PI
+      REAL BASEIGENVAL(3),FACT_CUT,R1,R2,MMM,DENS,MINDENS,PI,DENS_CUT
 
 
       REAL*8 M8,X8,Y8,Z8,VX8,VY8,VZ8,LX8,LY8,LZ8,INERTIA8(3,3)
@@ -120,7 +123,7 @@
 !$OMP+                   ST_EIGENVALUES,ST_VELOCITYDISPERSION,MASAP,
 !$OMP+                   U2DM,U3DM,U4DM,N_DM,UM,UV,FLAG_WDM,
 !$OMP+                   PROC_NPARTICLES,HALOES_PROC,PARTICLES_PROC,
-!$OMP+                   ORIPA,PI),
+!$OMP+                   ORIPA,PI,ROTE,RETE),
 !$OMP+            PRIVATE(I,CX,CY,CZ,RCLUS,RCLUS2,LOWP1,LOWP2,
 !$OMP+                    MAX_NUM_PART_LOCAL,J,LIPST,JJ,NDM_HALO,
 !$OMP+                    NST_HALO,NPART_HALO,LIP,CONTADM,DISTA,DISTAST,
@@ -131,7 +134,8 @@
 !$OMP+                    VZ8,LX8,LY8,LZ8,INERTIA8,INERTIA4,J_HALFMASS,
 !$OMP+                    SIGMA_HALO8,VVV2,BASVECCM,BASVCM,BASEIGENVAL,
 !$OMP+                    ID_PROC,IPART_PROC,FACT_CUT,NUMPARTBINS,I1,
-!$OMP+                    I2,R1,R2,MMM,DENS,MINDENS,IDX_CUT,IDX_CUT_ST),
+!$OMP+                    I2,R1,R2,MMM,DENS,MINDENS,IDX_CUT,IDX_CUT_ST,
+!$OMP+                    DENS_CUT),
 !$OMP+            REDUCTION(+:NCLUS_ST)
 !$OMP+            DEFAULT(NONE), SCHEDULE(DYNAMIC)
       DO I=1,NCLUS
@@ -242,6 +246,7 @@ C       END IF
        !!! Free parameters (small dependence)
        FACT_CUT=5.0 ! [2.0,10.0]
        NUMPARTBINS=MAX(5,NST_HALO/50) ![4,16]
+       DENS_CUT=ROTE*RETE**3
        !***********************************************
        I1=0
        I2=0
@@ -274,7 +279,7 @@ C       END IF
           DENS=MMM/((4.*PI/3.)*(R2**3-R1**3))
           IF (DENS.LT.MINDENS) MINDENS=DENS
 C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
-          IF (DENS.GT.FACT_CUT*MINDENS) THEN
+          IF (DENS.GT.FACT_CUT*MINDENS.OR.DENS.LT.DENS_CUT) THEN
            IDX_CUT=J
            IDX_CUT_ST=I1
            EXIT
@@ -283,6 +288,11 @@ C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
 
         END IF !(LIP(J).GT.N_DM) THEN
        END DO !J=1,KONTA
+
+       IF (IDX_CUT.LT.0) THEN
+        IDX_CUT=KONTA
+        IDX_CUT_ST=NST_HALO
+       END IF
 
 *      Additional cut, if there are > 10 kpc without any star
        I1=-1
@@ -296,6 +306,7 @@ C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
           IF (DISTA(J)-DISTA(I1).GT.0.01) THEN
            IDX_CUT=I1
            IDX_CUT_ST=I2-1
+           EXIT
           END IF
           I1=J
          END IF
@@ -306,11 +317,6 @@ c       IF (IDX_CUT.GT.0) THEN
 c        WRITE(*,*) 'have cut halo',i,IDX_CUT,I1,NST_HALO,DISTA(J),
 c     &                             DISTA(KONTA)
 c       END IF
-
-       IF (IDX_CUT.LT.0) THEN
-        IDX_CUT=KONTA
-        IDX_CUT_ST=NST_HALO
-       END IF
 
        !***********************************************
        !!! UNBINDING: SCAPE VELOCITY
