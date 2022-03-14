@@ -29,12 +29,14 @@
 
       INTEGER NSTPART_X(0:NMAX),I,LOWP1,LOWP2,J,JJ,NST_HALO,NDM_HALO
       INTEGER MAX_NUM_PART_LOCAL,WELL_ALLOCATED,MINORIPA,MAXORIPA
-      INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR,IX,JY
-      INTEGER COUNT_1,COUNT_2,KONTA2PREV,NCLUS_ST,J_HALFMASS
+      INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR,IX,JY,I1,I2
+      INTEGER COUNT_1,COUNT_2,KONTA2PREV,NCLUS_ST,J_HALFMASS,NUMPARTBINS
+      INTEGER IDX_CUT,IDX_CUT_ST
       REAL XLDOM,CX,CY,CZ,RCLUS,RCLUS2,XP,YP,ZP,CMX,CMY,CMZ
       REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX,BASVECCM(3),BASVCM(3)
       REAL RHALFMASS,MHALFMASS,XPEAK,YPEAK,ZPEAK,VVV2,INERTIA4(3,3)
-      REAL BASEIGENVAL(3)
+      REAL BASEIGENVAL(3),FACT_CUT,R1,R2,MMM,DENS,MINDENS,PI
+
 
       REAL*8 M8,X8,Y8,Z8,VX8,VY8,VZ8,LX8,LY8,LZ8,INERTIA8(3,3)
       REAL*8 SIGMA_HALO8
@@ -66,6 +68,7 @@
       WRITE(*,*) 'DM, stellar particles:', N_DM, N_ST
 
       XLDOM=-LADO0/2.0
+      PI=DACOS(-1.D0)
 
 **********************************************************************
 *     Sort stellar particles
@@ -117,7 +120,7 @@
 !$OMP+                   ST_EIGENVALUES,ST_VELOCITYDISPERSION,MASAP,
 !$OMP+                   U2DM,U3DM,U4DM,N_DM,UM,UV,FLAG_WDM,
 !$OMP+                   PROC_NPARTICLES,HALOES_PROC,PARTICLES_PROC,
-!$OMP+                   ORIPA),
+!$OMP+                   ORIPA,PI),
 !$OMP+            PRIVATE(I,CX,CY,CZ,RCLUS,RCLUS2,LOWP1,LOWP2,
 !$OMP+                    MAX_NUM_PART_LOCAL,J,LIPST,JJ,NDM_HALO,
 !$OMP+                    NST_HALO,NPART_HALO,LIP,CONTADM,DISTA,DISTAST,
@@ -127,7 +130,8 @@
 !$OMP+                    RHALFMASS,XPEAK,YPEAK,ZPEAK,X8,Y8,Z8,VX8,VY8,
 !$OMP+                    VZ8,LX8,LY8,LZ8,INERTIA8,INERTIA4,J_HALFMASS,
 !$OMP+                    SIGMA_HALO8,VVV2,BASVECCM,BASVCM,BASEIGENVAL,
-!$OMP+                    ID_PROC,IPART_PROC),
+!$OMP+                    ID_PROC,IPART_PROC,FACT_CUT,NUMPARTBINS,I1,
+!$OMP+                    I2,R1,R2,MMM,DENS,MINDENS,IDX_CUT,IDX_CUT_ST),
 !$OMP+            REDUCTION(+:NCLUS_ST)
 !$OMP+            DEFAULT(NONE), SCHEDULE(DYNAMIC)
       DO I=1,NCLUS
@@ -230,13 +234,92 @@ C        STOP
 C       END IF
 
        !***********************************************
+       !!! PRE-ESTIMATE A MAXIMUM RADIUS
+       !!! We use a smoothed density profile; if it
+       !!!  raises more than a certain factor, we cut.
+       !!! Only stellar density profile is considered
+       !!!  here.
+       !!! Free parameters (small dependence)
+       FACT_CUT=5.0 ! [2.0,10.0]
+       NUMPARTBINS=MAX(5,NST_HALO/50) ![4,16]
+       !***********************************************
+       I1=0
+       I2=0
+       R1=0.0
+       R2=0.0
+       MINDENS=1.0E30
+       IDX_CUT=-1
+       DO J=1,KONTA
+        IF (LIP(J).GT.N_DM) THEN
+         I1=I1+1
+
+         IF (MOD(I1,NUMPARTBINS).EQ.1) THEN
+          IF (I2.EQ.0) THEN
+           R1=DISTA(J)
+          ELSE
+           R1=0.5*(DISTA(J-1)+R2) ! between the last star and this one
+          END IF
+          MMM=0.0
+         END IF !(I1.EQ.1) THEN
+
+         MMM=MMM+MASAP(LIP(J))
+
+         IF (MOD(I1,NUMPARTBINS).EQ.0) THEN
+          IF (I1.EQ.NST_HALO) THEN
+           R2=DISTA(J)
+          ELSE
+           R2=0.5*(DISTA(J)+DISTA(J+1)) ! between the last star and this one
+          END IF
+
+          DENS=MMM/((4.*PI/3.)*(R2**3-R1**3))
+          IF (DENS.LT.MINDENS) MINDENS=DENS
+C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
+          IF (DENS.GT.FACT_CUT*MINDENS) THEN
+           IDX_CUT=J
+           IDX_CUT_ST=I1
+           EXIT
+          END IF
+         END IF !(MOD(I1,NUMPARTBINS).EQ.0) THEN
+
+        END IF !(LIP(J).GT.N_DM) THEN
+       END DO !J=1,KONTA
+
+*      Additional cut, if there are > 10 kpc without any star
+       I1=-1
+       I2=0
+       DO J=1,IDX_CUT
+        IF (LIP(J).GT.N_DM) THEN
+         I2=I2+1
+         IF (I1.EQ.-1) THEN
+          I1=J
+         ELSE
+          IF (DISTA(J)-DISTA(I1).GT.0.01) THEN
+           IDX_CUT=I1
+           IDX_CUT_ST=I2-1
+          END IF
+          I1=J
+         END IF
+        END IF
+       END DO
+
+c       IF (IDX_CUT.GT.0) THEN
+c        WRITE(*,*) 'have cut halo',i,IDX_CUT,I1,NST_HALO,DISTA(J),
+c     &                             DISTA(KONTA)
+c       END IF
+
+       IF (IDX_CUT.LT.0) THEN
+        IDX_CUT=KONTA
+        IDX_CUT_ST=NST_HALO
+       END IF
+
+       !***********************************************
        !!! UNBINDING: SCAPE VELOCITY
        !***********************************************
 
        REF_MIN=DISTA(1)
        REF_MAX=DISTA(NPART_HALO)
 
-       CALL CENTROMASAS_PART(KONTA,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
+       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
      &                       RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
      &                       BASMAS,NPART_HALO)
 C       WRITE(*,*) VCMX,VCMY,VCMZ
@@ -248,10 +331,9 @@ C       WRITE(*,*) VCMX,VCMY,VCMZ
         CALL UNBINDING8_STARS(FAC,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,
      &                  U4DM,MASAP,RXPA,RYPA,RZPA,LIP,KONTA,
      &                  CONTADM,KONTA2,NPART_HALO,UM,VCMX,VCMY,VCMZ,
-     &                  N_DM)
-        BASINT=KONTA
+     &                  N_DM,IDX_CUT)
         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                 DISTA,KONTA2,0,NPART_HALO,BASINT)
+     &                 DISTA,KONTA2,0,NPART_HALO,IDX_CUT)
         REF_MAX=DISTA(KONTA2)
         REF_MIN=DISTA(1)
         CONTAERR=KONTA2PREV-KONTA2
@@ -259,13 +341,14 @@ C       WRITE(*,*) VCMX,VCMY,VCMZ
 
        count_1=konta-konta2
        count_2=konta2 !backup
-C       write(*,*) 'Unbinding V_ESC',i,'. ',konta-ndm_halo,'-->',
-C     &             konta2-ndm_halo,'. Pruned:',count_1,'. Iters:', FAC
+c       write(*,*) 'Unbinding V_ESC',i,'. ',konta-ndm_halo,'-->',
+c     &             konta2-ndm_halo,'. Pruned:',count_1,'. Iters:', FAC
 
        !***********************************************
        !!! GET RID OF DM PARTICLES (WE NO LONGER WANT THEM)
        !***********************************************
-       NST_HALO=COUNT(LIP.GT.N_DM.AND.CONTADM.EQ.0)
+       NST_HALO=COUNT(LIP(1:IDX_CUT).GT.N_DM.AND.
+     &                CONTADM(1:IDX_CUT).EQ.0)
        IF (NST_HALO.LT.MIN_NUM_PART_ST) THEN
          DEALLOCATE(LIPST,LIP,CONTADM,DISTA)
          CYCLE
@@ -274,22 +357,35 @@ C     &             konta2-ndm_halo,'. Pruned:',count_1,'. Iters:', FAC
        ALLOCATE(DISTAST(0:NST_HALO),LIPST(NST_HALO))
 
        JJ=0
-       DO J=1,KONTA2
+       IDX_CUT_ST=0
+       DO J=1,IDX_CUT
         IF (LIP(J).GT.N_DM.AND.CONTADM(J).EQ.0) THEN
          JJ=JJ+1
          LIPST(JJ)=LIP(J)
          DISTAST(JJ)=DISTA(J)
+         ! relocate the approximate limit of the stellar halo
+         IF (IDX_CUT_ST.EQ.0) THEN
+          IF (J.GT.IDX_CUT) THEN
+           IDX_CUT=JJ
+           IDX_CUT_ST=1
+          END IF
+         END IF
+
         END IF
        END DO
        KONTA2=JJ
-C       write(*,*) 'now we have stellar particles:',KONTA2,NST_HALO
+       IF (IDX_CUT_ST.EQ.0) IDX_CUT=KONTA2
+c       write(*,*) 'now we have stellar particles:',KONTA2,NST_HALO
 
        DEALLOCATE(LIP,DISTA,CONTADM)
        ALLOCATE(CONTADM(NST_HALO))
        CONTADM=1
        CONTADM(1:KONTA2)=0
 
-       CALL CENTROMASAS_PART(KONTA2,CONTADM,LIPST,
+       DO J=1,KONTA2
+       END DO
+
+       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIPST,
      &          U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &          CMX,CMY,CMZ,VCMX,VCMY,VCMZ,BASMAS,NST_HALO)
 
@@ -304,10 +400,10 @@ C       write(*,*) 'now we have stellar particles:',KONTA2,NST_HALO
         KONTA2PREV=KONTA2
         CALL UNBINDING_SIGMA_STARS(FAC,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,
      &               RXPA,RYPA,RZPA,MASAP,LIPST,CONTADM,KONTA2,
-     &               NST_HALO,UM,VCMX,VCMY,VCMZ,N_DM)
+     &               NST_HALO,UM,VCMX,VCMY,VCMZ,N_DM,IDX_CUT)
         BASINT=KONTA
         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIPST,
-     &                 DISTAST,KONTA2,0,NST_HALO,BASINT)
+     &                 DISTAST,KONTA2,0,NST_HALO,IDX_CUT)
         REF_MAX=DISTAST(KONTA2)
         REF_MIN=DISTAST(1)
         CONTAERR=KONTA2PREV-KONTA2
@@ -315,14 +411,15 @@ C       write(*,*) 'now we have stellar particles:',KONTA2,NST_HALO
        END DO
 
        count_2=konta-konta2
-C       write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
-C     &            '. Pruned:',count_2,'. Iters:', FAC
+c       write(*,*) 'Unbinding SIGMA',i,'. ',konta,'-->',konta2,
+c     &            '. Pruned:',count_2,'. Iters:', FAC
 C       write(*,*) '--'
 
-       IF (KONTA2.LT.MIN_NUM_PART_ST) THEN
+       IF (IDX_CUT.LT.MIN_NUM_PART_ST) THEN
         DEALLOCATE(CONTADM,LIPST,DISTAST)
         CYCLE
        END IF
+       KONTA2=IDX_CUT
 
        NCLUS_ST=NCLUS_ST+1
 C       WRITE(*,*) 'ACCEPTED STELLAR HALO',I,NCLUS_ST,KONTA2
@@ -365,8 +462,9 @@ c       write(*,*) distast(1:konta2)
        YPEAK=CY
        ZPEAK=CZ
 
-       CALL RECENTER_DENSITY_PEAK_STARS(XPEAK,YPEAK,ZPEAK,RHALFMASS,
-     &               RXPA,RYPA,RZPA,MASAP,NST_HALO,LIPST,KONTA2)
+       CALL RECENTER_DENSITY_PEAK_STARS(XPEAK,YPEAK,ZPEAK,
+     &                 RHALFMASS/SQRT(3.),RXPA,RYPA,RZPA,MASAP,NST_HALO,
+     &                 LIPST,KONTA2)
 
 C       WRITE(*,*) '-->',XPEAK,YPEAK,ZPEAK
 
@@ -374,7 +472,7 @@ C       WRITE(*,*) '-->',XPEAK,YPEAK,ZPEAK
        KONTA=KONTA2
        CALL REORDENAR(KONTA,XPEAK,YPEAK,ZPEAK,RXPA,RYPA,RZPA,CONTADM,
      &                LIPST,DISTAST,KONTA2,1,NST_HALO,BASINT)
-
+c       write(*,*) i,'particles',lipst(1:min(konta,10))
        !***********************************************
        !!! CORRECT HALF-MASS RADIUS, DETERMINE CM PROPERTIES
        !***********************************************
@@ -499,7 +597,7 @@ C       WRITE(*,*) '-->',VCMX,VCMY,VCMZ
         PROC_NPARTICLES(ID_PROC)=IPART_PROC
         HALOES_PROC(3,I)=IPART_PROC
        END IF
-
+c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
 
        DEALLOCATE(LIPST,CONTADM,DISTAST)
       END DO !(I=1,NCLUS)
@@ -749,7 +847,7 @@ C     &              IX,JY,KZ,FLAG_ITER
 ***********************************************************
        SUBROUTINE UNBINDING_SIGMA_STARS(FAC,REF_MIN,REF_MAX,U2DM,U3DM,
      &              U4DM,RXPA,RYPA,RZPA,MASAP,LIP,CONTADM,
-     &              KONTA2,MAX_NUM_PART,UM,VCMX,VCMY,VCMZ,N_DM)
+     &              KONTA2,MAX_NUM_PART,UM,VCMX,VCMY,VCMZ,N_DM,IDX_CUT)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -768,7 +866,7 @@ C     &              IX,JY,KZ,FLAG_ITER
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
        INTEGER KONTA2,MAX_NUM_PART
        REAL*4 UM,VCMX,VCMY,VCMZ
-       INTEGER N_DM
+       INTEGER N_DM,IDX_CUT
 
        REAL CMX,CMY,CMZ,BAS,BB,AADM,AADMX,AADMY
        REAL AADMZ,MMM
@@ -786,14 +884,19 @@ C     &              IX,JY,KZ,FLAG_ITER
         ALLOCATE(DESV2(1:KONTA2))
 
         SIGMA2=0.D0
-        DO J=1,KONTA2
+        DO J=1,IDX_CUT
          JJ=LIP(J)
          BAS=(U2DM(JJ)-VCMX)**2+(U3DM(JJ)-VCMY)**2+(U4DM(JJ)-VCMZ)**2
          DESV2(J)=BAS
          SIGMA2=SIGMA2+BAS
         END DO
+        DO J=IDX_CUT+1,KONTA2
+         JJ=LIP(J)
+         BAS=(U2DM(JJ)-VCMX)**2+(U3DM(JJ)-VCMY)**2+(U4DM(JJ)-VCMZ)**2
+         DESV2(J)=BAS
+        END DO
 
-        IF (KONTA2.GT.1) SIGMA2=SIGMA2/(KONTA2-1)
+        IF (KONTA2.GT.1) SIGMA2=SIGMA2/(IDX_CUT-1)
 
 *       Find particles with too large relative velocity
         DO J=1,KONTA2
@@ -801,7 +904,7 @@ C     &              IX,JY,KZ,FLAG_ITER
         END DO
 
 *       NEW CENTER OF MASS AND ITS VELOCITY
-        CALL CENTROMASAS_PART(KONTA2,CONTADM,LIP,
+        CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM,MAX_NUM_PART)
 
@@ -817,7 +920,7 @@ C     &              IX,JY,KZ,FLAG_ITER
        SUBROUTINE UNBINDING8_STARS(FAC,REF_MIN,REF_MAX,DISTA,
      &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           LIP,KONTA,CONTADM,KONTA2,MAX_NUM_PART,UM,
-     &           VCMX,VCMY,VCMZ,N_DM)
+     &           VCMX,VCMY,VCMZ,N_DM,IDX_CUT)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
@@ -839,7 +942,7 @@ C     &              IX,JY,KZ,FLAG_ITER
        INTEGER KONTA,KONTA2,MAX_NUM_PART
        REAL*4 UM
        REAL*4 VCMX,VCMY,VCMZ
-       INTEGER N_DM
+       INTEGER N_DM,IDX_CUT
 
        INTEGER J,K,IX,IMAX,JJ
 
@@ -923,7 +1026,7 @@ C     &              DISTA(J),REF_MAX
        END DO
 
 *      NEW CENTER OF MASS AND ITS VELOCITY
-       CALL CENTROMASAS_PART(KONTA2,CONTADM,LIP,
+       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,
      &          U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &          CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM,MAX_NUM_PART)
 
