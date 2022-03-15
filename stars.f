@@ -4,9 +4,13 @@
      &                          RZPA,MASAP,U2DM,U3DM,U4DM,ORIPA,N_DM,
      &                          N_ST,NX,LADO0,PARTICLES_PER_HALO,
      &                          INDCS_PARTICLES_PER_HALO,UM,UV,
-     &                          MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA)
+     &                          MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA,
+     &                          STPAR_FACT_INC,STPAR_MAX_DIST,
+     &                          STPAR_MIN_OVERDENS)
 ********************************************************************
-
+*     Looks for stellar haloes (galaxies) hosted by the previously
+*      found DM haloes
+********************************************************************
       IMPLICIT NONE
       INCLUDE 'input_files/asohf_parameters.dat'
 
@@ -26,10 +30,11 @@
       REAL*4 UM,UV
       INTEGER MIN_NUM_PART_ST,FLAG_WDM,ITER
       REAL*4 ZETA
+      REAL STPAR_FACT_INC,STPAR_MAX_DIST,STPAR_MIN_OVERDENS
 
       REAL*4 RETE,HTE,ROTE
       COMMON /BACK/ RETE,HTE,ROTE
-      
+
       INTEGER NSTPART_X(0:NMAX),I,LOWP1,LOWP2,J,JJ,NST_HALO,NDM_HALO
       INTEGER MAX_NUM_PART_LOCAL,WELL_ALLOCATED,MINORIPA,MAXORIPA
       INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR,IX,JY,I1,I2
@@ -38,7 +43,7 @@
       REAL XLDOM,CX,CY,CZ,RCLUS,RCLUS2,XP,YP,ZP,CMX,CMY,CMZ
       REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX,BASVECCM(3),BASVCM(3)
       REAL RHALFMASS,MHALFMASS,XPEAK,YPEAK,ZPEAK,VVV2,INERTIA4(3,3)
-      REAL BASEIGENVAL(3),FACT_CUT,R1,R2,MMM,DENS,MINDENS,PI,DENS_CUT
+      REAL BASEIGENVAL(3),R1,R2,MMM,DENS,MINDENS,PI,DENS_CUT
       REAL X1,X2,Y1,Y2,Z1,Z2
 
       REAL*8 M8,X8,Y8,Z8,VX8,VY8,VZ8,LX8,LY8,LZ8,INERTIA8(3,3)
@@ -72,6 +77,9 @@
 
       XLDOM=-LADO0/2.0
       PI=DACOS(-1.D0)
+
+      STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc
+      DENS_CUT=STPAR_MIN_OVERDENS*ROTE*RETE**3
 
 **********************************************************************
 *     Sort stellar particles
@@ -123,7 +131,8 @@
 !$OMP+                   ST_EIGENVALUES,ST_VELOCITYDISPERSION,MASAP,
 !$OMP+                   U2DM,U3DM,U4DM,N_DM,UM,UV,FLAG_WDM,
 !$OMP+                   PROC_NPARTICLES,HALOES_PROC,PARTICLES_PROC,
-!$OMP+                   ORIPA,PI,ROTE,RETE),
+!$OMP+                   ORIPA,PI,STPAR_MAX_DIST,DENS_CUT,
+!$OMP+                   STPAR_FACT_INC),
 !$OMP+            PRIVATE(I,CX,CY,CZ,RCLUS,RCLUS2,LOWP1,LOWP2,
 !$OMP+                    MAX_NUM_PART_LOCAL,J,LIPST,JJ,NDM_HALO,
 !$OMP+                    NST_HALO,NPART_HALO,LIP,CONTADM,DISTA,DISTAST,
@@ -133,9 +142,8 @@
 !$OMP+                    RHALFMASS,XPEAK,YPEAK,ZPEAK,X8,Y8,Z8,VX8,VY8,
 !$OMP+                    VZ8,LX8,LY8,LZ8,INERTIA8,INERTIA4,J_HALFMASS,
 !$OMP+                    SIGMA_HALO8,VVV2,BASVECCM,BASVCM,BASEIGENVAL,
-!$OMP+                    ID_PROC,IPART_PROC,FACT_CUT,NUMPARTBINS,I1,
-!$OMP+                    I2,R1,R2,MMM,DENS,MINDENS,IDX_CUT,IDX_CUT_ST,
-!$OMP+                    DENS_CUT),
+!$OMP+                    ID_PROC,IPART_PROC,NUMPARTBINS,I1,I2,R1,R2,
+!$OMP+                    MMM,DENS,MINDENS,IDX_CUT,IDX_CUT_ST),
 !$OMP+            REDUCTION(+:NCLUS_ST)
 !$OMP+            DEFAULT(NONE), SCHEDULE(DYNAMIC)
       DO I=1,NCLUS
@@ -244,9 +252,7 @@ C       END IF
        !!! Only stellar density profile is considered
        !!!  here.
        !!! Free parameters (small dependence)
-       FACT_CUT=5.0 ! [2.0,10.0]
        NUMPARTBINS=MAX(5,NST_HALO/50) ![4,16]
-       DENS_CUT=ROTE*RETE**3
        !***********************************************
        I1=0
        I2=0
@@ -279,7 +285,7 @@ C       END IF
           DENS=MMM/((4.*PI/3.)*(R2**3-R1**3))
           IF (DENS.LT.MINDENS) MINDENS=DENS
 C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
-          IF (DENS.GT.FACT_CUT*MINDENS.OR.DENS.LT.DENS_CUT) THEN
+          IF (DENS.GT.STPAR_FACT_INC*MINDENS.OR.DENS.LT.DENS_CUT) THEN
            IDX_CUT=J
            IDX_CUT_ST=I1
            EXIT
@@ -303,7 +309,7 @@ C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
          IF (I1.EQ.-1) THEN
           I1=J
          ELSE
-          IF (DISTA(J)-DISTA(I1).GT.0.01) THEN
+          IF (DISTA(J)-DISTA(I1).GT.STPAR_MAX_DIST) THEN
            IDX_CUT=I1
            IDX_CUT_ST=I2-1
            EXIT
@@ -638,9 +644,9 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
 
       WRITE(*,*) NCLUS_ST,'haloes preidentified'
 
-*     OVERLAPS 
+*     OVERLAPS
       DO I=1,NCLUS
-       IF (STPCLUS(I).EQ.0) CYCLE 
+       IF (STPCLUS(I).EQ.0) CYCLE
        X1=ST_XPEAK(I)
        Y1=ST_YPEAK(I)
        Z1=ST_ZPEAK(I)
@@ -656,26 +662,26 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
         N2=STPCLUS(J)
         LOWP2=INDCS_PARTICLES_PER_HALO_ST(1,J)
         IF ((X1-X2)**2+(Y1-Y2)**2+(Z1-Z2)**2.LT.(R1+R2)**2.AND.
-     &      MIN(N1,N2).GT.MAX(N1,N2)/2) THEN 
+     &      MIN(N1,N2).GT.MAX(N1,N2)/2) THEN
          BASINT=0
 !$OMP PARALLEL DO SHARED(LOWP1,LOWP2,N1,N2,PARTICLES_PER_HALO_ST),
 !$OMP+            PRIVATE(II,JJ),
 !$OMP+            REDUCTION(+:BASINT),
 !$OMP+            DEFAULT(NONE)
-         DO II=LOWP1,LOWP1+N1-1 
+         DO II=LOWP1,LOWP1+N1-1
           DO JJ=LOWP2,LOWP2+N2-1
            IF (PARTICLES_PER_HALO_ST(II).EQ.
      &         PARTICLES_PER_HALO_ST(JJ)) THEN
-            BASINT=BASINT+1 
+            BASINT=BASINT+1
             EXIT
            END IF
           END DO
          END DO
 
          IF (BASINT.GT.0.75*MIN(N1,N2)) THEN
-          IF (N1.GE.N2) THEN 
+          IF (N1.GE.N2) THEN
            STPCLUS(J)=0
-          ELSE 
+          ELSE
            STPCLUS(I)=0
            EXIT
           END IF

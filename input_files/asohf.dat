@@ -56,11 +56,20 @@ FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
 1
 Search for substructure (=1 yes, =0 no) ------------------------------>
 0
-Search for cores (max sigma_v of bound particles) (=1 yes, =0 no) ---->
-0
 Compute kinetic and potential energies (=1 yes, =0 no) --------------->
 0
 Minimum number of particles per halo --------------------------------->
 25
+***********************************************************************
+*       Stellar haloes (galaxies) block                               *
+***********************************************************************
+Look for stellar haloes (=1 yes, =0 no) ------------------------------>
+0
 Minimum number of stellar particles per stellar halo ----------------->
 25
+Cut stellar halo if density increases more than factor from min ------>
+5.0
+Cut stellar halo if radial distance of consecutive stars > (ckpc) ---->
+10.0
+Cut stellar halo if rho_* falls below this factor of rho_B ----------->
+1.0

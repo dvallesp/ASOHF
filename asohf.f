@@ -175,8 +175,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        COMMON /PROCESADORES/ NUM
 
        INTEGER NMAXNCLUSBAS,PABAS,NPBAS,NLEVBAS,NBASPART_PLOT
-       INTEGER FLAG_SUBS,FLAG_CENTRAL,DO_COMPUTE_ENERGIES
+       INTEGER FLAG_SUBS,FLAG_CENTRAL,DO_COMPUTE_ENERGIES,FLAG_STELLAR
        INTEGER FW1,FW2,FW3,FW4,FW5
+       REAL STPAR_FACT_INC,STPAR_MAX_DIST,STPAR_MIN_OVERDENS
 
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
@@ -261,14 +262,25 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FLAG_WDM
        READ(1,*) !Search for substructure (=1 yes, =0 no) ------------------------------>
        READ(1,*) FLAG_SUBS
-       READ(1,*) !Search for cores (max sigma_v of bound particles) (=1 yes, =0 no) ---->
-       READ(1,*) FLAG_CENTRAL
+       !READ(1,*) !Search for cores (max sigma_v of bound particles) (=1 yes, =0 no) --->
+       !READ(1,*) FLAG_CENTRAL
        READ(1,*) !Compute kinetic and potential energies (=1 yes, =0 no) --------------->
        READ(1,*) DO_COMPUTE_ENERGIES
        READ(1,*) !Minimum number of particles per halo --------------------------------->
        READ(1,*) MIN_NUM_PART
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*       Stellar haloes (galaxies) block                               *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !Look for stellar haloes (=1 yes, =0 no) ------------------------------>
+       READ(1,*) FLAG_STELLAR
        READ(1,*) !Minimum number of stellar particles per stellar halo ----------------->
        READ(1,*) MIN_NUM_PART_ST
+       READ(1,*) !Cut stellar halo if density increases more than factor from min ------>
+       READ(1,*) STPAR_FACT_INC
+       READ(1,*) !Cut stellar halo if radial distance of consecutive stars > (ckpc) ---->
+       READ(1,*) STPAR_MAX_DIST
+       READ(1,*) !Cut stellar halo if rho_* falls below this factor of rho_B ----------->
+       READ(1,*) STPAR_MIN_OVERDENS
 
        CLOSE(1)
 
@@ -937,17 +949,17 @@ c       WRITE(*,*)'===================================='
 ****************************************************
 ****************************************************
 ****************************************************
-       IF (FLAG_CENTRAL.EQ.1) THEN
-       WRITE(*,*)
-       WRITE(*,*) '***************************'
-       WRITE(*,*) '**     CORE SEARCH       **'
-       WRITE(*,*) '***************************'
-
-       CALL CORE_SEARCH(NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,REALCLUS,
-     &                  MSUB,RSUB,SUBS_LEV,DMPCLUS,RMAXSIGMA,RXPA,RYPA,
-     &                  RZPA,MASAP,U2DM,U3DM,U4DM,N_DM,MMAXSIGMA,
-     &                  MAX_NUM_PART)
-       END IF
+*       IF (FLAG_CENTRAL.EQ.1) THEN
+*       WRITE(*,*)
+*       WRITE(*,*) '***************************'
+*       WRITE(*,*) '**     CORE SEARCH       **'
+*       WRITE(*,*) '***************************'
+*
+*       CALL CORE_SEARCH(NCLUS,MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,REALCLUS,
+*     &                  MSUB,RSUB,SUBS_LEV,DMPCLUS,RMAXSIGMA,RXPA,RYPA,
+*     &                  RZPA,MASAP,U2DM,U3DM,U4DM,N_DM,MMAXSIGMA,
+*     &                  MAX_NUM_PART)
+*       END IF
 
 ****************************************************
 **********          STELLAR HALOES           *******
@@ -963,7 +975,9 @@ c       WRITE(*,*)'===================================='
      &                      CLUSRX,CLUSRY,CLUSRZ,RXPA,RYPA,RZPA,MASAP,
      &                      U2DM,U3DM,U4DM,ORIPA,N_DM,N_ST,NX,LADO0,
      &                      PARTICLES_PER_HALO,INDCS_PARTICLES_PER_HALO,
-     &                      UM,UV,MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA)
+     &                      UM,UV,MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA,
+     &                      STPAR_FACT_INC,STPAR_MAX_DIST,
+     &                      STPAR_MIN_OVERDENS)
        END IF
 
 *************************************************
