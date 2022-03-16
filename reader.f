@@ -474,7 +474,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 *********************************************************************
       SUBROUTINE READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,
      &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
-     &             N_DM,VAR,N_ST)
+     &             N_DM,VAR,N_ST,UV,UM,HUBBLE_LITTLEH)
 *********************************************************************
 *      Reads data from generic input format
 *********************************************************************
@@ -484,14 +484,11 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       INCLUDE 'input_files/asohf_parameters.dat'
 
       INTEGER NX,NY,NZ,ITER,NDXYZ
-      REAL*4 T,AAA,BBB,CCC,MAP,ZETA
+      REAL*4 T,AAA,BBB,CCC,MAP,ZETA,UV,UM,HUBBLE_LITTLEH
       INTEGER VAR !(=1: only DM; =2: DM+stars)
 
       INTEGER I,J,K,IX,NL,IR,IRR,N_DM,N_ST,NBAS,NST0
 
-      INTEGER,ALLOCATABLE::NPATCH(:)
-
-      INTEGER,ALLOCATABLE::NPART(:),NPARTST(:),NPARTBH(:)
       REAL*4 U2DM(PARTIRED)
       REAL*4 U3DM(PARTIRED)
       REAL*4 U4DM(PARTIRED)
@@ -505,11 +502,23 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       REAL*4 UBAS(0:PARTIRED)
       INTEGER UBASINT(0:PARTIRED)
 
+      REAL CIO_MASS,CIO_SPEED,CIO_LENGTH
+      COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH
+      REAL FACT_MASS,FACT_SPEED,FACT_LENGTH
+
       CHARACTER*5 ITER_STRING
 
 *     READING DATA
       WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
       WRITE(*,*) 'Reading iter',ITER
+
+      FACT_MASS=CIO_MASS/UM
+      FACT_SPEED=CIO_SPEED/UV
+      IF (CIO_LENGTH.GT.0.0) THEN
+       FACT_LENGTH=CIO_LENGTH
+      ELSE
+       FACT_LENGTH=1/HUBBLE_LITTLEH
+      END IF
 
 **    DARK MATTER
       OPEN (32,FILE='./simulation/particles'//ITER_STRING,
@@ -539,6 +548,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       READ(32) (UBASINT(I),I=1,N_DM)
       ORIPA(1:N_DM)=UBASINT(1:N_DM)
 
+      WRITE(*,*)
       WRITE(*,*) 'INPUT. DM x positions (min,max):',
      &            MINVAL(RXPA(1:N_DM)),MAXVAL(RXPA(1:N_DM))
       WRITE(*,*) 'INPUT. DM y positions (min,max):',
@@ -555,7 +565,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
      &            MINVAL(MASAP(1:N_DM)),MAXVAL(MASAP(1:N_DM))
       WRITE(*,*) 'INPUT. DM unique IDs (min,max):',
      &            MINVAL(ORIPA(1:N_DM)),MAXVAL(ORIPA(1:N_DM))
-
+      WRITE(*,*)
       WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',N_DM
 
 
@@ -584,29 +594,66 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        READ(32) (UBASINT(I),I=1,N_ST)
        ORIPA(N_DM+1:N_DM+N_ST)=UBASINT(1:N_ST)
 
-       WRITE(*,*) 'INPUT. DM x positions (min,max):',
+       WRITE(*,*)
+       WRITE(*,*) 'INPUT. ST x positions (min,max):',
      &     MINVAL(RXPA(N_DM+1:N_DM+N_ST)),MAXVAL(RXPA(N_DM+1:N_DM+N_ST))
-       WRITE(*,*) 'INPUT. DM y positions (min,max):',
+       WRITE(*,*) 'INPUT. ST y positions (min,max):',
      &     MINVAL(RYPA(N_DM+1:N_DM+N_ST)),MAXVAL(RYPA(N_DM+1:N_DM+N_ST))
-       WRITE(*,*) 'INPUT. DM z positions (min,max):',
+       WRITE(*,*) 'INPUT. ST z positions (min,max):',
      &     MINVAL(RZPA(N_DM+1:N_DM+N_ST)),MAXVAL(RZPA(N_DM+1:N_DM+N_ST))
-       WRITE(*,*) 'INPUT. DM x velocities (min,max):',
+       WRITE(*,*) 'INPUT. ST x velocities (min,max):',
      &     MINVAL(U2DM(N_DM+1:N_DM+N_ST)),MAXVAL(U2DM(N_DM+1:N_DM+N_ST))
-       WRITE(*,*) 'INPUT. DM y velocities (min,max):',
+       WRITE(*,*) 'INPUT. ST y velocities (min,max):',
      &     MINVAL(U3DM(N_DM+1:N_DM+N_ST)),MAXVAL(U3DM(N_DM+1:N_DM+N_ST))
-       WRITE(*,*) 'INPUT. DM z velocities (min,max):',
+       WRITE(*,*) 'INPUT. ST z velocities (min,max):',
      &     MINVAL(U4DM(N_DM+1:N_DM+N_ST)),MAXVAL(U4DM(N_DM+1:N_DM+N_ST))
-       WRITE(*,*) 'INPUT. DM masses (min,max):',
+       WRITE(*,*) 'INPUT. ST masses (min,max):',
      &   MINVAL(MASAP(N_DM+1:N_DM+N_ST)),MAXVAL(MASAP(N_DM+1:N_DM+N_ST))
-       WRITE(*,*) 'INPUT. DM unique IDs (min,max):',
+       WRITE(*,*) 'INPUT. ST unique IDs (min,max):',
      &   MINVAL(ORIPA(N_DM+1:N_DM+N_ST)),MAXVAL(ORIPA(N_DM+1:N_DM+N_ST))
-
+       WRITE(*,*)
        WRITE(*,*) 'TOTAL STELLAR PARTICLES IN ITER=',N_ST
       ELSE
        N_ST=0
       END IF
 
       CLOSE(32)
+
+!$OMP PARALLEL DO SHARED(N_DM,N_ST,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   FACT_LENGTH,FACT_SPEED,FACT_MASS),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+      DO I=1,N_DM+N_ST
+       RXPA(I)=RXPA(I)*FACT_LENGTH
+       RYPA(I)=RYPA(I)*FACT_LENGTH
+       RZPA(I)=RZPA(I)*FACT_LENGTH
+
+       U2DM(I)=U2DM(I)*FACT_SPEED
+       U3DM(I)=U3DM(I)*FACT_SPEED
+       U4DM(I)=U4DM(I)*FACT_SPEED
+
+       MASAP(I)=MASAP(I)*FACT_MASS
+      END DO
+
+      WRITE(*,*)
+      WRITE(*,*) 'After unit conversion...'
+      WRITE(*,*) 'x positions (min,max), in Mpc:',
+     &     MINVAL(RXPA(1:N_DM+N_ST)),MAXVAL(RXPA(1:N_DM+N_ST))
+      WRITE(*,*) 'y positions (min,max), in Mpc:',
+     &     MINVAL(RYPA(1:N_DM+N_ST)),MAXVAL(RYPA(1:N_DM+N_ST))
+      WRITE(*,*) 'z positions (min,max), in Mpc:',
+     &     MINVAL(RZPA(1:N_DM+N_ST)),MAXVAL(RZPA(1:N_DM+N_ST))
+      WRITE(*,*) 'x velocities (min,max), in c:',
+     &     MINVAL(U2DM(1:N_DM+N_ST)),MAXVAL(U2DM(1:N_DM+N_ST))
+      WRITE(*,*) 'y velocities (min,max), in c:',
+     &     MINVAL(U3DM(1:N_DM+N_ST)),MAXVAL(U3DM(1:N_DM+N_ST))
+      WRITE(*,*) 'z velocities (min,max), in c:',
+     &     MINVAL(U4DM(1:N_DM+N_ST)),MAXVAL(U4DM(1:N_DM+N_ST))
+      WRITE(*,*) 'Masses (min,max), in internal units:',
+     &   MINVAL(MASAP(1:N_DM+N_ST)),MAXVAL(MASAP(1:N_DM+N_ST))
+      WRITE(*,*) 'Unique IDs (min,max):',
+     &   MINVAL(ORIPA(1:N_DM+N_ST)),MAXVAL(ORIPA(1:N_DM+N_ST))
+      WRITE(*,*)
 
       RETURN
       END

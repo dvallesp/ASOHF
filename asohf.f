@@ -83,7 +83,7 @@
        REAL*4 RETE,HTE,ROTE
        COMMON /BACK/ RETE,HTE,ROTE
 
-       REAL*4 DX,DY,DZ,H2
+       REAL*4 DX,DY,DZ,HUBBLE_LITTLEH
        COMMON /ESPACIADO/ DX,DY,DZ
 
        REAL*4 UV, UM
@@ -169,6 +169,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE
        INTEGER BOR,BORAMR,BOR_OVLP
        REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND
+       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH
+       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH
 
 *      ---PARALLEL---
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR,FLAG_PARALLEL
@@ -216,6 +218,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FLAG_SA,FLAG_MASCLET,FLAG_GAS
        READ(1,*) !Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
        READ(1,*) FW1,FW2,FW3,FW4,FW5
+       READ(1,*) !Input units: MASS (Msun), SPEED (km/s), LENGTH (=0 Mpc, =1 Mpc/h) ---->
+       READ(1,*) CIO_MASS,CIO_SPEED,CIO_LENGTH
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Mesh building parameters block                                *
        READ(1,*) !***********************************************************************
@@ -285,7 +289,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        CLOSE(1)
 
        N_PARTICLES=N_DM
-       H2=ACHE
+       HUBBLE_LITTLEH=ACHE
 
 **************************************************************
 *     ...PARALLEL RUNNING...
@@ -574,9 +578,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
          IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
          WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
         ELSE
-         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,
-     &                               U2DM,U3DM,U4DM,MASAP,RXPA,
-     &                               RYPA,RZPA,ORIPA,N_DM,VAR,N_ST)
+         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,U2DM,U3DM,
+     &                               U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
+     &                               N_DM,VAR,N_ST,UV,UM,HUBBLE_LITTLEH)
          IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
          WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
         END IF

@@ -13,12 +13,14 @@ Hubble constant (h), omega matter ------------------------------------>
 0.678,0.31
 Initial redshift, box size (Mpc) ------------------------------------->
 100.0, 40.0
-Parallel(=1),serial(=0)/ Number of processors ------------------------>
+Parallel(=1),serial(=0) / Number of processors ----------------------->
 1,24
 Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
 0,1,0
 Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
 0,0,0,0,0
+Input units: MASS (Msun), SPEED (km/s), LENGTH (cMpc; <0 for cMpc/h) ->
+9.1717e18,299792.458,1.0
 ***********************************************************************
 *	      Mesh building parameters block                                *
 ***********************************************************************
