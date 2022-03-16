@@ -4,77 +4,57 @@
 *	      General parameters block                                      *
 ***********************************************************************
 Files: first, last, every -------------------------------------------->
-0,0,50
+4000,4000,50
 Cells per direction (NX,NY,NZ) --------------------------------------->
 128,128,128
-DM particles (all levels) -------------------------------------------->
-2097152
+DM particles (all levels) ---------------------------------------->
+21943314
 Hubble constant (h), omega matter ------------------------------------>
 0.678,0.31
-Max box sidelength (in input length units) --------------------------->
-40.0
-Parallel(=1),serial(=0) / Number of processors ----------------------->
+Initial redshift, box size (Mpc) ------------------------------------->
+100.0, 40.0
+Parallel(=1),serial(=0)/ Number of processors ------------------------>
 1,24
 Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
 0,1,0
-Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
-0,0,0,0,0
-Input units: MASS (Msun; <0 for Msun/h), LENGTH (cMpc; <0 for cMpc/h),
- SPEED (km/s), ALPHA (v_input = a^alpha dx/dt; 1 is peculiar vel.) --->
-9.1717e18,1.0,299792.458,1.0
-Input domain (in input length units; x1,x2,y1,y2,z1,z2) -------------->
--20.0,20.0,-20.0,20.0,-20.0,20.0
 ***********************************************************************
 *	      Mesh building parameters block                                *
 ***********************************************************************
 Levels for the mesh (stand-alone) ------------------------------------>
-4
+6
 PARCHLIM(=0 no limit patches/level,>0 limit) ------------------------->
 0
 Max num of patches per level(needs PARCHLIM>0) ----------------------->
 1000
 Refinement threshold (num. part.), refinable fraction to extend ------>
-3,0.05
+3,0.1
 Minimum patch size (child cells) ------------------------------------->
-14
+12
 Base grid refinement border, AMR grids refinement border ------------->
-4,0
+8,1
 Allow for addition overlap (to avoid losing signal) in the mesh ------>
 0
 Density interpolation kernel (1=linear, 2=quadratic) ----------------->
 2
 Variable for mesh halo finding: 1(dm), 2(dm+stars) ------------------->
-1
+2
 Kernel level for stars (if VAR=2) ------------------------------------>
 5
-Particle especies (0=there are different mass particles, 1=equal mass
- particles, use local density, 2=equal mass particles, do nothing) --->
-1
 ***********************************************************************
 *	      Halo finding parameters block                                 *
 ***********************************************************************
-Max. reach around halos (cMpc), excluded cells in boundaries --------->
-4.0,1
+Max. reach around halos (Mpc), excluded cells in boundaries ---------->
+8.0, 1
 Minimum fraction of shared volume to merge (in grid search) ---------->
 0.6
 FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
-1
+0
 Search for substructure (=1 yes, =0 no) ------------------------------>
+1
+Search for cores (max sigma_v of bound particles) (=1 yes, =0 no) ---->
 0
-Compute kinetic and potential energies (=1 yes, =0 no) --------------->
-0
-Minimum number of particles per halo --------------------------------->
-25
 ***********************************************************************
-*       Stellar haloes (galaxies) block                               *
+*	      Merger tree parameters block                                  *
 ***********************************************************************
-Look for stellar haloes (=1 yes, =0 no) ------------------------------>
-0
-Minimum number of stellar particles per stellar halo ----------------->
-25
-Cut stellar halo if density increases more than factor from min ------>
-5.0
-Cut stellar halo if radial distance of consecutive stars > (ckpc) ---->
-10.0
-Cut stellar halo if rho_* falls below this factor of rho_B ----------->
-1.0
+Merger_tree: 1(no), 2(complete, with %), 3(main line) ---------------->
+1

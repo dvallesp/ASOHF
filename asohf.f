@@ -65,7 +65,7 @@
 
        INTEGER I,J,K,I2,J2
        INTEGER NX,NY,NZ,ITER,NDXYZ
-       REAL*4 T,TEI
+       REAL*4 T
 
        REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
        COMMON /GRID/   RADX,RADY,RADZ
@@ -74,10 +74,10 @@
      &         RZ(0:NAMRX+1,NPALEV)
        COMMON /GRIDAMR/ RX,RY,RZ
 
-       REAL*4 PI,ACHE,T0,RE0,PI4ROD
+       REAL*4 PI,ACHE,T0,RE0
        COMMON /DOS/ACHE,T0,RE0
-       REAL*4 UNTERCIO,CGR,CGR2,ZI,RODO,ROI,REI,LADO,LADO0
-       COMMON /CONS/PI4ROD,REI,CGR,PI
+       REAL*4 UNTERCIO,CGR,CGR2,RODO,LADO,LADO0
+       COMMON /CONS/CGR,PI
        REAL*4 OMEGA0
 
        REAL*4 RETE,HTE,ROTE
@@ -169,8 +169,10 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE
        INTEGER BOR,BORAMR,BOR_OVLP
        REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND
-       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA
-       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA
+       REAL XLDOM,XRDOM,YLDOM,YRDOM,ZLDOM,ZRDOM
+       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
+       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
+     &                  CIO_YC,CIO_ZC
 
 *      ---PARALLEL---
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR,FLAG_PARALLEL
@@ -210,8 +212,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) N_DM
        READ(1,*) !Hubble constant (h), omega matter ------------------------------------>
        READ(1,*) ACHE,OMEGA0
-       READ(1,*) !Initial redshift, box size (in length units specified below) --------->
-       READ(1,*) ZI,LADO0
+       READ(1,*) !Max box sizelength (in length units specified below) ----------------->
+       READ(1,*) LADO0
        READ(1,*) !Parallel(=1),serial(=0)/ Number of processors ------------------------>
        READ(1,*) FLAG_PARALLEL,NUM
        READ(1,*) !Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
@@ -221,6 +223,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) !Input units: MASS (Msun; <0 for cMpc/h), LENGTH (cMpc; <0 for cMpc/h),
        READ(1,*) ! SPEED (km/s), ALPHA (v_input = a^alpha dx/dt; 1 is peculiar vel.) --->
        READ(1,*) CIO_MASS,CIO_LENGTH,CIO_SPEED,CIO_ALPHA
+       READ(1,*) !Input domain (in input length units; x1,x2,y1,y2,z1,z2) -------------->
+       READ(1,*) XLDOM,XRDOM,YLDOM,YRDOM,ZLDOM,ZRDOM
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Mesh building parameters block                                *
        READ(1,*) !***********************************************************************
@@ -295,6 +299,10 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        IF (CIO_MASS.LT.0) CIO_MASS=-CIO_MASS/HUBBLE_LITTLEH
        IF (CIO_LENGTH.LT.0) CIO_LENGTH=-CIO_LENGTH/HUBBLE_LITTLEH
        LADO0=LADO0*CIO_LENGTH
+       ! center of the domain (in input length units)
+       CIO_XC=0.5*(XLDOM+XRDOM)
+       CIO_YC=0.5*(YLDOM+YRDOM)
+       CIO_ZC=0.5*(ZLDOM+ZRDOM)
 
 **************************************************************
 *     ...PARALLEL RUNNING...
@@ -368,10 +376,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 *      with inipk.f and ini3d.f
 *      in arbitrary units 1 ul=10.98 Mpc
        RE0=1.0/10.98
-       ROI=RODO*(1.0+ZI)**3
-       PI4ROD=4.D0*PI*ROI
-       REI=RE0/(1.0+ZI)
-       TEI=T0*(1.0+ZI)**(-1.5)   !TEI=INITIAL TIME
 
        UV=299792.458
        UM=9.1717E+18
