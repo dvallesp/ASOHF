@@ -206,11 +206,11 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FIRST,LAST,EVERY
        READ(1,*) !Cells per direction (NX,NY,NZ) --------------------------------------->
        READ(1,*) NX,NY,NZ
-       READ(1,*) !DM particles (all levels) ---------------------------------------->
+       READ(1,*) !DM particles (all levels) -------------------------------------------->
        READ(1,*) N_DM
        READ(1,*) !Hubble constant (h), omega matter ------------------------------------>
        READ(1,*) ACHE,OMEGA0
-       READ(1,*) !Initial redshift, box size (Mpc) ------------------------------------->
+       READ(1,*) !Initial redshift, box size (in length units specified below) --------->
        READ(1,*) ZI,LADO0
        READ(1,*) !Parallel(=1),serial(=0)/ Number of processors ------------------------>
        READ(1,*) FLAG_PARALLEL,NUM
@@ -259,7 +259,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Halo finding parameters block                                 *
        READ(1,*) !***********************************************************************
-       READ(1,*) !Max. reach around halos (Mpc), excluded cells in boundaries ---------->
+       READ(1,*) !Max. reach around halos (cMpc), excluded cells in boundaries --------->
        READ(1,*) BOUND, BORDES
        READ(1,*) !Minimum fraction of shared volume to merge (in grid search) ---------->
        READ(1,*) VOL_SOLAP_LOW
@@ -294,6 +294,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        IF (CIO_MASS.LT.0) CIO_MASS=-CIO_MASS/HUBBLE_LITTLEH
        IF (CIO_LENGTH.LT.0) CIO_LENGTH=-CIO_LENGTH/HUBBLE_LITTLEH
+       LADO0=LADO0*CIO_LENGTH
 
 **************************************************************
 *     ...PARALLEL RUNNING...

@@ -11,7 +11,7 @@ DM particles (all levels) -------------------------------------------->
 2097152
 Hubble constant (h), omega matter ------------------------------------>
 0.678,0.31
-Initial redshift, box size (Mpc) ------------------------------------->
+Initial redshift, box size (in length units specified below) --------->
 100.0, 40.0
 Parallel(=1),serial(=0) / Number of processors ----------------------->
 1,24
@@ -51,7 +51,7 @@ Particle especies (0=there are different mass particles, 1=equal mass
 ***********************************************************************
 *	      Halo finding parameters block                                 *
 ***********************************************************************
-Max. reach around halos (Mpc), excluded cells in boundaries ---------->
+Max. reach around halos (cMpc), excluded cells in boundaries --------->
 4.0,1
 Minimum fraction of shared volume to merge (in grid search) ---------->
 0.6
