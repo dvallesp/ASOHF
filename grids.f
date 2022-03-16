@@ -2912,3 +2912,46 @@ c       END DO
 
        RETURN
        END
+
+*********************************************************************
+       SUBROUTINE DECONVER_POSITIONS(NCLUS,REALCLUS,DIM_ARRAY1,
+     &                               DIM_ARRAY2,XARR,YARR,ZARR)
+*********************************************************************
+*      Shifts the positions of the (x,y,z) arrays to match the
+*       input domain specification
+*********************************************************************
+
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER NCLUS
+       INTEGER REALCLUS(DIM_ARRAY1)
+       INTEGER DIM_ARRAY1,DIM_ARRAY2
+       REAL XARR(DIM_ARRAY2),YARR(DIM_ARRAY2),ZARR(DIM_ARRAY2)
+
+       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
+       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
+     &                  CIO_YC,CIO_ZC
+
+       REAL SHIFT_X,SHIFT_Y,SHIFT_Z,FACT_LENGTH
+       INTEGER I
+
+       FACT_LENGTH=CIO_LENGTH
+       SHIFT_X=CIO_XC*FACT_LENGTH
+       SHIFT_Y=CIO_YC*FACT_LENGTH
+       SHIFT_Z=CIO_ZC*FACT_LENGTH
+
+!$OMP PARALLEL DO SHARED(NCLUS,REALCLUS,XARR,YARR,ZARR,SHIFT_X,SHIFT_Y,
+!$OMP+                   SHIFT_Z),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,NCLUS
+        IF (REALCLUS(I).NE.0) THEN
+         XARR(I)=XARR(I)+SHIFT_X
+         YARR(I)=YARR(I)+SHIFT_Y
+         ZARR(I)=ZARR(I)+SHIFT_Z
+        END IF
+       END DO
+
+       RETURN
+       END

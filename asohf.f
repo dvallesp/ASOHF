@@ -1001,7 +1001,15 @@ c       WRITE(*,*)'===================================='
 
 *************************************************
 *************************************************
-*===================Families===============
+*=================== OUTPUT FILES ===============
+*************************************************
+*************************************************
+
+       CALL DECONVER_POSITIONS(NCLUS,REALCLUS,MAXNCLUS,MAXNCLUS,
+     &                         CLUSRX,CLUSRY,CLUSRZ)
+       CALL DECONVER_POSITIONS(NCLUS,REALCLUS,MAXNCLUS,MAXNCLUS,
+     &                         CLUSRXCM,CLUSRYCM,CLUSRZCM)
+
        KONTA2=COUNT(REALCLUS(1:NCLUS).NE.0)
 
        OPEN(3,FILE='./output_files/families'//ITER_STRING,

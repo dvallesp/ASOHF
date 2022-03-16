@@ -70,6 +70,8 @@
       INTEGER PARTICLES_PER_HALO_ST(N_ST)
       INTEGER INDCS_PARTICLES_PER_HALO_ST(2,NCLUS)
 
+      REAL,ALLOCATABLE::XARR(:),YARR(:),ZARR(:)
+
       CHARACTER*5 ITER_STRING
       WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
 
@@ -699,6 +701,21 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
 *     WRITE STARS (we do it inside the routine so as to not
 *                  mess the main program)
 *****************************************************************
+      ALLOCATE(XARR(NCLUS),YARR(NCLUS),ZARR(NCLUS))
+      DO I=1,NCLUS
+       IF (STPCLUS(I).GT.0) THEN
+        XARR(I)=CLUSRX(I)
+        YARR(I)=CLUSRY(I)
+        ZARR(I)=CLUSRZ(I)
+       END IF
+      END DO
+
+      CALL DECONVER_POSITIONS(NCLUS,STPCLUS,NCLUS,NCLUS,XARR,YARR,ZARR)
+      CALL DECONVER_POSITIONS(NCLUS,STPCLUS,NCLUS,NCLUS,
+     &                        ST_XPEAK,ST_YPEAK,ST_ZPEAK)
+      CALL DECONVER_POSITIONS(NCLUS,STPCLUS,NCLUS,NCLUS,
+     &                        ST_XCM,ST_YCM,ST_ZCM)
+
       KONTA2=COUNT(STPCLUS(1:NCLUS).GT.0)
 
       OPEN(3,FILE='./output_files/stellar_haloes'//ITER_STRING,
@@ -759,7 +776,7 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
       DO I=1,NCLUS
        IF (STPCLUS(I).GT.0) THEN
         KONTA=KONTA+1
-        WRITE(3,112) KONTA,I,CLUSRX(I),CLUSRY(I),CLUSRZ(I),ST_XPEAK(I),
+        WRITE(3,112) KONTA,I,XARR(I),YARR(I),ZARR(I),ST_XPEAK(I),
      &               ST_YPEAK(I),ST_ZPEAK(I),ST_HALFMASS(I),
      &               ST_HALFMASSRADIUS(I)*1000.0,STPCLUS(I),ST_XCM(I),
      &               ST_YCM(I),ST_ZCM(I),
@@ -775,6 +792,8 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
       END IF  !realclus
 
       END DO
+
+      DEALLOCATE(XARR,YARR,ZARR)
 
       IF (FLAG_WDM.EQ.1) THEN
        WRITE(4) KONTA2
