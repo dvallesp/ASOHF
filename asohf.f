@@ -557,7 +557,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 *       Reading MASCLET files directly
         CALL READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
      &            PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-     &            PATCHRX,PATCHRY,PATCHRZ,MAP,U2DM,U3DM,U4DM,MASAP,
+     &            PATCHRX,PATCHRY,PATCHRZ,U2DM,U3DM,U4DM,MASAP,
      &            NPART,RXPA,RYPA,RZPA,ORIPA,N_DM)
 
         ! Background cosmology variables
@@ -568,16 +568,17 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 *       Reading external list of particles (either Masclet particles
 *       or a general list of particles, depending on FLAG_MASCLET)
         IF (FLAG_MASCLET.EQ.1) THEN
-         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,MAP,
+         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,
      &                               U2DM,U3DM,U4DM,MASAP,RXPA,
      &                               RYPA,RZPA,ORIPA,N_DM,VAR,N_ST)
          IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
          WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
         ELSE
-         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
+         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,
      &                               U2DM,U3DM,U4DM,MASAP,RXPA,
-     &                               RYPA,RZPA,ORIPA,LADO0,N_GAS,N_DM,
-     &                               N_PARTICLES)
+     &                               RYPA,RZPA,ORIPA,N_DM,VAR,N_ST)
+         IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
+         WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
         END IF
 
         IF (SPLIT_SPECIES.EQ.0) THEN
@@ -590,6 +591,11 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         ELSE IF (SPLIT_SPECIES.EQ.2) THEN
          NPART_ESP(0)=N_DM
          NPART_ESP(1:N_ESP-1)=0
+         IF (N_ST.GT.0) THEN
+          NPART_ESP(IR_KERN_STARS)=NPART_ESP(IR_KERN_STARS)+N_ST
+          WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
+     &               ', no. particles:',NPART_ESP(IR_KERN_STARS)
+         END IF
         END IF
 
 !      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE

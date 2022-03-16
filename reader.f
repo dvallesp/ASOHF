@@ -1,7 +1,7 @@
 *********************************************************************
        SUBROUTINE READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
      &           PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-     &           PATCHRX,PATCHRY,PATCHRZ,MAP,
+     &           PATCHRX,PATCHRY,PATCHRZ,
      &           U2DM,U3DM,U4DM,MASAP,NPART,RXPA,RYPA,RZPA,ORIPA,N_DM)
 *********************************************************************
 *      Reads MASCLET data: grids, gas density (clus files) and
@@ -238,7 +238,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        END
 
 *********************************************************************
-       SUBROUTINE READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,MAP,
+       SUBROUTINE READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,
      &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
      &             N_DM,VAR,N_ST)
 *********************************************************************
@@ -472,161 +472,144 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
 
 *********************************************************************
-       SUBROUTINE READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,NL,MAP,
-     &            U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,LADO0,
-     &            N_GAS,N_DM,N_PARTICLES)
+      SUBROUTINE READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,
+     &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
+     &             N_DM,VAR,N_ST)
 *********************************************************************
-*      Reads generic file with particles
+*      Reads data from generic input format
 *********************************************************************
 
-       IMPLICIT NONE
+      IMPLICIT NONE
 
-       INCLUDE 'input_files/asohf_parameters.dat'
+      INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER NX,NY,NZ,ITER,NDXYZ
-       REAL*4 T,AAA,BBB,CCC,MAP,ZETA,LADO0
+      INTEGER NX,NY,NZ,ITER,NDXYZ
+      REAL*4 T,AAA,BBB,CCC,MAP,ZETA
+      INTEGER VAR !(=1: only DM; =2: DM+stars)
 
-       INTEGER I,J,K,IX,JY,KZ,NL,IR,IRR,VAR,N1,N2,N3
-       INTEGER N_DM,N_GAS,N_PARTICLES
-       INTEGER NBAS_DM,NBAS_GAS,NBAS_PARTICLES
+      INTEGER I,J,K,IX,NL,IR,IRR,N_DM,N_ST,NBAS,NST0
 
-       INTEGER NPATCH(0:NLEVELS)
-       INTEGER PARE(NPALEV)
-       INTEGER PATCHNX(NPALEV)
-       INTEGER PATCHNY(NPALEV)
-       INTEGER PATCHNZ(NPALEV)
-       INTEGER PATCHX(NPALEV)
-       INTEGER PATCHY(NPALEV)
-       INTEGER PATCHZ(NPALEV)
-       REAL*4  PATCHRX(NPALEV)
-       REAL*4  PATCHRY(NPALEV)
-       REAL*4  PATCHRZ(NPALEV)
+      INTEGER,ALLOCATABLE::NPATCH(:)
 
-       INTEGER NPART(0:NLEVELS)
-       REAL*4 U2DM(PARTIRED)
-       REAL*4 U3DM(PARTIRED)
-       REAL*4 U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED)
-       REAL*4 RYPA(PARTIRED)
-       REAL*4 RZPA(PARTIRED)
+      INTEGER,ALLOCATABLE::NPART(:),NPARTST(:),NPARTBH(:)
+      REAL*4 U2DM(PARTIRED)
+      REAL*4 U3DM(PARTIRED)
+      REAL*4 U4DM(PARTIRED)
+      REAL*4 MASAP(PARTIRED)
+      REAL*4 RXPA(PARTIRED)
+      REAL*4 RYPA(PARTIRED)
+      REAL*4 RZPA(PARTIRED)
 
-       INTEGER ORIPA(PARTIRED)
+      INTEGER ORIPA(PARTIRED)
 
-       REAL*4 UBAS(0:PARTIRED)
-       INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
+      REAL*4 UBAS(0:PARTIRED)
+      INTEGER UBASINT(0:PARTIRED)
 
-       OPEN (5,FILE='particle_list.dat',
-     &               STATUS='UNKNOWN',ACTION='READ')
+      CHARACTER*5 ITER_STRING
 
-       READ(5,*) NBAS_PARTICLES,ZETA,T,NBAS_GAS,NBAS_DM
+*     READING DATA
+      WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
+      WRITE(*,*) 'Reading iter',ITER
 
-       IF (NBAS_PARTICLES.NE.N_PARTICLES.OR.
-     &     NBAS_GAS.NE.N_GAS.OR.NBAS_DM.NE.N_DM) THEN
-        WRITE(*,*) 'WARNING: number of particles badly specified'
-        WRITE(*,*) NBAS_GAS,NBAS_DM,NBAS_PARTICLES
-        WRITE(*,*) N_GAS,N_DM,N_PARTICLES
+**    DARK MATTER
+      OPEN (32,FILE='./simulation/particles'//ITER_STRING,
+     &         STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
+      READ(32) ZETA
+      READ(32) NBAS
+      IF (NBAS.NE.N_DM) THEN
+       WRITE(*,*) 'WARNING: Number of DM particles badly specified',
+     &            NBAS,N_DM
+       STOP
+      END IF
+
+      READ(32) (UBAS(I),I=1,N_DM)
+      RXPA(1:N_DM)=UBAS(1:N_DM)
+      READ(32) (UBAS(I),I=1,N_DM)
+      RYPA(1:N_DM)=UBAS(1:N_DM)
+      READ(32) (UBAS(I),I=1,N_DM)
+      RZPA(1:N_DM)=UBAS(1:N_DM)
+      READ(32) (UBAS(I),I=1,N_DM)
+      U2DM(1:N_DM)=UBAS(1:N_DM)
+      READ(32) (UBAS(I),I=1,N_DM)
+      U3DM(1:N_DM)=UBAS(1:N_DM)
+      READ(32) (UBAS(I),I=1,N_DM)
+      U4DM(1:N_DM)=UBAS(1:N_DM)
+      READ(32) (UBAS(I),I=1,N_DM)
+      MASAP(1:N_DM)=UBAS(1:N_DM)
+      READ(32) (UBASINT(I),I=1,N_DM)
+      ORIPA(1:N_DM)=UBASINT(1:N_DM)
+
+      WRITE(*,*) 'INPUT. DM x positions (min,max):',
+     &            MINVAL(RXPA(1:N_DM)),MAXVAL(RXPA(1:N_DM))
+      WRITE(*,*) 'INPUT. DM y positions (min,max):',
+     &            MINVAL(RYPA(1:N_DM)),MAXVAL(RYPA(1:N_DM))
+      WRITE(*,*) 'INPUT. DM z positions (min,max):',
+     &            MINVAL(RZPA(1:N_DM)),MAXVAL(RZPA(1:N_DM))
+      WRITE(*,*) 'INPUT. DM x velocities (min,max):',
+     &            MINVAL(U2DM(1:N_DM)),MAXVAL(U2DM(1:N_DM))
+      WRITE(*,*) 'INPUT. DM y velocities (min,max):',
+     &            MINVAL(U3DM(1:N_DM)),MAXVAL(U3DM(1:N_DM))
+      WRITE(*,*) 'INPUT. DM z velocities (min,max):',
+     &            MINVAL(U4DM(1:N_DM)),MAXVAL(U4DM(1:N_DM))
+      WRITE(*,*) 'INPUT. DM masses (min,max):',
+     &            MINVAL(MASAP(1:N_DM)),MAXVAL(MASAP(1:N_DM))
+      WRITE(*,*) 'INPUT. DM unique IDs (min,max):',
+     &            MINVAL(ORIPA(1:N_DM)),MAXVAL(ORIPA(1:N_DM))
+
+      WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',N_DM
+
+
+      IF (VAR.EQ.2) THEN
+       READ(32) N_ST
+       IF (N_DM+N_ST.GT.PARTIRED) THEN
+        WRITE(*,*) 'WARNING: bad dimensioning of PARTIRED',
+     &              N_DM+N_ST,'>',PARTIRED
         STOP
        END IF
 
-       WRITE(*,*)'N_DM,N_GAS=',N_DM,N_GAS
+       READ(32) (UBAS(I),I=1,N_ST)
+       RXPA(N_DM+1:N_DM+N_ST)=UBAS(1:N_ST)
+       READ(32) (UBAS(I),I=1,N_ST)
+       RYPA(N_DM+1:N_DM+N_ST)=UBAS(1:N_ST)
+       READ(32) (UBAS(I),I=1,N_ST)
+       RZPA(N_DM+1:N_DM+N_ST)=UBAS(1:N_ST)
+       READ(32) (UBAS(I),I=1,N_ST)
+       U2DM(N_DM+1:N_DM+N_ST)=UBAS(1:N_ST)
+       READ(32) (UBAS(I),I=1,N_ST)
+       U3DM(N_DM+1:N_DM+N_ST)=UBAS(1:N_ST)
+       READ(32) (UBAS(I),I=1,N_ST)
+       U4DM(N_DM+1:N_DM+N_ST)=UBAS(1:N_ST)
+       READ(32) (UBAS(I),I=1,N_ST)
+       MASAP(N_DM+1:N_DM+N_ST)=UBAS(1:N_ST)
+       READ(32) (UBASINT(I),I=1,N_ST)
+       ORIPA(N_DM+1:N_DM+N_ST)=UBASINT(1:N_ST)
 
-       DO I=1,N_DM
-        READ(5,*) ORIPA(I),RXPA(I),RYPA(I),RZPA(I),
-     &            U2DM(I),U3DM(I),U4DM(I),MASAP(I)
-       END DO
-       DO I=N_DM+1,N_DM+N_GAS
-        READ(5,*) ORIPA(I),RXPA(I),RYPA(I),RZPA(I),
-     &            U2DM(I),U3DM(I),U4DM(I),MASAP(I)
-       END DO
+       WRITE(*,*) 'INPUT. DM x positions (min,max):',
+     &     MINVAL(RXPA(N_DM+1:N_DM+N_ST)),MAXVAL(RXPA(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. DM y positions (min,max):',
+     &     MINVAL(RYPA(N_DM+1:N_DM+N_ST)),MAXVAL(RYPA(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. DM z positions (min,max):',
+     &     MINVAL(RZPA(N_DM+1:N_DM+N_ST)),MAXVAL(RZPA(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. DM x velocities (min,max):',
+     &     MINVAL(U2DM(N_DM+1:N_DM+N_ST)),MAXVAL(U2DM(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. DM y velocities (min,max):',
+     &     MINVAL(U3DM(N_DM+1:N_DM+N_ST)),MAXVAL(U3DM(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. DM z velocities (min,max):',
+     &     MINVAL(U4DM(N_DM+1:N_DM+N_ST)),MAXVAL(U4DM(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. DM masses (min,max):',
+     &   MINVAL(MASAP(N_DM+1:N_DM+N_ST)),MAXVAL(MASAP(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. DM unique IDs (min,max):',
+     &   MINVAL(ORIPA(N_DM+1:N_DM+N_ST)),MAXVAL(ORIPA(N_DM+1:N_DM+N_ST))
 
-       WRITE(*,*) 'ORIPA=',MAXVAL(ORIPA(1:N_PARTICLES)),
-     &                      MINVAL(ORIPA(1:N_PARTICLES))
+       WRITE(*,*) 'TOTAL STELLAR PARTICLES IN ITER=',N_ST
+      ELSE
+       N_ST=0
+      END IF
 
-       CLOSE(5)
+      CLOSE(32)
 
-***********************
-*DM
-       WRITE(*,*) '///DM///'
-       WRITE(*,*) MAXVAL(RXPA(1:N_DM)),
-     &            MINVAL(RXPA(1:N_DM))
-       WRITE(*,*) MAXVAL(RYPA(1:N_DM)),
-     &            MINVAL(RYPA(1:N_DM))
-       WRITE(*,*) MAXVAL(RZPA(1:N_DM)),
-     &            MINVAL(RZPA(1:N_DM))
-       WRITE(*,*) MAXVAL(MASAP(1:N_DM)),
-     &            MINVAL(MASAP(1:N_DM))
-
-*      In [-L/2, L/2]
-       RXPA(1:N_DM)=RXPA(1:N_DM)-LADO0*0.5
-       RYPA(1:N_DM)=RYPA(1:N_DM)-LADO0*0.5
-       RZPA(1:N_DM)=RZPA(1:N_DM)-LADO0*0.5
-
-       WRITE(*,*)'CHECKING BOX SIDE', LADO0
-       IX=0
-       IX=COUNT(ABS(RXPA(1:N_DM)).GT.LADO0*0.5001)
-       JY=0
-       JY=COUNT(ABS(RYPA(1:N_DM)).GT.LADO0*0.5001)
-       KZ=0
-       KZ=COUNT(ABS(RZPA(1:N_DM)).GT.LADO0*0.5001)
-       IF(IX.GT.0.OR.JY.GT.0.OR.KZ.GT.0) THEN
-        WRITE(*,*) IX,JY,KZ
-        WRITE(*,*)'WARNING DM: LADO!!'
-        STOP
-       ENDIF
-
-       WRITE(*,*) '///DM///'
-       WRITE(*,*) MAXVAL(RXPA(1:N_DM)),
-     &            MINVAL(RXPA(1:N_DM))
-       WRITE(*,*) MAXVAL(RYPA(1:N_DM)),
-     &            MINVAL(RYPA(1:N_DM))
-       WRITE(*,*) MAXVAL(RZPA(1:N_DM)),
-     &            MINVAL(RZPA(1:N_DM))
-
-
-       IF(N_GAS.GT.0) THEN
-
-       WRITE(*,*) '///GAS///'
-       WRITE(*,*) MAXVAL(RXPA(N_DM+1:N_DM+N_GAS)),
-     &            MINVAL(RXPA(N_DM+1:N_DM+N_GAS))
-       WRITE(*,*) MAXVAL(RYPA(N_DM+1:N_DM+N_GAS)),
-     &            MINVAL(RYPA(N_DM+1:N_DM+N_GAS))
-       WRITE(*,*) MAXVAL(RZPA(N_DM+1:N_DM+N_GAS)),
-     &            MINVAL(RZPA(N_DM+1:N_DM+N_GAS))
-
-*      In [-L/2, L/2]
-       RXPA(N_DM+1:N_DM+N_GAS)=RXPA(N_DM+1:N_DM+N_GAS)-LADO0*0.5
-       RYPA(N_DM+1:N_DM+N_GAS)=RYPA(N_DM+1:N_DM+N_GAS)-LADO0*0.5
-       RZPA(N_DM+1:N_DM+N_GAS)=RZPA(N_DM+1:N_DM+N_GAS)-LADO0*0.5
-
-       WRITE(*,*)'CHECKING BOX SIDE', LADO0
-       IX=0
-       IX=COUNT(ABS(RXPA(N_DM+1:N_DM+N_GAS)).GT.LADO0*0.5001)
-       JY=0
-       JY=COUNT(ABS(RYPA(N_DM+1:N_DM+N_GAS)).GT.LADO0*0.5001)
-       KZ=0
-       KZ=COUNT(ABS(RZPA(N_DM+1:N_DM+N_GAS)).GT.LADO0*0.5001)
-       IF(IX.GT.0.OR.JY.GT.0.OR.KZ.GT.0) THEN
-        WRITE(*,*) IX,JY,KZ
-        WRITE(*,*)'WARNING DM: LADO!!'
-        STOP
-       ENDIF
-
-       WRITE(*,*) '///GAS///'
-       WRITE(*,*) MAXVAL(RXPA(N_DM+1:N_DM+N_GAS)),
-     &            MINVAL(RXPA(N_DM+1:N_DM+N_GAS))
-       WRITE(*,*) MAXVAL(RYPA(N_DM+1:N_DM+N_GAS)),
-     &            MINVAL(RYPA(N_DM+1:N_DM+N_GAS))
-       WRITE(*,*) MAXVAL(RZPA(N_DM+1:N_DM+N_GAS)),
-     &            MINVAL(RZPA(N_DM+1:N_DM+N_GAS))
-
-       END IF !N_GAS
-
-       WRITE(*,*) 'TOTAL PARTICLES IN ITER=',N_DM+N_GAS
-
-       RETURN
-       END
-
+      RETURN
+      END
 
 *********************************************************************
        SUBROUTINE SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,
