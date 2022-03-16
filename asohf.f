@@ -169,8 +169,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE
        INTEGER BOR,BORAMR,BOR_OVLP
        REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND
-       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH
-       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH
+       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA
+       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA
 
 *      ---PARALLEL---
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR,FLAG_PARALLEL
@@ -218,8 +218,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FLAG_SA,FLAG_MASCLET,FLAG_GAS
        READ(1,*) !Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
        READ(1,*) FW1,FW2,FW3,FW4,FW5
-       READ(1,*) !Input units: MASS (Msun), SPEED (km/s), LENGTH (=0 Mpc, =1 Mpc/h) ---->
-       READ(1,*) CIO_MASS,CIO_SPEED,CIO_LENGTH
+       READ(1,*) !Input units: MASS (Msun; <0 for cMpc/h), LENGTH (cMpc; <0 for cMpc/h),
+       READ(1,*) ! SPEED (km/s), ALPHA (v_input = a^alpha dx/dt; 1 is peculiar vel.) --->
+       READ(1,*) CIO_MASS,CIO_LENGTH,CIO_SPEED,CIO_ALPHA
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Mesh building parameters block                                *
        READ(1,*) !***********************************************************************
@@ -290,6 +291,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        N_PARTICLES=N_DM
        HUBBLE_LITTLEH=ACHE
+
+       IF (CIO_MASS.LT.0) CIO_MASS=-CIO_MASS/HUBBLE_LITTLEH
+       IF (CIO_LENGTH.LT.0) CIO_LENGTH=-CIO_LENGTH/HUBBLE_LITTLEH
 
 **************************************************************
 *     ...PARALLEL RUNNING...

@@ -19,8 +19,9 @@ Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
 0,1,0
 Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
 0,0,0,0,0
-Input units: MASS (Msun), SPEED (km/s), LENGTH (cMpc; <0 for cMpc/h) ->
-9.1717e18,299792.458,1.0
+Input units: MASS (Msun; <0 for Msun/h), LENGTH (cMpc; <0 for cMpc/h),
+ SPEED (km/s), ALPHA (v_input = a^alpha dx/dt; 1 is peculiar vel.) --->
+9.1717e18,1.0,299792.458,1.0
 ***********************************************************************
 *	      Mesh building parameters block                                *
 ***********************************************************************
