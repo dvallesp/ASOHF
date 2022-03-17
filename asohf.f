@@ -58,7 +58,7 @@
 *             3) Tal y como esta, estamos pasando del gas al
 *                construir la malla aunque si que lo leemos
 **********************************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
@@ -112,10 +112,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4  PATCHRY(NPALEV)
        REAL*4  PATCHRZ(NPALEV)
 
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       INTEGER ORIPA(PARTIRED)
        INTEGER NPART_ESP(0:N_ESP-1),NDMPART_X(0:NMAX)
 
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
@@ -152,7 +148,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4 KINETIC_E(NMAXNCLUS),POTENTIAL_E(NMAXNCLUS)
        REAL*4 FSUB(NMAXNCLUS) ! fraction of mass in substructures
        INTEGER NSUBS(NMAXNCLUS) ! number of substructures
-       INTEGER PARTICLES_PER_HALO(PARTIRED)
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS)
        INTEGER DMPCLUS(MAXNCLUS)
        INTEGER NHALLEV(0:NLEVELS),SUBS_LEV(0:NLEVELS)
@@ -456,17 +451,13 @@ c        RETE=RE0/(1.0+ZETA)
 *       Reading external list of particles (either Masclet particles
 *       or a general list of particles, depending on FLAG_MASCLET)
         CALL READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,ITER,NX,NY,NZ,T,
-     &       ZETA,U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,N_DM,VAR,
-     &       N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
-
+     &       ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
 
         IF (SPLIT_SPECIES.EQ.0) THEN
-         CALL SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &                          ORIPA,N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
+         CALL SORT_DM_PARTICLES(N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
         ELSE IF (SPLIT_SPECIES.EQ.1) THEN
-         CALL SORT_DM_PARTICLES_LOCALDENSITY(U2DM,U3DM,U4DM,MASAP,RXPA,
-     &                          RYPA,RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
-     &                          IR_KERN_STARS,RODO,RE0)
+         CALL SORT_DM_PARTICLES_LOCALDENSITY(N_DM,NPART_ESP,N_ST,
+     &                                       IR_KERN_STARS,RODO,RE0)
         ELSE IF (SPLIT_SPECIES.EQ.2) THEN
          NPART_ESP(0)=N_DM
          NPART_ESP(1:N_ESP-1)=0
@@ -491,8 +482,7 @@ c        RETE=RE0/(1.0+ZETA)
          WRITE(*,*)'==== Building the grid...', ITER, NL
          CALL CREATE_MESH(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
-     &                    PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
-     &                    N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
+     &                    PATCHRZ,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
      &                    REFINE_THR,MIN_PATCHSIZE,MINFRAC_REFINABLE,
      &                    BOR,BORAMR,BOR_OVLP,NPART_ESP,FW1)
          WRITE(*,*)'==== END building the grid...', ITER, NL
@@ -515,8 +505,8 @@ c        END IF
 
        CALL DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
-     &              PATCHRZ,RXPA,RYPA,RZPA,MASAP,N_PARTICLES,N_DM,
-     &              N_GAS,LADO0,T,ZETA,NPART_ESP,INTERP_DEGREE)
+     &              PATCHRZ,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
+     &              NPART_ESP,INTERP_DEGREE)
 
        WRITE(*,*)'***************************'
        WRITE(*,*)'***** END MESHRENOEF ******'
@@ -608,8 +598,7 @@ c     &                     U11)
        WRITE(*,*) '***    HALO FINDING     ***'
        WRITE(*,*) '***************************'
 
-       CALL SORT_DM_PARTICLES_X(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &                          ORIPA,N_DM,NDMPART_X,NX,LADO0)
+       CALL SORT_DM_PARTICLES_X(N_DM,NDMPART_X,NX,LADO0)
 
 
 **********************************************************
@@ -663,8 +652,8 @@ c     &                     U11)
 ************************************************************
 
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,MIN_NUM_PART,
-     &                        DMPCLUS,NDMPART_X,LADO0,1.0,1)
+     &                        REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
+     &                        NDMPART_X,LADO0,1.0,1)
        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
      &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
 
@@ -691,13 +680,11 @@ c     &                     U11)
      &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,VY,VZ,
      &      VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
-     &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
-     &      ORIPA,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
-     &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
-     &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
-     &      NDMPART_X,VAR)
+     &      LEVHAL,EIGENVAL,N_DM,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,
+     &      CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,
+     &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
+     &      DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,
+     &      MIN_NUM_PART,NDMPART_X,VAR)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -727,8 +714,8 @@ c       WRITE(*,*)'===================================='
 ************ REMOVING POOR HALOES **************
 ************************************************
        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                        REALCLUS,RXPA,RYPA,RZPA,N_DM,MIN_NUM_PART,
-     &                        DMPCLUS,NDMPART_X,LADO0,1.0,0)
+     &                        REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
+     &                        NDMPART_X,LADO0,1.0,0)
 
 ************************************************
 ************** RUBBISH (overlaps) **************
@@ -802,13 +789,11 @@ c       WRITE(*,*)'===================================='
      &      CLUSRY,CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,
      &      VY,VZ,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,
      &      M2500M,MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,
-     &      DMPCLUS,LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,
-     &      U4DM,ORIPA,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,PATCHCLUS,NPATCH,
-     &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
-     &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
-     &      MAX_NUM_PART,NDMPART_X,VAR)
+     &      DMPCLUS,LEVHAL,EIGENVAL,N_DM,CONTRASTEC,OMEGAZ,UM,UV,LADO0,
+     &      CLUSRXCM,CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,
+     &      PATCHCLUS,NPATCH,PROFILES,VELOCITY_DISPERSION,KINETIC_E,
+     &      POTENTIAL_E,DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,
+     &      FLAG_WDM,ZETA,MIN_NUM_PART,MAX_NUM_PART,NDMPART_X,VAR)
 
          IF (FW5.EQ.1) THEN
           open(99, file='./output_files/substructureparticles'//
@@ -850,10 +835,9 @@ c       WRITE(*,*)'===================================='
         WRITE(*,*) '***************************'
 
         CALL STELLAR_HALOES(NCLUS,MASA,RADIO,MSUB,RSUB,REALCLUS,DMPCLUS,
-     &                      CLUSRX,CLUSRY,CLUSRZ,RXPA,RYPA,RZPA,MASAP,
-     &                      U2DM,U3DM,U4DM,ORIPA,N_DM,N_ST,NX,LADO0,
-     &                      PARTICLES_PER_HALO,INDCS_PARTICLES_PER_HALO,
-     &                      UM,UV,MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA,
+     &                      CLUSRX,CLUSRY,CLUSRZ,N_DM,N_ST,NX,LADO0,
+     &                      INDCS_PARTICLES_PER_HALO,UM,UV,
+     &                      MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA,
      &                      STPAR_FACT_INC,STPAR_MAX_DIST,
      &                      STPAR_MIN_OVERDENS)
        END IF
@@ -975,6 +959,8 @@ c       WRITE(*,*)'===================================='
 *==========================================
 *************************************************
 *************************************************
+
+       CALL DEALLOC 
 
        WRITE(*,*)'END ITER', ITER
        CALL IDATE(DATE)

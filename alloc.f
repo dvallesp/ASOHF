@@ -194,33 +194,86 @@
 
 ************************************************************************
       SUBROUTINE READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,ITER,NX,NY,NZ,T,
-     &           ZETA,U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,N_DM,
-     &           VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
+     &           ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
 ************************************************************************
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
        INTEGER FLAG_MASCLET,ITER,NX,NY,NZ
        REAL T,ZETA
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       INTEGER ORIPA(PARTIRED)
        INTEGER N_DM,VAR,N_ST,N_PARTICLES
        REAL UV,UM,HUBBLE_LITTLEH
 
+       REAL*4 U2DM_R(PARTI_READ),U3DM_R(PARTI_READ),U4DM_R(PARTI_READ)
+       REAL*4 MASAP_R(PARTI_READ)
+       REAL*4 RXPA_R(PARTI_READ),RYPA_R(PARTI_READ),RZPA_R(PARTI_READ)
+       INTEGER ORIPA_R(PARTI_READ)
+       INTEGER I
+
+!$OMP PARALLEL DO SHARED(RXPA_R,RYPA_R,RZPA_R,U2DM_R,U3DM_R,U4DM_R,
+!$OMP+                   MASAP_R,ORIPA_R),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,PARTI_READ
+        RXPA_R(I)=0.0
+        RYPA_R(I)=0.0
+        RZPA_R(I)=0.0
+        U2DM_R(I)=0.0
+        U3DM_R(I)=0.0
+        U4DM_R(I)=0.0
+        MASAP_R(I)=0.0
+        ORIPA_R(I)=0
+       END DO
+
        IF (FLAG_MASCLET.EQ.1) THEN
         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,
-     &                              U2DM,U3DM,U4DM,MASAP,RXPA,
-     &                              RYPA,RZPA,ORIPA,N_DM,VAR,N_ST)
+     &                              U2DM_R,U3DM_R,U4DM_R,MASAP_R,RXPA_R,
+     &                              RYPA_R,RZPA_R,ORIPA_R,N_DM,VAR,N_ST)
        ELSE
-        CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,U2DM,U3DM,
-     &                              U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
-     &                              N_DM,VAR,N_ST,UV,UM,HUBBLE_LITTLEH)
+        CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,U2DM_R,U3DM_R,
+     &                              U4DM_R,MASAP_R,RXPA_R,RYPA_R,RZPA_R,
+     &                              ORIPA_R,N_DM,VAR,N_ST,UV,UM,
+     &                              HUBBLE_LITTLEH)
        END IF ! (FLAG_MASCLET.EQ.1) THEN, ELSE
 
        IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
        WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
+
+!!!!!!!!!!!!!!!!!!!!!!!!
+!      here will go the domain decompose
+!!!!!!!!!!!!!!!!!!!!!!!!
+       PARTI=N_PARTICLES
+       ALLOCATE(RXPA(PARTI), RYPA(PARTI), RZPA(PARTI))
+       ALLOCATE(U2DM(PARTI), U3DM(PARTI), U4DM(PARTI))
+       ALLOCATE(MASAP(PARTI))
+       ALLOCATE(ORIPA(PARTI))
+       ALLOCATE(PARTICLES_PER_HALO(PARTI))
+
+       DO I=1,N_PARTICLES
+        RXPA(I)=RXPA_R(I)
+        RYPA(I)=RYPA_R(I)
+        RZPA(I)=RZPA_R(I)
+        U2DM(I)=U2DM_R(I)
+        U3DM(I)=U3DM_R(I)
+        U4DM(I)=U4DM_R(I)
+        MASAP(I)=MASAP_R(I)
+        ORIPA(I)=ORIPA_R(I)
+        PARTICLES_PER_HALO(I)=0
+       END DO
+
+       RETURN
+      END
+
+************************************************************************
+      SUBROUTINE DEALLOC
+************************************************************************
+       USE PARTICLES
+       IMPLICIT NONE
+
+       PARTI=0
+       DEALLOCATE(RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,ORIPA)
+       DEALLOCATE(PARTICLES_PER_HALO)
 
        RETURN
       END

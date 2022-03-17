@@ -14,8 +14,8 @@
        PARAMETER (NAMRX=32,NAMRY=32,NAMRZ=32)
 
 *      Total number of particles (all types) ---------------
-       INTEGER PARTIRED
-       PARAMETER (PARTIRED=128**3)
+       INTEGER PARTI_READ
+       PARAMETER (PARTI_READ=128**3)
 
 *###################################################################
 *      HALOES PROPERTIES                                           *

@@ -37,20 +37,20 @@
        REAL*4  PATCHRZ(NPALEV)
 
        INTEGER NPART(0:NLEVELS)
-       REAL*4 U2DM(PARTIRED)
-       REAL*4 U3DM(PARTIRED)
-       REAL*4 U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED)
-       REAL*4 RYPA(PARTIRED)
-       REAL*4 RZPA(PARTIRED)
+       REAL*4 U2DM(PARTI_READ)
+       REAL*4 U3DM(PARTI_READ)
+       REAL*4 U4DM(PARTI_READ)
+       REAL*4 MASAP(PARTI_READ)
+       REAL*4 RXPA(PARTI_READ)
+       REAL*4 RYPA(PARTI_READ)
+       REAL*4 RZPA(PARTI_READ)
 
-       INTEGER ORIPA(PARTIRED)
+       INTEGER ORIPA(PARTI_READ)
 
        REAL*4, ALLOCATABLE::SCR(:,:,:)
 
-       REAL*4 UBAS(0:PARTIRED)
-       INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
+       REAL*4 UBAS(0:PARTI_READ)
+       INTEGER UBAS2(0:PARTI_READ),CONTA,LOW1,LOW2
 
        CHARACTER*5 ITER_STRING
 
@@ -260,18 +260,18 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        INTEGER,ALLOCATABLE::NPATCH(:)
 
        INTEGER,ALLOCATABLE::NPART(:),NPARTST(:),NPARTBH(:)
-       REAL*4 U2DM(PARTIRED)
-       REAL*4 U3DM(PARTIRED)
-       REAL*4 U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED)
-       REAL*4 RYPA(PARTIRED)
-       REAL*4 RZPA(PARTIRED)
+       REAL*4 U2DM(PARTI_READ)
+       REAL*4 U3DM(PARTI_READ)
+       REAL*4 U4DM(PARTI_READ)
+       REAL*4 MASAP(PARTI_READ)
+       REAL*4 RXPA(PARTI_READ)
+       REAL*4 RYPA(PARTI_READ)
+       REAL*4 RZPA(PARTI_READ)
 
-       INTEGER ORIPA(PARTIRED)
+       INTEGER ORIPA(PARTI_READ)
 
-       REAL*4 UBAS(0:PARTIRED)
-       INTEGER UBAS2(0:PARTIRED),CONTA,LOW1,LOW2
+       REAL*4 UBAS(0:PARTI_READ)
+       INTEGER UBAS2(0:PARTI_READ),CONTA,LOW1,LOW2
 
        CHARACTER*5 ITER_STRING
 
@@ -489,18 +489,18 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
       INTEGER I,J,K,IX,NL,IR,IRR,N_DM,N_ST,NBAS,NST0
 
-      REAL*4 U2DM(PARTIRED)
-      REAL*4 U3DM(PARTIRED)
-      REAL*4 U4DM(PARTIRED)
-      REAL*4 MASAP(PARTIRED)
-      REAL*4 RXPA(PARTIRED)
-      REAL*4 RYPA(PARTIRED)
-      REAL*4 RZPA(PARTIRED)
+      REAL*4 U2DM(PARTI_READ)
+      REAL*4 U3DM(PARTI_READ)
+      REAL*4 U4DM(PARTI_READ)
+      REAL*4 MASAP(PARTI_READ)
+      REAL*4 RXPA(PARTI_READ)
+      REAL*4 RYPA(PARTI_READ)
+      REAL*4 RZPA(PARTI_READ)
 
-      INTEGER ORIPA(PARTIRED)
+      INTEGER ORIPA(PARTI_READ)
 
-      REAL*4 UBAS(0:PARTIRED)
-      INTEGER UBASINT(0:PARTIRED)
+      REAL*4 UBAS(0:PARTI_READ)
+      INTEGER UBASINT(0:PARTI_READ)
 
       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
@@ -564,9 +564,9 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
       IF (VAR.EQ.2) THEN
        READ(32) N_ST
-       IF (N_DM+N_ST.GT.PARTIRED) THEN
-        WRITE(*,*) 'WARNING: bad dimensioning of PARTIRED',
-     &              N_DM+N_ST,'>',PARTIRED
+       IF (N_DM+N_ST.GT.PARTI_READ) THEN
+        WRITE(*,*) 'WARNING: bad dimensioning of PARTI_READ',
+     &              N_DM+N_ST,'>',PARTI_READ
         STOP
        END IF
 
@@ -657,21 +657,15 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       END
 
 *********************************************************************
-       SUBROUTINE SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,
-     &                              RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
-     &                              IR_KERN_STARS)
+       SUBROUTINE SORT_DM_PARTICLES(N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
 *********************************************************************
 *      Reorders DM particles by species (assumes there are N_ESP
 *       especies, each 8 times lighter than the previous one)
 *********************************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       INTEGER ORIPA(PARTIRED)
        INTEGER N_DM
        INTEGER NPART_ESP(0:N_ESP-1)
        INTEGER N_ST,IR_KERN_STARS
@@ -777,21 +771,16 @@ C       stop
        END
 
 *********************************************************************
-       SUBROUTINE SORT_DM_PARTICLES_LOCALDENSITY(U2DM,U3DM,U4DM,MASAP,
-     &                       RXPA,RYPA,RZPA,ORIPA,N_DM,NPART_ESP,N_ST,
-     &                       IR_KERN_STARS,RODO,RE0)
+       SUBROUTINE SORT_DM_PARTICLES_LOCALDENSITY(N_DM,NPART_ESP,N_ST,
+     &                                           IR_KERN_STARS,RODO,RE0)
 *********************************************************************
 *      Assigns DM particles in species, according to local density,
 *       and reorders them accordingly.
 *********************************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       INTEGER ORIPA(PARTIRED)
        INTEGER N_DM
        INTEGER NPART_ESP(0:N_ESP-1)
        INTEGER N_ST,IR_KERN_STARS

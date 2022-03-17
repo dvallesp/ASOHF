@@ -134,15 +134,15 @@
 
 
 **********************************************************************
-        SUBROUTINE COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CX,CY,CZ,
-     &                                  R,NDMPART_X,XLDOM,NUM_PART_HAL)
+        SUBROUTINE COUNT_PARTICLES_HALO(N_DM,CX,CY,CZ,R,NDMPART_X,XLDOM,
+     &                                  NUM_PART_HAL)
 **********************************************************************
 *       Counts number of particles inside a halo
 **********************************************************************
+         USE PARTICLES
          IMPLICIT NONE
          INCLUDE 'input_files/asohf_parameters.dat'
 
-         REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
          INTEGER N_DM
          REAL CX,CY,CZ,R
          INTEGER NDMPART_X(0:NMAX)
@@ -172,13 +172,13 @@
 
 **********************************************************************
        SUBROUTINE PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                              REALCLUS,RXPA,RYPA,RZPA,N_DM,
-     &                              MIN_NUM_PART,DMPCLUS,NDMPART_X,
-     &                              LADO0,FACRAD,DO_NEED_TO_COUNT)
+     &                              REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
+     &                              NDMPART_X,LADO0,FACRAD,
+     &                              DO_NEED_TO_COUNT)
 **********************************************************************
 *       Removes haloes with too few particles
 **********************************************************************
-
+        USE PARTICLES
         IMPLICIT NONE
         INCLUDE 'input_files/asohf_parameters.dat'
 
@@ -186,7 +186,6 @@
         REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
         REAL*4 RADIO(MAXNCLUS)
         INTEGER REALCLUS(MAXNCLUS)
-        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
         INTEGER N_DM,MIN_NUM_PART
         INTEGER DMPCLUS(MAXNCLUS)
         INTEGER NDMPART_X(0:NMAX)
@@ -214,8 +213,8 @@
           CMZ=CLUSRZ(I)
           RR=FACRAD*RADIO(I)
 
-          CALL COUNT_PARTICLES_HALO(RXPA,RYPA,RZPA,N_DM,CMX,CMY,CMZ,RR,
-     &                              NDMPART_X,XLDOM,BASINT)
+          CALL COUNT_PARTICLES_HALO(N_DM,CMX,CMY,CMZ,RR,NDMPART_X,XLDOM,
+     &                              BASINT)
 
           IF (BASINT.LT.MIN_NUM_PART) THEN
            REALCLUS(I)=0
@@ -355,18 +354,17 @@
        END
 
 **********************************************************************
-        SUBROUTINE RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,R,RXPA,RYPA,
-     &               RZPA,MASAP,N_DM,DXPAMIN,XLDOM,NDMPART_X,
-     &               MAX_NUM_PART)
+        SUBROUTINE RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,R,N_DM,
+     &                           DXPAMIN,XLDOM,NDMPART_X,MAX_NUM_PART)
 **********************************************************************
 *       Recenters density peak using particles
 **********************************************************************
+        USE PARTICLES
         IMPLICIT NONE
         INCLUDE 'input_files/asohf_parameters.dat'
 
         REAL CX,CY,CZ,R,XLDOM
-        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
-     &         MASAP(PARTIRED),DXPAMIN
+        REAL*4 DXPAMIN
         INTEGER N_DM,MAX_NUM_PART,NDMPART_X(0:NMAX)
 
         INTEGER KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP,MAX_NUM_PART_LOCAL
@@ -512,16 +510,15 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,VY,VZ,
      &      VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
      &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
-     &      LEVHAL,EIGENVAL,N_DM,RXPA,RYPA,RZPA,MASAP,U2DM,U3DM,U4DM,
-     &      ORIPA,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,CLUSRYCM,
-     &      CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,PROFILES,
-     &      VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
-     &      DO_COMPUTE_ENERGIES,PARTICLES_PER_HALO,
-     &      INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,MIN_NUM_PART,
-     &      NDMPART_X,VAR)
+     &      LEVHAL,EIGENVAL,N_DM,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,
+     &      CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,
+     &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
+     &      DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,
+     &      MIN_NUM_PART,NDMPART_X,VAR)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
@@ -544,10 +541,6 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER DMPCLUS(MAXNCLUS),LEVHAL(MAXNCLUS)
        REAL*4 EIGENVAL(3,NMAXNCLUS)
        INTEGER N_DM
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       INTEGER ORIPA(PARTIRED)
        REAL*4 CONTRASTEC,OMEGAZ,UM,UV,LADO0
        REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),CLUSRZCM(MAXNCLUS)
        REAL*4 MEAN_VR(NMAXNCLUS),INERTIA_TENSOR(6,NMAXNCLUS)
@@ -555,7 +548,6 @@ c     &              IX,JY,KZ,FLAG_ITER
        REAL*4 PROFILES(NBINS,2,NMAXNCLUS),VELOCITY_DISPERSION(NMAXNCLUS)
        REAL*4 KINETIC_E(NMAXNCLUS),POTENTIAL_E(NMAXNCLUS)
        INTEGER DO_COMPUTE_ENERGIES
-       INTEGER PARTICLES_PER_HALO(PARTIRED)
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
        INTEGER MIN_NUM_PART
@@ -636,7 +628,7 @@ c       WRITE(*,*)'=================================='
        NORMA=MAXVAL(MASAP)
 
        IF (FLAG_WDM.EQ.1.OR.VAR.GT.1) THEN
-        ALLOCATE(PARTICLES_PROC(PARTIRED,NUM_PROC),
+        ALLOCATE(PARTICLES_PROC(PARTI,NUM_PROC),
      &           HALOES_PROC(3,NCLUS),
      &           PROC_NPARTICLES(NUM_PROC))
 
@@ -645,7 +637,7 @@ c       WRITE(*,*)'=================================='
 
        MAX_NUM_PART=MIN(INT(MAX(1.05*MAX_NUM_PART,
      &                   MAX_NUM_PART*(CONTRASTEC/MINOVERDENS)**(1.0))),
-     &                  PARTIRED)
+     &                  PARTI)
 
 !$OMP  PARALLEL DO SHARED(NCLUS,REALCLUS,PATCHCLUS,NPATCH,
 !$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,NL,MASAP,
@@ -658,7 +650,8 @@ c       WRITE(*,*)'=================================='
 !$OMP+           CLUSRYCM,CLUSRZCM,DX,MEAN_VR,INERTIA_TENSOR,PROFILES,
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
-!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,XLDOM,NDMPART_X,VAR),
+!$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,XLDOM,NDMPART_X,VAR,
+!$OMP+           PARTI),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -681,7 +674,7 @@ c       WRITE(*,*)'=================================='
 
         MAX_NUM_PART=INT(1.5*DMPCLUS(I))
         IF (MAX_NUM_PART.LT.4000) MAX_NUM_PART=4000
-        IF (MAX_NUM_PART.GT.PARTIRED) MAX_NUM_PART=PARTIRED
+        IF (MAX_NUM_PART.GT.PARTI) MAX_NUM_PART=PARTI
 
         !write(*,*) max_num_part
 
@@ -700,9 +693,8 @@ c       WRITE(*,*)'=================================='
         CZ=CLUSRZ(I)
         BAS=RADIO(I)
 
-        CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,RXPA,RYPA,
-     &          RZPA,MASAP,N_DM,DX/2.0**IRR,XLDOM,NDMPART_X,
-     &          MAX_NUM_PART)
+        CALL RECENTER_DENSITY_PEAK_PARTICLES(CX,CY,CZ,BAS,N_DM,
+     &                         DX/2.0**IRR,XLDOM,NDMPART_X,MAX_NUM_PART)
 
         BAS=(CLUSRX(I)-CX)**2+(CLUSRY(I)-CY)**2+(CLUSRZ(I)-CZ)**2
         BAS=SQRT(BAS)
@@ -799,8 +791,8 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
         CONTAERR=KONTA
         DISTA=0.0
         KONTA2=0
-        CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                 DISTA,KONTA2,1,MAX_NUM_PART,IDX_VIR)
+        CALL REORDENAR(KONTA,CX,CY,CZ,CONTADM,LIP,DISTA,KONTA2,1,
+     &                 MAX_NUM_PART,IDX_VIR)
         REF_MAX=DISTA(KONTA2)
         REF_MIN=DISTA(1)
 
@@ -808,7 +800,7 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
         MASA(I)=MASADM*UM
         DMPCLUS(I)=KONTA
 
-        CALL FIND_IDX_VIR(DISTA,MASAP,LIP,MAX_NUM_PART,ROTE,RETE,PI,
+        CALL FIND_IDX_VIR(DISTA,LIP,MAX_NUM_PART,ROTE,RETE,PI,
      &                    CONTRASTEC,IDX_VIR)
 c        WRITE(*,*) '*',sqrt((cmx-cx)**2+(cmy-cy)**2+(cmz-cz)**2)
 c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
@@ -821,9 +813,8 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 *      UNBINDING:SCAPE VELOCITY
 ********************************************************************
 
-        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
-     &                        RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
-     &                        MASA2,MAX_NUM_PART)
+        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,CMX,CMY,CMZ,VCMX,VCMY,
+     &                        VCMZ,MASA2,MAX_NUM_PART)
         VCM=SQRT(VCMX**2+VCMY**2+VCMZ**2)
         CLUSRXCM(I)=CMX
         CLUSRYCM(I)=CMY
@@ -836,12 +827,12 @@ c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
          FAC=FAC+1
          KONTA2PREV=KONTA2
-         CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,U4DM,
-     &                   MASAP,RXPA,RYPA,RZPA,RADIO,MASA,CLUSRXCM,
-     &                   CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,VY,VZ,
-     &                   REALCLUS,KONTA2,MAX_NUM_PART,IDX_VIR,UM)
-         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA,KONTA2,0,MAX_NUM_PART,IDX_VIR)
+         CALL UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,RADIO,MASA,
+     &                   CLUSRXCM,CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,
+     &                   VX,VY,VZ,REALCLUS,KONTA2,MAX_NUM_PART,IDX_VIR,
+     &                   UM)
+         CALL REORDENAR(KONTA,CX,CY,CZ,CONTADM,LIP,DISTA,KONTA2,0,
+     &                  MAX_NUM_PART,IDX_VIR)
          REF_MAX=DISTA(KONTA2)
          REF_MIN=DISTA(1)
          CONTAERR=KONTA2PREV-KONTA2
@@ -861,13 +852,12 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
         DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
          FAC=FAC+1
          KONTA2PREV=KONTA2
-         CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,RXPA,
-     &                        RYPA,RZPA,MASAP,RADIO,MASA,CLUSRXCM,
+         CALL UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,RADIO,MASA,CLUSRXCM,
      &                        CLUSRYCM,CLUSRZCM,LIP,KONTA,CONTADM,VX,
      &                        VY,VZ,REALCLUS,KONTA2,MAX_NUM_PART,
      &                        IDX_VIR,UM)
-         CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                  DISTA,KONTA2,0,MAX_NUM_PART,IDX_VIR)
+         CALL REORDENAR(KONTA,CX,CY,CZ,CONTADM,LIP,DISTA,KONTA2,0,
+     &                  MAX_NUM_PART,IDX_VIR)
          REF_MAX=DISTA(KONTA2)
          REF_MIN=DISTA(1)
          CONTAERR=KONTA2PREV-KONTA2
@@ -1246,8 +1236,8 @@ C            END IF
          END IF
 
          IF (DO_COMPUTE_ENERGIES.EQ.1) THEN
-          CALL COMPUTE_EPOT(KONTA,KONTA2,LIP,RXPA,RYPA,RZPA,MASAP,
-     &                      CONTADM,EPOT,MOST_BOUND_IDX,MAX_NUM_PART)
+          CALL COMPUTE_EPOT(KONTA,KONTA2,LIP,CONTADM,EPOT,
+     &                      MOST_BOUND_IDX,MAX_NUM_PART)
           EPOT=EPOT*UM**2*GCONS ! Gravitational Energy in Msun * km^2 * s^-2
           EKIN=0.5*EKIN*UM*UV**2 ! Kinetic Energy in Msun * km^2 * s^-2
           KINETIC_E(I)=EKIN
@@ -1346,16 +1336,16 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        END
 
 **********************************************************************
-       SUBROUTINE FIND_IDX_VIR(DISTA,MASAP,LIP,MAX_NUM_PART,ROTE,RETE,
-     &                         PI,CONTRASTEC,IDX_VIR)
+       SUBROUTINE FIND_IDX_VIR(DISTA,LIP,MAX_NUM_PART,ROTE,RETE,PI,
+     &                         CONTRASTEC,IDX_VIR)
 **********************************************************************
 *      Estimates the virial radius (before unbounding)
 **********************************************************************
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
        REAL DISTA(0:MAX_NUM_PART)
-       REAL MASAP(PARTIRED)
        INTEGER LIP(MAX_NUM_PART)
        REAL ROTE,RETE,PI,CONTRASTEC
        INTEGER MAX_NUM_PART,IDX_VIR
@@ -1387,21 +1377,19 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        END
 
 **********************************************************************
-       SUBROUTINE COMPUTE_EPOT(KONTA,KONTA2,LIP,RXPA,RYPA,RZPA,MASAP,
-     &                         CONTADM,EPOT,MOST_BOUND_IDX,MAX_NUM_PART)
+       SUBROUTINE COMPUTE_EPOT(KONTA,KONTA2,LIP,CONTADM,EPOT,
+     &                         MOST_BOUND_IDX,MAX_NUM_PART)
 **********************************************************************
 *      Computes the gravitational potential energy of a halo, taking
 *       into account only bound particles, by direct summation (small
 *       halos) or does an estimation by sampling
 **********************************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
        INTEGER KONTA,KONTA2
        INTEGER LIP(MAX_NUM_PART)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
        INTEGER CONTADM(MAX_NUM_PART)
        REAL EPOT
        INTEGER MOST_BOUND_IDX
@@ -1525,8 +1513,8 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 
 **********************************************************************
-       SUBROUTINE REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                      DISTA,KONTA2,DO_SORT,MAX_NUM_PART,IDX_VIR)
+       SUBROUTINE REORDENAR(KONTA,CX,CY,CZ,CONTADM,LIP,DISTA,KONTA2,
+     &                      DO_SORT,MAX_NUM_PART,IDX_VIR)
 **********************************************************************
 *      Sorts the particles with increasing distance to the center of
 *      the halo. Only particles with CONTADM=0 are sorted (the others
@@ -1534,7 +1522,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 *      Do_sort=1: particles are sorted by distance
 *      Do_sort=0: particles are assumed to be sorted; just prune unbound
 **********************************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
@@ -1547,10 +1535,6 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 *      ---PARTICULAS E ITERACIONES---
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
-
-       REAL*4 RXPA(PARTIRED)
-       REAL*4 RYPA(PARTIRED)
-       REAL*4 RZPA(PARTIRED)
 
 c       INTEGER CONTADM(PARTI)
 
@@ -1628,27 +1612,18 @@ c       INTEGER CONTADM(PARTI)
        END
 
 ***********************************************************
-       SUBROUTINE CENTROMASAS_PART(N,CONTADM,LIP,
-     &            U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &            CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA,MAX_NUM_PART)
+       SUBROUTINE CENTROMASAS_PART(N,CONTADM,LIP,CMX,CMY,CMZ,VCMX,VCMY,
+     &                             VCMZ,MASA,MAX_NUM_PART)
 ***********************************************************
 *      Computes the center of mass of the particles
 *      within the halo
 ***********************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
 
        INTEGER I,J,N,MAX_NUM_PART
-
-       REAL*4 U2DM(PARTIRED)
-       REAL*4 U3DM(PARTIRED)
-       REAL*4 U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED)
-       REAL*4 RYPA(PARTIRED)
-       REAL*4 RZPA(PARTIRED)
 
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
 
@@ -1734,17 +1709,16 @@ c       INTEGER CONTADM(PARTI)
 ********************************************************************
 
 ***********************************************************
-       SUBROUTINE UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,
-     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           RADIO,MASA,CLUSRXCM,CLUSRYCM,CLUSRZCM,
-     &           LIP,KONTA,CONTADM,VX,VY,VZ,REALCLUS,KONTA2,
-     &           MAX_NUM_PART,IDX_VIR,UM)
+       SUBROUTINE UNBINDING8(FAC,I,REF_MIN,REF_MAX,DISTA,RADIO,MASA,
+     &                       CLUSRXCM,CLUSRYCM,CLUSRZCM,LIP,KONTA,
+     &                       CONTADM,VX,VY,VZ,REALCLUS,KONTA2,
+     &                       MAX_NUM_PART,IDX_VIR,UM)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
 *      Potential is computed in double precision.
 ***********************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
@@ -1774,13 +1748,6 @@ c       INTEGER CONTADM(PARTI)
 *      ---PARTICULAS E ITERACIONES---
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
        INTEGER NPART(0:NLEVELS)
-       REAL*4 U2DM(PARTIRED)
-       REAL*4 U3DM(PARTIRED)
-       REAL*4 U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED)
-       REAL*4 RYPA(PARTIRED)
-       REAL*4 RZPA(PARTIRED)
 
        INTEGER KONTA,KONTA3,KONTA2
 c       INTEGER CONTADM(PARTI)
@@ -1860,9 +1827,8 @@ COJO       REAL*8 POT(KONTA)
         END DO
 
 *      NEW CENTER OF MASS AND ITS VELOCITY
-        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,
-     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM,MAX_NUM_PART)
+        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,CMX,CMY,CMZ,VCMX,VCMY,
+     &                        VCMZ,MMM,MAX_NUM_PART)
 
        END IF
 
@@ -1902,8 +1868,7 @@ COJO       REAL*8 POT(KONTA)
 
 
 ***********************************************************
-       SUBROUTINE UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,
-     &                            RXPA,RYPA,RZPA,MASAP,RADIO,MASA,
+       SUBROUTINE UNBINDING_SIGMA(FAC,I,REF_MIN,REF_MAX,RADIO,MASA,
      &                            CLUSRXCM,CLUSRYCM,CLUSRZCM,LIP,KONTA,
      &                            CONTADM,VX,VY,VZ,REALCLUS,KONTA2,
      &                            MAX_NUM_PART,IDX_VIR,UM)
@@ -1912,7 +1877,7 @@ COJO       REAL*8 POT(KONTA)
 *      with speed larger than the scape velocity).
 *      Potential is computed in double precision.
 ***********************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
@@ -1920,9 +1885,6 @@ COJO       REAL*8 POT(KONTA)
        INTEGER FAC
        INTEGER I
        REAL REF_MIN,REF_MAX
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
        REAL*4 RADIO(MAXNCLUS),MASA(MAXNCLUS)
        REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),
      &        CLUSRZCM(MAXNCLUS)
@@ -1974,9 +1936,8 @@ COJO       REAL*8 POT(KONTA)
         END DO
 
 *       NEW CENTER OF MASS AND ITS VELOCITY
-        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,
-     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           CMX,CMY,CMZ,VXCM,VYCM,VZCM,MMM,MAX_NUM_PART)
+        CALL CENTROMASAS_PART(IDX_VIR,CONTADM,LIP,CMX,CMY,CMZ,VXCM,VYCM,
+     &                        VZCM,MMM,MAX_NUM_PART)
 
        END IF
 

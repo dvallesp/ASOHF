@@ -1,14 +1,13 @@
 ************************************************************************
       SUBROUTINE CREATE_MESH(ITER,NX,NY,NZ,NL_MESH,NPATCH,PARE,
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-     &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,U2DM,U3DM,
-     &           U4DM,MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
-     &           REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,BORAMR,
-     &           BOR_OVLP,NPART_ESP,FW1)
+     &           PATCHRX,PATCHRY,PATCHRZ,N_PARTICLES,N_DM,N_GAS,LADO0,T,
+     &           ZETA,REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,
+     &           BORAMR,BOR_OVLP,NPART_ESP,FW1)
 ************************************************************************
 *     Creats a mesh hierarchy for the given particle distribution
 ************************************************************************
-
+      USE PARTICLES
       IMPLICIT NONE
 
       INCLUDE 'input_files/asohf_parameters.dat'
@@ -19,9 +18,6 @@
       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
       INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
-      REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
-     &       U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED),
-     &       MASAP(PARTIRED)
       REAL LADO0,T,ZETA
       INTEGER REFINE_THR,MIN_PATCHSIZE
       REAL FRAC_REFINABLE
@@ -40,7 +36,7 @@
       COMMON /GRIDAMR/ RX,RY,RZ
 
 *     LOCAL VARIABLES
-      INTEGER PLEV(PARTIRED)
+      INTEGER PLEV(PARTI)
       INTEGER,ALLOCATABLE::CR0(:,:,:)
       INTEGER,ALLOCATABLE::CR01(:,:,:,:)
       INTEGER,ALLOCATABLE::CONTA1(:,:,:)
@@ -709,14 +705,14 @@ C        WRITE(*,*) LVAL(I,IPARE)
 ************************************************************************
       SUBROUTINE DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
-     &              PATCHRZ,RXPA,RYPA,RZPA,MASAP,N_PARTICLES,N_DM,
-     &              N_GAS,LADO0,T,ZETA,NPART_ESP,INTERP_DEGREE)
+     &              PATCHRZ,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
+     &              NPART_ESP,INTERP_DEGREE)
 ************************************************************************
 *      Computes the density field on the AMR hierarchy (including base)
 *       grid) by assigning each particle a cloud its size in the
 *       initial conditions
 ************************************************************************
-
+      USE PARTICLES
       IMPLICIT NONE
       INCLUDE 'input_files/asohf_parameters.dat'
 
@@ -726,8 +722,6 @@ C        WRITE(*,*) LVAL(I,IPARE)
       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
       INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
-      REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
-     &       MASAP(PARTIRED)
       REAL LADO0,T,ZETA
       INTEGER NPART_ESP(0:N_ESP-1),INTERP_DEGREE
 
@@ -1071,13 +1065,12 @@ C        WRITE(*,*) LVAL(I,IPARE)
 ************************************************************************
       SUBROUTINE INTERPOLATE_DENSITY_TSC(NX,NY,NZ,NL_MESH,NPATCH,
      &           PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-     &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
-     &           N_PARTICLES,N_DM,LADO0,U1,U11)
+     &           PATCHRX,PATCHRY,PATCHRZ,N_PARTICLES,N_DM,LADO0,U1,U11)
 ************************************************************************
 *     Interpolates density field (TSC)
 *     Used only for solving Poisson equation
 ************************************************************************
-
+      USE PARTICLES
       IMPLICIT NONE
 
       INCLUDE 'input_files/asohf_parameters.dat'
@@ -1088,8 +1081,6 @@ C        WRITE(*,*) LVAL(I,IPARE)
       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
       INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
-      REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
-     &       MASAP(PARTIRED)
       REAL LADO0
 !     Not the COMMON one !!!!!!!!
       REAL*4 U1(NMAX,NMAY,NMAZ)
@@ -1107,7 +1098,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       COMMON /BACK/ RETE,HTE,ROTE
 
 *     LOCAL VARIABLES
-      INTEGER PLEV(PARTIRED) ! Maximum mesh level of a particle.
+      INTEGER PLEV(PARTI) ! Maximum mesh level of a particle.
       REAL XL,YL,ZL,DXPA,DYPA,DZPA,XR,YR,ZR,XP,YP,ZP,BAS,DENBAS
       INTEGER I,IX,JY,KZ,II,JJ,KK,N1,N2,N3,I1,I2,J1,J2,K1,K2,IR,IPATCH
       INTEGER BUF,LOW1,LOW2,NBAS,LOWP1,LOWP2
@@ -1406,13 +1397,13 @@ C        WRITE(*,*) LVAL(I,IPARE)
 ************************************************************************
       SUBROUTINE INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
      &           NL_MESH,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
-     &           PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
-     &           MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
+     &           PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,N_PARTICLES,N_DM,
+     &           N_GAS,LADO0,T,ZETA,NPART_ESP)
 ************************************************************************
 *     Interpolates density field (assuring the field will be continuous)
 *     Old (deprecated now)
 ************************************************************************
-
+      USE PARTICLES
       IMPLICIT NONE
 
       INCLUDE 'input_files/asohf_parameters.dat'
@@ -1423,8 +1414,6 @@ C        WRITE(*,*) LVAL(I,IPARE)
       INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
       INTEGER PATCHX(NPALEV),PATCHY(NPALEV),PATCHZ(NPALEV)
       REAL PATCHRX(NPALEV),PATCHRY(NPALEV),PATCHRZ(NPALEV)
-      REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
-     &       MASAP(PARTIRED)
       REAL LADO0,T,ZETA
       INTEGER NPART_ESP(0:N_ESP-1)
 
@@ -1443,7 +1432,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
       COMMON /VARIA/ U1,U11
 
 *     LOCAL VARIABLES
-      INTEGER PLEV(PARTIRED)
+      INTEGER PLEV(PARTI)
       REAL XL,YL,ZL,DXPA,DYPA,DZPA,XR,YR,ZR,XP,YP,ZP,BAS,DENBAS,PI
       REAL RRR,MMM,VOLCORRECT
       INTEGER I,IX,JY,KZ,II,JJ,KK,N1,N2,N3,I1,I2,J1,J2,K1,K2,IR,IPATCH
@@ -2793,21 +2782,15 @@ C        WRITE(*,*) LVAL(I,IPARE)
 
 
 *********************************************************************
-       SUBROUTINE SORT_DM_PARTICLES_X(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,
-     &                                RZPA,ORIPA,N_DM,NDMPART_X,NX,
-     &                                LADO0)
+       SUBROUTINE SORT_DM_PARTICLES_X(N_DM,NDMPART_X,NX,LADO0)
 *********************************************************************
 *      Reorders DM particles by species (assumes there are N_ESP
 *       especies, each 8 times lighter than the previous one)
 *********************************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       INTEGER ORIPA(PARTIRED)
        INTEGER N_DM,NDMPART_X(0:NMAX),NX
        REAL*4 LADO0
 

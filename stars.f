@@ -1,16 +1,15 @@
 ********************************************************************
       SUBROUTINE STELLAR_HALOES(NCLUS,MASA,RADIO,MSUB,RSUB,REALCLUS,
-     &                          DMPCLUS,CLUSRX,CLUSRY,CLUSRZ,RXPA,RYPA,
-     &                          RZPA,MASAP,U2DM,U3DM,U4DM,ORIPA,N_DM,
-     &                          N_ST,NX,LADO0,PARTICLES_PER_HALO,
-     &                          INDCS_PARTICLES_PER_HALO,UM,UV,
-     &                          MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA,
-     &                          STPAR_FACT_INC,STPAR_MAX_DIST,
+     &                          DMPCLUS,CLUSRX,CLUSRY,CLUSRZ,N_DM,
+     &                          N_ST,NX,LADO0,INDCS_PARTICLES_PER_HALO,
+     &                          UM,UV,MIN_NUM_PART_ST,FLAG_WDM,ITER,
+     &                          ZETA,STPAR_FACT_INC,STPAR_MAX_DIST,
      &                          STPAR_MIN_OVERDENS)
 ********************************************************************
 *     Looks for stellar haloes (galaxies) hosted by the previously
 *      found DM haloes
 ********************************************************************
+      USE PARTICLES
       IMPLICIT NONE
       INCLUDE 'input_files/asohf_parameters.dat'
 
@@ -19,13 +18,8 @@
       REAL*4 MSUB(MAXNCLUS),RSUB(MAXNCLUS)
       INTEGER REALCLUS(MAXNCLUS), DMPCLUS(MAXNCLUS)
       REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
-      REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-      REAL*4 MASAP(PARTIRED)
-      REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-      INTEGER ORIPA(PARTIRED)
       INTEGER N_DM,N_ST,NX
       REAL*4 LADO0
-      INTEGER PARTICLES_PER_HALO(PARTIRED)
       INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS)
       REAL*4 UM,UV
       INTEGER MIN_NUM_PART_ST,FLAG_WDM,ITER
@@ -86,8 +80,7 @@
 **********************************************************************
 *     Sort stellar particles
 **********************************************************************
-      CALL SORT_STELLAR_PARTICLES_X(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &                              ORIPA,N_DM,N_ST,NSTPART_X,NX,LADO0)
+      CALL SORT_STELLAR_PARTICLES_X(N_DM,N_ST,NSTPART_X,NX,LADO0)
 
 **********************************************************************
 *     Build ORIPA_DM Look-up table to get particles from the oripas
@@ -231,8 +224,8 @@ c     &            MAXVAL(DISTA(1:NPART_HALO)),RCLUS
        KONTA=NPART_HALO
        BASINT=KONTA
        CONTADM(1:KONTA)=0
-       CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                DISTA,KONTA2,1,NPART_HALO,BASINT)
+       CALL REORDENAR(KONTA,CX,CY,CZ,CONTADM,LIP,DISTA,KONTA2,1,
+     &                NPART_HALO,BASINT)
 
 C       JJ=-1
 C       DO J=2,NPART_HALO
@@ -335,21 +328,19 @@ c       END IF
        REF_MIN=DISTA(1)
        REF_MAX=DISTA(KONTA2)
 
-       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,U2DM,U3DM,U4DM,MASAP,
-     &                       RXPA,RYPA,RZPA,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,
-     &                       BASMAS,NPART_HALO)
+       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,CMX,CMY,CMZ,VCMX,VCMY,
+     &                       VCMZ,BASMAS,NPART_HALO)
 C       WRITE(*,*) VCMX,VCMY,VCMZ
 
        FAC=0
        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.3)
         FAC=FAC+1
         KONTA2PREV=KONTA2
-        CALL UNBINDING8_STARS(FAC,REF_MIN,REF_MAX,DISTA,U2DM,U3DM,
-     &                  U4DM,MASAP,RXPA,RYPA,RZPA,LIP,KONTA,
+        CALL UNBINDING8_STARS(FAC,REF_MIN,REF_MAX,DISTA,LIP,KONTA,
      &                  CONTADM,KONTA2,NPART_HALO,UM,VCMX,VCMY,VCMZ,
      &                  N_DM,IDX_CUT)
-        CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIP,
-     &                 DISTA,KONTA2,0,NPART_HALO,IDX_CUT)
+        CALL REORDENAR(KONTA,CX,CY,CZ,CONTADM,LIP,DISTA,KONTA2,0,
+     &                 NPART_HALO,IDX_CUT)
         REF_MAX=DISTA(KONTA2)
         REF_MIN=DISTA(1)
         CONTAERR=KONTA2PREV-KONTA2
@@ -401,9 +392,8 @@ c       write(*,*) 'now we have stellar particles:',KONTA2,NST_HALO
        DO J=1,KONTA2
        END DO
 
-       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIPST,
-     &          U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &          CMX,CMY,CMZ,VCMX,VCMY,VCMZ,BASMAS,NST_HALO)
+       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIPST,CMX,CMY,CMZ,VCMX,
+     &                       VCMY,VCMZ,BASMAS,NST_HALO)
 
        !***********************************************
        !!! UNBINDING: PHASE SPACE
@@ -414,12 +404,11 @@ c       write(*,*) 'now we have stellar particles:',KONTA2,NST_HALO
        DO WHILE (CONTAERR.GT.0.OR.FAC.LT.4)
         FAC=FAC+1
         KONTA2PREV=KONTA2
-        CALL UNBINDING_SIGMA_STARS(FAC,REF_MIN,REF_MAX,U2DM,U3DM,U4DM,
-     &               RXPA,RYPA,RZPA,MASAP,LIPST,CONTADM,KONTA2,
-     &               NST_HALO,UM,VCMX,VCMY,VCMZ,N_DM,IDX_CUT)
+        CALL UNBINDING_SIGMA_STARS(FAC,REF_MIN,REF_MAX,LIPST,CONTADM,
+     &                   KONTA2,NST_HALO,UM,VCMX,VCMY,VCMZ,N_DM,IDX_CUT)
         BASINT=KONTA
-        CALL REORDENAR(KONTA,CX,CY,CZ,RXPA,RYPA,RZPA,CONTADM,LIPST,
-     &                 DISTAST,KONTA2,0,NST_HALO,IDX_CUT)
+        CALL REORDENAR(KONTA,CX,CY,CZ,CONTADM,LIPST,DISTAST,KONTA2,0,
+     &                 NST_HALO,IDX_CUT)
         REF_MAX=DISTAST(KONTA2)
         REF_MIN=DISTAST(1)
         CONTAERR=KONTA2PREV-KONTA2
@@ -479,15 +468,14 @@ c       write(*,*) distast(1:konta2)
        ZPEAK=CZ
 
        CALL RECENTER_DENSITY_PEAK_STARS(XPEAK,YPEAK,ZPEAK,
-     &                 RHALFMASS/SQRT(3.),RXPA,RYPA,RZPA,MASAP,NST_HALO,
-     &                 LIPST,KONTA2)
+     &                 RHALFMASS/SQRT(3.),NST_HALO,LIPST,KONTA2)
 
 C       WRITE(*,*) '-->',XPEAK,YPEAK,ZPEAK
 
        BASINT=NST_HALO
        KONTA=KONTA2
-       CALL REORDENAR(KONTA,XPEAK,YPEAK,ZPEAK,RXPA,RYPA,RZPA,CONTADM,
-     &                LIPST,DISTAST,KONTA2,1,NST_HALO,BASINT)
+       CALL REORDENAR(KONTA,XPEAK,YPEAK,ZPEAK,CONTADM,LIPST,DISTAST,
+     &                KONTA2,1,NST_HALO,BASINT)
 c       write(*,*) i,'particles',lipst(1:min(konta,10))
        !***********************************************
        !!! CORRECT HALF-MASS RADIUS, DETERMINE CM PROPERTIES
@@ -808,17 +796,16 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
 
 
 **********************************************************************
-        SUBROUTINE RECENTER_DENSITY_PEAK_STARS(CX,CY,CZ,R,RXPA,RYPA,
-     &               RZPA,MASAP,NST_HALO,LIPST,LAST_PARTICLE)
+        SUBROUTINE RECENTER_DENSITY_PEAK_STARS(CX,CY,CZ,R,NST_HALO,
+     &                                         LIPST,LAST_PARTICLE)
 **********************************************************************
 *       Recenters density peak using particles
 **********************************************************************
+        USE PARTICLES
         IMPLICIT NONE
         INCLUDE 'input_files/asohf_parameters.dat'
 
         REAL CX,CY,CZ,R,XLDOM
-        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED),
-     &         MASAP(PARTIRED)
         INTEGER NST_HALO,LAST_PARTICLE
         INTEGER LIPST(NST_HALO)
 
@@ -928,24 +915,20 @@ C     &              IX,JY,KZ,FLAG_ITER
         END
 
 ***********************************************************
-       SUBROUTINE UNBINDING_SIGMA_STARS(FAC,REF_MIN,REF_MAX,U2DM,U3DM,
-     &              U4DM,RXPA,RYPA,RZPA,MASAP,LIP,CONTADM,
+       SUBROUTINE UNBINDING_SIGMA_STARS(FAC,REF_MIN,REF_MAX,LIP,CONTADM,
      &              KONTA2,MAX_NUM_PART,UM,VCMX,VCMY,VCMZ,N_DM,IDX_CUT)
 ***********************************************************
 *      Finds and discards the unbound particles (those
 *      with speed larger than the scape velocity).
 *      VERSION FOR STARS (dark matter particles have already been treated)
 ***********************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
 
        INTEGER FAC
        REAL REF_MIN,REF_MAX
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
        INTEGER KONTA2,MAX_NUM_PART
        REAL*4 UM,VCMX,VCMY,VCMZ
@@ -987,9 +970,8 @@ C     &              IX,JY,KZ,FLAG_ITER
         END DO
 
 *       NEW CENTER OF MASS AND ITS VELOCITY
-        CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,
-     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &           CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM,MAX_NUM_PART)
+        CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,CMX,CMY,CMZ,VCMX,VCMY,
+     &                        VCMZ,MMM,MAX_NUM_PART)
 
         DEALLOCATE(DESV2)
 
@@ -1001,7 +983,6 @@ C     &              IX,JY,KZ,FLAG_ITER
 
 ***********************************************************
        SUBROUTINE UNBINDING8_STARS(FAC,REF_MIN,REF_MAX,DISTA,
-     &           U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
      &           LIP,KONTA,CONTADM,KONTA2,MAX_NUM_PART,UM,
      &           VCMX,VCMY,VCMZ,N_DM,IDX_CUT)
 ***********************************************************
@@ -1010,7 +991,7 @@ C     &              IX,JY,KZ,FLAG_ITER
 *      Potential is computed in double precision.
 *      VERSION FOR STARS (dark matter particles have already been treated)
 ***********************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
 
        INCLUDE 'input_files/asohf_parameters.dat'
@@ -1018,9 +999,6 @@ C     &              IX,JY,KZ,FLAG_ITER
        INTEGER FAC
        REAL*4 REF_MIN,REF_MAX
        REAL*4 DISTA(0:MAX_NUM_PART)
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
        INTEGER LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART)
        INTEGER KONTA,KONTA2,MAX_NUM_PART
        REAL*4 UM
@@ -1109,9 +1087,8 @@ C     &              DISTA(J),REF_MAX
        END DO
 
 *      NEW CENTER OF MASS AND ITS VELOCITY
-       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,
-     &          U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
-     &          CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MMM,MAX_NUM_PART)
+       CALL CENTROMASAS_PART(IDX_CUT,CONTADM,LIP,CMX,CMY,CMZ,VCMX,VCMY,
+     &                       VCMZ,MMM,MAX_NUM_PART)
 
        END IF
 
@@ -1120,20 +1097,15 @@ C     &              DISTA(J),REF_MAX
 
 
 *********************************************************************
-       SUBROUTINE SORT_STELLAR_PARTICLES_X(U2DM,U3DM,U4DM,MASAP,RXPA,
-     &                  RYPA,RZPA,ORIPA,N_DM,N_ST,NSTPART_X,NX,LADO0)
+       SUBROUTINE SORT_STELLAR_PARTICLES_X(N_DM,N_ST,NSTPART_X,NX,LADO0)
 *********************************************************************
 *      Reorders DM particles by species (assumes there are N_ESP
 *       especies, each 8 times lighter than the previous one)
 *********************************************************************
-
+       USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
-       REAL*4 MASAP(PARTIRED)
-       REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
-       INTEGER ORIPA(PARTIRED)
        INTEGER N_DM,N_ST,NSTPART_X(0:NMAX),NX
        REAL*4 LADO0
 
