@@ -112,7 +112,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL*4  PATCHRY(NPALEV)
        REAL*4  PATCHRZ(NPALEV)
 
-       INTEGER NPART(0:NLEVELS)
        REAL*4 U2DM(PARTIRED),U3DM(PARTIRED),U4DM(PARTIRED)
        REAL*4 MASAP(PARTIRED)
        REAL*4 RXPA(PARTIRED),RYPA(PARTIRED),RZPA(PARTIRED)
@@ -178,7 +177,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR,FLAG_PARALLEL
        COMMON /PROCESADORES/ NUM
 
-       INTEGER NMAXNCLUSBAS,PABAS,NPBAS,NLEVBAS,NBASPART_PLOT
        INTEGER FLAG_SUBS,FLAG_CENTRAL,DO_COMPUTE_ENERGIES,FLAG_STELLAR
        INTEGER FW1,FW2,FW3,FW4,FW5
        REAL STPAR_FACT_INC,STPAR_MAX_DIST,STPAR_MIN_OVERDENS
@@ -406,161 +404,35 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         WRITE(*,*)
         WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
 
-        NMAXNCLUSBAS=MAXNCLUS
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,CLUSRX,CLUSRY,CLUSRZ,CLUSRXCM,
-!$OMP+                   CLUSRYCM,CLUSRZCM,MASA,RADIO,MSUB,RSUB,
-!$OMP+                   PATCHCLUS,REALCLUS,HALBORDERS,LEVHAL),
-!$OMP+            PRIVATE(I)
-        DO I=1,NMAXNCLUSBAS
-         CLUSRX(I)=0.0
-         CLUSRY(I)=0.0
-         CLUSRZ(I)=0.0
-         CLUSRXCM(I)=0.0
-         CLUSRYCM(I)=0.0
-         CLUSRZCM(I)=0.0
-         MASA(I)=0.0
-         RADIO(I)=0.0
-         MSUB(I)=0.0
-         RSUB(I)=0.0
-         PATCHCLUS(I)=0
-         REALCLUS(I)=0
-         HALBORDERS(I)=0
-         LEVHAL(I)=0
-        END DO
+        CALL INIT_OUTVARS(MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,CLUSRXCM,
+     &           CLUSRYCM,CLUSRZCM,MSUB,RSUB,PATCHCLUS,REALCLUS,
+     &           HALBORDERS,LEVHAL,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,
+     &           VY,VZ,MEAN_VR,VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,
+     &           R200C,R500C,R2500C,M200M,M500M,M2500M,R200C,R500C,
+     &           R2500C,PROFILES,VELOCITY_DISPERSION,RMAXSIGMA,
+     &           MMAXSIGMA,KINETIC_E,POTENTIAL_E,FSUB,NSUBS,
+     &           INDCS_PARTICLES_PER_HALO,DMPCLUS,NHALLEV,SUBS_LEV,
+     &           SUBHALOS,EIGENVAL,INERTIA_TENSOR,NCLUS)
 
-        NMAXNCLUSBAS=NMAXNCLUS
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,VCMAX,MCMAX,RCMAX,DMPCLUS,M200C,
-!$OMP+                   M500C,M2500C,M200M,M500M,M2500M,R200C,R500C,
-!$OMP+                   R2500C,R200M,R500M,R2500M,IPLIP,REALCLUS,
-!$OMP+                   LEVHAL,EIGENVAL,INERTIA_TENSOR,MEAN_VR,
-!$OMP+                   VELOCITY_DISPERSION,RMAXSIGMA,MMAXSIGMA,
-!$OMP+                   KINETIC_E,POTENTIAL_E,FSUB,NSUBS,
-!$OMP+                   INDCS_PARTICLES_PER_HALO,CONCENTRA,ANGULARM,
-!$OMP+                   VX,VY,VZ,PROFILES,VMAXCLUS,SUBHALOS),
-!$OMP+            PRIVATE(I),
-!$OMP+            DEFAULT(NONE)
-        DO I=1,NMAXNCLUSBAS
-         VCMAX(I)=0.0
-         MCMAX(I)=0.0
-         RCMAX(I)=0.0
-         M200C(I)=0.0
-         M500C(I)=0.0
-         M2500C(I)=0.0
-         M200M(I)=0.0
-         M500M(I)=0.0
-         M2500M(I)=0.0
-         R200C(I)=0.0
-         R500C(I)=0.0
-         R2500C(I)=0.0
-         R200M(I)=0.0
-         R500M(I)=0.0
-         R2500M(I)=0.0
-         IPLIP(I)=0
-         LEVHAL(I)=0
-         DMPCLUS(I)=0
-         REALCLUS(I)=0    !de momento no hay halos
-         EIGENVAL(:,I)=0.0
-         INERTIA_TENSOR(:,I)=0.0
-         MEAN_VR(I)=0.0
-         VELOCITY_DISPERSION(I)=0.0
-         RMAXSIGMA(I)=0.0
-         MMAXSIGMA(I)=0.0
-         KINETIC_E(I)=0.0
-         POTENTIAL_E(I)=0.0
-         FSUB(I)=0.0
-         NSUBS(I)=0
-         INDCS_PARTICLES_PER_HALO(:,I)=0
-         CONCENTRA(I)=0.0
-         ANGULARM(:,I)=0.0
-         VMAXCLUS(I)=0.0
-         VX(I)=0.0
-         VY(I)=0.0
-         VZ(I)=0.0
-         PROFILES(:,:,I)=0
-         SUBHALOS(I)=0
-        END DO
-
-        PATCHNX=0
-        PATCHNY=0
-        PATCHNZ=0
-        PATCHX=0
-        PATCHY=0
-        PATCHZ=0
-        PATCHRX=0.0
-        PATCHRY=0.0
-        PATCHRZ=0.0
-
-        NPATCH=0
-        PARE=0
-
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,U1),PRIVATE(I,J,K)
-        DO K=1,NZ
-        DO J=1,NY
-        DO I=1,NX
-         U1(I,J,K)=-1.0        !valores minimos
-        END DO
-        END DO
-        END DO
-
-**********
-*     cambio especial para paralelizar!!
-**********
-        N1=NAMRX                !dimension max de todos los parches
-        NPBAS=NPALEV            !numero total maximo de parches
-        PABAS=PARTIRED
-        NLEVBAS=NLEVELS         !numero maximo de niveles
-        NMAXNCLUSBAS=MAXNCLUS   !num max de candidatos a halo
-**********
+        CALL INIT_GRIDVARS(NX,NY,NZ,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
+     &           PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,PARE,NPATCH,U1,
+     &           U11,ROTE,RETE)
 
 
-!$OMP PARALLEL DO SHARED(NPBAS,N1,U11),
-!$OMP+        PRIVATE(IX,JY,KZ,I)
-        DO I=1,NPBAS
-         DO KZ=1,N1
-         DO JY=1,N1
-         DO IX=1,N1
-          U11(IX,JY,KZ,I)=-1.0
-         END DO
-         END DO
-         END DO
-        END DO
-
-        NHALLEV=0
-        SUBS_LEV=0
-        NPART=0
-
-!$OMP PARALLEL DO SHARED(NMAXNCLUSBAS,MASA,RADIO,
-!$OMP+                   CLUSRX,CLUSRY,CLUSRZ,LEVHAL),
-!$OMP+            PRIVATE(I)
-        DO I=1,NMAXNCLUSBAS
-         CLUSRX(I)=0.0
-         CLUSRY(I)=0.0
-         CLUSRZ(I)=0.0
-         MASA(I)=0.0
-         RADIO(I)=0.0
-         LEVHAL(I)=0
-        END DO
-
-        NCLUS=0
-        ROTE=0.0
-        RETE=0.0
-
-        SUBHALOS=0
-
-!$OMP PARALLEL DO SHARED(PABAS,U2DM,U3DM,U4DM,RXPA,RYPA,RZPA,
-!$OMP+                   MASAP,ORIPA,PARTICLES_PER_HALO),
-!$OMP+            PRIVATE(I)
-        DO I=1,PABAS
-         U2DM(I)=0.0
-         U3DM(I)=0.0
-         U4DM(I)=0.0
-         RXPA(I)=0.0
-         RYPA(I)=0.0
-         RZPA(I)=0.0
-         MASAP(I)=0.0
-         ORIPA(I)=0
-         PARTICLES_PER_HALO(I)=0
-        END DO
+C!$OMP PARALLEL DO SHARED(PABAS,U2DM,U3DM,U4DM,RXPA,RYPA,RZPA,
+C!$OMP+                   MASAP,ORIPA,PARTICLES_PER_HALO),
+C!$OMP+            PRIVATE(I)
+C        DO I=1,PABAS
+C         U2DM(I)=0.0
+C         U3DM(I)=0.0
+C         U4DM(I)=0.0
+C         RXPA(I)=0.0
+C         RYPA(I)=0.0
+C         RZPA(I)=0.0
+C         MASAP(I)=0.0
+C         ORIPA(I)=0
+C         PARTICLES_PER_HALO(I)=0
+C        END DO
 
 ***************************************************
 *     READING INPUT DATA
@@ -568,31 +440,25 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        IF (FLAG_SA.EQ.1) THEN
 *       Reading MASCLET files directly
-        CALL READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
-     &            PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-     &            PATCHRX,PATCHRY,PATCHRZ,U2DM,U3DM,U4DM,MASAP,
-     &            NPART,RXPA,RYPA,RZPA,ORIPA,N_DM)
-
-        ! Background cosmology variables
-        ROTE=RODO*(1.0+ZETA)**3
-        RETE=RE0/(1.0+ZETA)
+         WRITE(*,*) 'Reading MASCLET directly:',
+     &              'not supported in this version'
+         STOP
+c        CALL READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
+c     &            PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
+c     &            PATCHRX,PATCHRY,PATCHRZ,U2DM,U3DM,U4DM,MASAP,
+c     &            NPART,RXPA,RYPA,RZPA,ORIPA,N_DM)
+c
+c        ! Background cosmology variables
+c        ROTE=RODO*(1.0+ZETA)**3
+c        RETE=RE0/(1.0+ZETA)
 
        ELSE
 *       Reading external list of particles (either Masclet particles
 *       or a general list of particles, depending on FLAG_MASCLET)
-        IF (FLAG_MASCLET.EQ.1) THEN
-         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,
-     &                               U2DM,U3DM,U4DM,MASAP,RXPA,
-     &                               RYPA,RZPA,ORIPA,N_DM,VAR,N_ST)
-         IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
-         WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
-        ELSE
-         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,U2DM,U3DM,
-     &                               U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
-     &                               N_DM,VAR,N_ST,UV,UM,HUBBLE_LITTLEH)
-         IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
-         WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
-        END IF
+        CALL READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,ITER,NX,NY,NZ,T,
+     &       ZETA,U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,N_DM,VAR,
+     &       N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
+
 
         IF (SPLIT_SPECIES.EQ.0) THEN
          CALL SORT_DM_PARTICLES(U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,
@@ -610,13 +476,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
      &               ', no. particles:',NPART_ESP(IR_KERN_STARS)
          END IF
         END IF
-
-!      FIX THIS, REMOVE NPART (USELESS) FROM EVERYWHERE
-       !NPART=0
-       !NPART=N_DM
-       ! for now, we will leave it like this for this to work temporarily
-        NPART=0
-        NPART(0)=N_PARTICLES
 
         ! Background cosmology variables
         ROTE=RODO*(1.0+ZETA)**3
@@ -663,7 +522,7 @@ c        END IF
        WRITE(*,*)'***** END MESHRENOEF ******'
        WRITE(*,*)'***************************'
 
-       END IF
+      END IF !(FLAG_SA.EQ.1) THEN - ELSE
 
 c       CALL POISSON(NL,NX,NY,NZ,DX,NPATCH,PARE,PATCHNX,PATCHNY,
 c     &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
@@ -1149,6 +1008,8 @@ c       WRITE(*,*)'===================================='
        INCLUDE 'reader.f'
 *      Calculate properties of stellar haloes
        INCLUDE 'stars.f'
+*      Allocating and initialising stuff
+       INCLUDE 'alloc.f'
 *      Solve Poisson's equation for the gravitational potential
 *       generated by DM
 c       INCLUDE 'poisson.f'
