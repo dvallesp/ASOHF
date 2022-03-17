@@ -2662,8 +2662,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
 
 *************************************************************
        SUBROUTINE RENORM_DENSITY(NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
-     &                           PATCHNZ,CR0AMR,CR0AMR11,SOLAP,U1,U11,
-     &                           LADO0,RODO,RE0)
+     &                           PATCHNZ,U1,U11,LADO0,RODO,RE0,FDM)
 *************************************************************
 *      Normalizes density so that the mean density contrast over the
 *      box is 1 (to account for unaccounted species, e.g. gas)
@@ -2674,12 +2673,9 @@ C        WRITE(*,*) LVAL(I,IPARE)
         INTEGER NL,NX,NY,NZ
         INTEGER NPATCH(0:NL)
         INTEGER PATCHNX(NPALEV),PATCHNY(NPALEV),PATCHNZ(NPALEV)
-        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
-        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
-        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
         REAL*4 U1(NMAX,NMAY,NMAZ)
         REAL*4 U11(NAMRX,NAMRY,NAMRZ,NPALEV)
-        REAL LADO0,RODO,RE0
+        REAL LADO0,RODO,RE0,FDM
 
         REAL*4 DX,DY,DZ
         COMMON /ESPACIADO/ DX,DY,DZ
@@ -2687,72 +2683,13 @@ C        WRITE(*,*) LVAL(I,IPARE)
         REAL BASVOL,BASMASS,BASMASS2,DXPA,DYPA,DZPA
         INTEGER IX,JY,KZ,I,IR,LOW1,LOW2,N1,N2,N3
 
-        REAL*8 BASMASS_8,BASMASS2_8
-
-        BASMASS_8=0.D0
-        BASVOL=DX*DY*DZ*RE0**3
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,CR0AMR,BASVOL,U1),
-!$OMP+            PRIVATE(IX,JY,KZ),
-!$OMP+            REDUCTION(+:BASMASS_8),
-!$OMP+            DEFAULT(NONE)
-        DO KZ=1,NZ
-        DO JY=1,NY
-        DO IX=1,NX
-         IF (CR0AMR(IX,JY,KZ).EQ.1) BASMASS_8=BASMASS_8 +
-     &                                        U1(IX,JY,KZ)*BASVOL
-        END DO
-        END DO
-        END DO
-
-        DO IR=1,NL
-         DXPA=DX/2.0**IR
-         DYPA=DY/2.0**IR
-         DZPA=DZ/2.0**IR
-         BASVOL=DXPA*DYPA*DZPA*RE0**3
-
-         LOW1=SUM(NPATCH(0:IR-1))+1
-         LOW2=SUM(NPATCH(0:IR))
-
-         BASMASS2_8=0.D0
-!$OMP PARALLEL DO SHARED(CR0AMR11,SOLAP,BASVOL,U11,PATCHNX,PATCHNY,
-!$OMP+                   PATCHNZ,LOW1,LOW2),
-!$OMP+            PRIVATE(IX,JY,KZ,I,N1,N2,N3),
-!$OMP+            REDUCTION(+:BASMASS2_8),
-!$OMP+            DEFAULT(NONE)
-         DO I=LOW1,LOW2
-          N1=PATCHNX(I)
-          N2=PATCHNY(I)
-          N3=PATCHNZ(I)
-
-          DO KZ=1,N3
-          DO JY=1,N2
-          DO IX=1,N1
-           IF (CR0AMR11(IX,JY,KZ,I).EQ.1.AND.
-     &         SOLAP(IX,JY,KZ,I).EQ.1) THEN
-            BASMASS2_8=BASMASS2_8+U11(IX,JY,KZ,I)*BASVOL
-           END IF
-          END DO
-          END DO
-          END DO
-         END DO
-
-         BASMASS_8=BASMASS_8+BASMASS2_8
-        END DO
-
-        ! TOTAL MASS IN CODE UNITS
-        BASMASS_8=BASMASS_8*RODO
-        ! OVERDENSITY IN THE BOX
-        BASMASS_8=BASMASS_8/(RODO*RE0**3*LADO0**3)
-
-        BASMASS=BASMASS_8
-
-!$OMP PARALLEL DO SHARED(NX,NY,NZ,BASMASS,U1),
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,FDM,U1),
 !$OMP+            PRIVATE(IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
         DO KZ=1,NZ
         DO JY=1,NY
         DO IX=1,NX
-         U1(IX,JY,KZ)=U1(IX,JY,KZ)/BASMASS
+         U1(IX,JY,KZ)=U1(IX,JY,KZ)/FDM
         END DO
         END DO
         END DO
@@ -2760,7 +2697,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
         DO IR=1,NL
          LOW1=SUM(NPATCH(0:IR-1))+1
          LOW2=SUM(NPATCH(0:IR))
-!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHNX,PATCHNY,PATCHNZ,U11,BASMASS),
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,PATCHNX,PATCHNY,PATCHNZ,U11,FDM),
 !$OMP+            PRIVATE(I,N1,N2,N3,IX,JY,KZ),
 !$OMP+            DEFAULT(NONE)
          DO I=LOW1,LOW2
@@ -2770,7 +2707,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
           DO KZ=1,N3
           DO JY=1,N2
           DO IX=1,N1
-           U11(IX,JY,KZ,I)=U11(IX,JY,KZ,I)/BASMASS
+           U11(IX,JY,KZ,I)=U11(IX,JY,KZ,I)/FDM
           END DO
           END DO
           END DO

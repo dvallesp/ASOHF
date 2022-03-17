@@ -162,11 +162,14 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER MPAPOLEV(NLEVELS)
        INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE
        INTEGER BOR,BORAMR,BOR_OVLP
-       REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND
+       REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND,FDM
        REAL XLDOM,XRDOM,YLDOM,YRDOM,ZLDOM,ZRDOM
        REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
        COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
      &                  CIO_YC,CIO_ZC
+       INTEGER DO_DOMDECOMP
+       REAL DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
+       COMMON /DOM_DECOMP/ DO_DOMDECOMP,DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
 
 *      ---PARALLEL---
        INTEGER NUM,OMP_GET_NUM_THREADS,NUMOR,FLAG_PARALLEL
@@ -203,8 +206,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) NX,NY,NZ
        READ(1,*) !DM particles (all levels) -------------------------------------------->
        READ(1,*) N_DM
-       READ(1,*) !Hubble constant (h), omega matter ------------------------------------>
-       READ(1,*) ACHE,OMEGA0
+       READ(1,*) !Hubble constant (h), omega matter, fraction of DM to total mass ------>
+       READ(1,*) ACHE,OMEGA0,FDM
        READ(1,*) !Max box sizelength (in length units specified below) ----------------->
        READ(1,*) LADO0
        READ(1,*) !Parallel(=1),serial(=0)/ Number of processors ------------------------>
@@ -218,6 +221,13 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) CIO_MASS,CIO_LENGTH,CIO_SPEED,CIO_ALPHA
        READ(1,*) !Input domain (in input length units; x1,x2,y1,y2,z1,z2) -------------->
        READ(1,*) XLDOM,XRDOM,YLDOM,YRDOM,ZLDOM,ZRDOM
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*       Domain decompose                                              *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !Keep only particles inside a given domain (=0, no; =1, yes) ---------->
+       READ(1,*) DO_DOMDECOMP
+       READ(1,*) !Domain to keep particles (in input length units; x1,x2,y1,y2,z1,z2) -->
+       READ(1,*) DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
        READ(1,*) !***********************************************************************
        READ(1,*) !*       Mesh building parameters block                                *
        READ(1,*) !***********************************************************************
@@ -289,8 +299,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        N_PARTICLES=N_DM
        HUBBLE_LITTLEH=ACHE
 
-       IF (CIO_MASS.LT.0) CIO_MASS=-CIO_MASS/HUBBLE_LITTLEH
-       IF (CIO_LENGTH.LT.0) CIO_LENGTH=-CIO_LENGTH/HUBBLE_LITTLEH
+       IF (CIO_MASS.LT.0.) CIO_MASS=-CIO_MASS/HUBBLE_LITTLEH
+       IF (CIO_LENGTH.LT.0.) CIO_LENGTH=-CIO_LENGTH/HUBBLE_LITTLEH
        LADO0=LADO0*CIO_LENGTH
        ! center of the domain (in input length units)
        CIO_XC=0.5*(XLDOM+XRDOM)
@@ -566,7 +576,7 @@ c       WRITE(*,*) '***************************'
 
 
        CALL RENORM_DENSITY(NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,PATCHNZ,
-     &                     CR0AMR,CR0AMR11,SOLAP,U1,U11,LADO0,RODO,RE0)
+     &                     U1,U11,LADO0,RODO,RE0,FDM)
 
        IF (FW2.EQ.1) THEN
         OPEN(99,
@@ -960,7 +970,7 @@ c       WRITE(*,*)'===================================='
 *************************************************
 *************************************************
 
-       CALL DEALLOC 
+       CALL DEALLOC
 
        WRITE(*,*)'END ITER', ITER
        CALL IDATE(DATE)

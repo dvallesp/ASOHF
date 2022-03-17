@@ -208,8 +208,18 @@
        REAL*4 U2DM_R(PARTI_READ),U3DM_R(PARTI_READ),U4DM_R(PARTI_READ)
        REAL*4 MASAP_R(PARTI_READ)
        REAL*4 RXPA_R(PARTI_READ),RYPA_R(PARTI_READ),RZPA_R(PARTI_READ)
-       INTEGER ORIPA_R(PARTI_READ)
+       INTEGER ORIPA_R(PARTI_READ),KEEP(PARTI_READ)
        INTEGER I
+
+*      Domain decomposition
+       REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
+       COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
+     &                  CIO_YC,CIO_ZC
+       INTEGER DO_DOMDECOMP
+       REAL DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
+       COMMON /DOM_DECOMP/ DO_DOMDECOMP,DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
+       REAL X1,X2,Y1,Y2,Z1,Z2,FACT_LENGTH,BASX,BASY,BASZ
+       INTEGER PARTIST,II
 
 !$OMP PARALLEL DO SHARED(RXPA_R,RYPA_R,RZPA_R,U2DM_R,U3DM_R,U4DM_R,
 !$OMP+                   MASAP_R,ORIPA_R),
@@ -240,27 +250,95 @@
        IF (N_ST.GT.0) N_PARTICLES=N_PARTICLES+N_ST
        WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
 
-!!!!!!!!!!!!!!!!!!!!!!!!
-!      here will go the domain decompose
-!!!!!!!!!!!!!!!!!!!!!!!!
-       PARTI=N_PARTICLES
+****************************
+*      DOMAIN DECOMPOSITION
+****************************
+
+       X1=(DDXL-CIO_XC)*CIO_LENGTH
+       X2=(DDXR-CIO_XC)*CIO_LENGTH
+       Y1=(DDYL-CIO_YC)*CIO_LENGTH
+       Y2=(DDYR-CIO_YC)*CIO_LENGTH
+       Z1=(DDZL-CIO_ZC)*CIO_LENGTH
+       Z2=(DDZR-CIO_ZC)*CIO_LENGTH
+
+!$OMP PARALLEL DO SHARED(KEEP,N_PARTICLES), PRIVATE(I), DEFAULT(NONE)
+       DO I=1,N_PARTICLES
+        KEEP(I)=1
+       END DO
+
+       IF (DO_DOMDECOMP.EQ.0) THEN
+        PARTI=N_PARTICLES
+        PARTIST=N_ST
+       ELSE
+        PARTI=0
+        PARTIST=0
+!$OMP PARALLEL DO SHARED(N_PARTICLES,RXPA_R,RYPA_R,RZPA_R,X1,Y1,Z1,X2,
+!$OMP+                   Y2,Z2,KEEP,N_DM),
+!$OMP+            PRIVATE(I,BASX,BASY,BASZ),
+!$OMP+            REDUCTION(+:PARTI,PARTIST)
+!$OMP+            DEFAULT(NONE)
+        DO I=1,N_PARTICLES
+         BASX=(RXPA_R(I)-X1)*(X2-RXPA_R(I))
+         IF (BASX.LT.0.0) THEN
+          KEEP(I)=0
+          CYCLE
+         END IF
+
+         BASY=(RYPA_R(I)-Y1)*(Y2-RYPA_R(I))
+         IF (BASY.LT.0.0) THEN
+          KEEP(I)=0
+          CYCLE
+         END IF
+
+         BASZ=(RZPA_R(I)-Z1)*(Z2-RZPA_R(I))
+         IF (BASZ.LT.0.0) THEN
+          KEEP(I)=0
+          CYCLE
+         END IF
+
+         PARTI=PARTI+1
+         IF (I.GT.N_DM) PARTIST=PARTIST+1
+        END DO
+
+        WRITE(*,*) 'Performing domain decomposition in'
+        WRITE(*,*) '... (input):',DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
+        WRITE(*,*) '... (internal)',X1,X2,Y1,Y2,Z1,Z2
+        WRITE(*,*) 'Particles (read --> keep)',N_PARTICLES,'-->',PARTI
+        WRITE(*,*) '... Of which DM',N_DM,'-->',PARTI-PARTIST
+        WRITE(*,*) '... Of which stellar',N_ST,'-->',PARTIST
+       END IF ! (DO_DOMDECOMP.EQ.0) THEN; else
+
+****   ALLOCATE PARTICLES FROM PARTICLES MODULE
        ALLOCATE(RXPA(PARTI), RYPA(PARTI), RZPA(PARTI))
        ALLOCATE(U2DM(PARTI), U3DM(PARTI), U4DM(PARTI))
        ALLOCATE(MASAP(PARTI))
        ALLOCATE(ORIPA(PARTI))
        ALLOCATE(PARTICLES_PER_HALO(PARTI))
+***********************************************
 
+       II=0
        DO I=1,N_PARTICLES
-        RXPA(I)=RXPA_R(I)
-        RYPA(I)=RYPA_R(I)
-        RZPA(I)=RZPA_R(I)
-        U2DM(I)=U2DM_R(I)
-        U3DM(I)=U3DM_R(I)
-        U4DM(I)=U4DM_R(I)
-        MASAP(I)=MASAP_R(I)
-        ORIPA(I)=ORIPA_R(I)
-        PARTICLES_PER_HALO(I)=0
+        IF (KEEP(I).EQ.0) CYCLE
+        II=II+1
+        RXPA(II)=RXPA_R(I)
+        RYPA(II)=RYPA_R(I)
+        RZPA(II)=RZPA_R(I)
+        U2DM(II)=U2DM_R(I)
+        U3DM(II)=U3DM_R(I)
+        U4DM(II)=U4DM_R(I)
+        MASAP(II)=MASAP_R(I)
+        ORIPA(II)=ORIPA_R(I)
+        PARTICLES_PER_HALO(II)=0
        END DO
+
+       IF (II.NE.PARTI) THEN
+        WRITE(*,*) 'ERROR in domain decompose, II.NE.PARTI',II,PARTI
+        STOP
+       END IF
+
+       N_DM=PARTI-PARTIST
+       N_ST=PARTIST
+       N_PARTICLES=PARTI
 
        RETURN
       END
