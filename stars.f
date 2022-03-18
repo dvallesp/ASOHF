@@ -774,7 +774,7 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
      &               ST_VELOCITYDISPERSION(I),
      &               ST_VXCM(I),ST_VYCM(I),ST_VZCM(I)
         IF (FLAG_WDM.EQ.1) THEN
-         WRITE(4) I,(INDCS_PARTICLES_PER_HALO_ST(J,I),J=1,2)
+         WRITE(4) KONTA,(INDCS_PARTICLES_PER_HALO_ST(J,I),J=1,2)
          KONTA2=MAX(KONTA2,INDCS_PARTICLES_PER_HALO_ST(2,I))
         END IF
       END IF  !realclus
