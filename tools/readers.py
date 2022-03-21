@@ -1,7 +1,7 @@
 import os, sys, numpy as np
 from cython_fortran_file import FortranFile as FF
 
-def read_families(it, path='', output_format='dictionaries'):
+def read_families(it, path='', output_format='dictionaries', output_redshift=False):
     '''
     Reads the families files, containing the halo catalogue.
     Can be outputted as a list of dictionaries, one per halo
@@ -9,8 +9,11 @@ def read_families(it, path='', output_format='dictionaries'):
      arrays (output_format='arrays').
     '''
     with open(os.path.join(path, 'families{:05d}'.format(it)), 'r') as f:
-        for i in range(7):
-            f.readline()
+        _=f.readline()
+        _,_,_,zeta = f.readline().split()
+        zeta=float(zeta)
+        for i in range(5):
+            _=f.readline()
         haloes=[]
         for l in f:
             l=l.split()
@@ -72,11 +75,17 @@ def read_families(it, path='', output_format='dictionaries'):
             halo['Nsubs']=int(l[50])
 
             haloes.append(halo)
-    
+
     if output_format=='dictionaries':
-        return haloes
+        if output_redshift:
+            return haloes, zeta
+        else:
+            return haloes
     elif output_format=='arrays':
-        return {k: np.array([h[k] for h in haloes]) for k in haloes[0].keys()}
+        if output_redshift:
+            return {k: np.array([h[k] for h in haloes]) for k in haloes[0].keys()}, zeta
+        else:
+            return {k: np.array([h[k] for h in haloes]) for k in haloes[0].keys()}
 
 
 def read_stellar_haloes(it, path='', output_format='dictionaries'):
@@ -153,7 +162,7 @@ def read_particles(it, path='', parttype='DM'):
         particles=f.read_vector('i4')
 
     for k,(i1,i2) in particles_lut.items():
-        particles_oripa[k]=particles[i1:i2+1]
+        particles_oripa[k]=np.sort(particles[i1:i2+1])
 
     return particles_oripa
 
