@@ -1684,6 +1684,9 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
         DEALLOCATE(HALOES_PROC, PARTICLES_PROC, PROC_NPARTICLES)
        END IF
 
+       WRITE(*,*) '===> TOTAL NUMBER OF SUBSTRCTURES:',
+     &            COUNT(REALCLUS(1:NCLUS).GT.0),' <==='
+
        RETURN
        END
 
