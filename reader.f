@@ -255,6 +255,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        REAL*4 T,AAA,BBB,CCC,MAP,ZETA
        INTEGER VAR !(=1: only DM; =2: DM+stars)
 
+       REAL BAS
        INTEGER I,J,K,IX,NL,IR,IRR,N1,N2,N3,N_DM,N_ST,NBAS,ARE_BH,NST0
 
        INTEGER,ALLOCATABLE::NPATCH(:)
@@ -373,6 +374,20 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        END DO
 
        CLOSE(32)
+
+*      Fix ORIPAs: particles of the heavier species get negative 
+       BAS=MAXVAL(MASAP(1:N_DM))
+       IF (BAS.GT.4.0*MINVAL(MASAP(1:N_DM))) THEN
+        BAS=0.9*BAS
+!$OMP PARALLEL DO SHARED(N_DM,BAS,ORIPA,MASAP),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+        DO I=1,N_DM 
+         IF (MASAP(I).GT.BAS) ORIPA(I)=-ABS(ORIPA(I))
+        END DO
+       END IF
+*      END Fix ORIPAs
+
 ***       END IF
        WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',CONTA
        IF (CONTA.NE.N_DM) THEN
