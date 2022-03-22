@@ -5,25 +5,40 @@
 
 import json, numpy as np
 
-itfin=1550 # last iteration
+######### Parameters
+itfin=1100 # last iteration
 itini=500 # first iteration
 every=50 # spacing of the snapshots
 
-halo=50 # ID of the halo where to start to navigate, in iteration itfin
+max_iterations_back=4 # same as in mtree.f
 
-for itpost in range(itfin,itini-every,-every):
-    itprev=itpost-every
+halo=639 # ID of the halo where to start to navigate, in iteration itfin
+#########
+
+itpost=itfin
+it_back=0
+print(itpost, halo)
+while itpost > itini:
+    itprev=itpost-(it_back+1)*every
     with open('mtree_{:05d}_{:05d}.json'.format(itprev,itpost), 'r') as f:
         mtree=json.load(f)
-    print(itpost, halo)
-    mtree=mtree[str(halo)]
+    if str(halo) in mtree.keys():
+        mtree=mtree[str(halo)]
+    else:
+        mtree=[]
     flag=False
     for prog in mtree:
         if prog['containsMostBound'] is True:
-            halo=prog['id']
+            halotry=prog['id']
             flag=True
             break
+    if flag:
+        it_back=0
+        halo=halotry
+        itpost=itprev
+        print(itprev, halo)
     if not flag:
-        print('Broken!')
-        break
+        print(itprev, '--')
+        it_back+=1
+
 

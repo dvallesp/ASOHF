@@ -19,6 +19,11 @@ omegam=0.3026
 omegalambda=1-omegam
 
 ncores=12
+
+min_given_mass = 0.001 # fraction of mass of the progenitor given to the descendant to report this progenitor
+
+look_further_iterations = False # if True, looks at previous iterations for the, until it finds a matching halo which contains the mostBoundParticle
+max_iterations_back = 2 # set it to a very large number to go always until the first iteration
 #########
 
 ### function to read output a dictionary mapping particle IDs to particles masses
@@ -87,6 +92,42 @@ def LCDM_time(z1,z2,omega_m,omega_lambda,h):
 
     return tH * t[0] / h
 
+def p_consider(j_post):
+    xj,yj,zj=(haloes_post[aaa][j_post] for aaa in ['x','y','z'])
+    consider_j=[]
+    for i_prev in range(n_prev):
+        xi,yi,zi,ri=(haloes_prev[aaa][i_prev] for aaa in ['x','y','z','R'])
+        dista2 = (xi-xj)**2 + (yi-yj)**2 + (zi-zj)**2
+        if dista2 < (max_dista+ri)**2:
+            consider_j.append(i_prev)
+    return consider_j
+
+def p_intersect(j_post):
+    id_j_post = int(haloes_post['id'][j_post])
+    merger_tree_j_post = []
+
+    oripas_post = particles_haloes_post[id_j_post]
+    mpost = sum([particledict[oripa_i] for oripa_i in oripas_post])
+    mostBoundPost = haloes_post['mostBoundPart'][j_post]
+
+    for i_prev in consider[j_post]:
+        id_i_prev = int(haloes_prev['id'][i_prev])
+
+        oripas_prev = particles_haloes_prev[id_i_prev]
+        mprev = sum([particledict[oripa_i] for oripa_i in oripas_prev])
+        intersection = sum([particledict[oripa_i] for oripa_i in snp.intersect(oripas_post, oripas_prev)])
+        mostBoundPrev = haloes_prev['mostBoundPart'][i_prev]
+        if intersection > min_given_mass*mpost:
+            #print(j_post, 'from', i_prev, intersection)
+            merger_tree_j_post.append({'id': id_i_prev,
+                                       'givenMassFraction': intersection/mpost,
+                                       'retainedMassFraction': intersection/mprev,
+                                       'retention': intersection/np.sqrt(mprev*mpost),
+                                       'containsMostBound': (mostBoundPost in oripas_prev) and (mostBoundPrev in oripas_post),
+                                       'position': [haloes_prev[aaa][i_prev] for aaa in ['x','y','z']],
+                                       'radius': haloes_prev['R'][i_prev], 'mass': haloes_prev['M'][i_prev]})
+
+    return merger_tree_j_post
 
 particledict = IDs_to_masses(itini, simulation_results)
 
@@ -98,7 +139,6 @@ for it_post in range(itini+every, itfin+every, every):
     print(datetime.datetime.now())
     print('******************************')
 
-    #particledict_prev = IDs_to_masses(it_prev, simulation_results)
     haloes_prev, zeta_prev = read_families(it_prev, path=outputs_ASOHF, 
                                            output_format='arrays', output_redshift=True)
     particles_haloes_prev = read_particles(it_prev, path=outputs_ASOHF)
@@ -106,20 +146,15 @@ for it_post in range(itini+every, itfin+every, every):
                                                                                       haloes_prev['substructureOf'].size,
                                                                                       (haloes_prev['substructureOf']>0).sum()))
 
-
-    #particledict_post = IDs_to_masses(it_post, simulation_results)
     haloes_post, zeta_post = read_families(it_post, path=outputs_ASOHF, 
                                            output_format='arrays', output_redshift=True)
     particles_haloes_post = read_particles(it_post, path=outputs_ASOHF)
     print('Iteration {:}, redshift {:.2f}: read! {:} haloes, {:} substructure'.format(it_post, zeta_post,
                                                                                       haloes_post['substructureOf'].size,
                                                                                       (haloes_post['substructureOf']>0).sum()))
-    
 
     n_post = haloes_post['id'].size
     n_prev = haloes_prev['id'].size
-
-    consider = {j_post: [] for j_post in range(n_post)}
     
     maxv = max([haloes_prev['max_v'].max()*(1+zeta_prev), haloes_post['max_v'].max()*(1+zeta_post)])
     maxv2 = max([max([haloes_prev['vx'].max(), haloes_prev['vy'].max(), haloes_prev['vz'].max()])*(1+zeta_prev),
@@ -128,98 +163,77 @@ for it_post in range(itini+every, itfin+every, every):
     Dt = LCDM_time(zeta_prev, zeta_post, omegam, omegalambda, h) 
     max_dista = Dt * (maxv * 3.06392e-7)
     print('Time span, max velocity, max distance to consider: {:.3f} Gyr, {:.3e} c, {:.2f} Mpc'.format(Dt/1e9, maxv, max_dista))
-    #max_dista2 = max_dista**2
-    
     print('Finding candidates...')
-    
-    def p_consider(j_post):
-        xj,yj,zj=(haloes_post[aaa][j_post] for aaa in ['x','y','z'])
-        consider_j=[]
-        for i_prev in range(n_prev):
-            xi,yi,zi,ri=(haloes_prev[aaa][i_prev] for aaa in ['x','y','z','R'])
-            dista2 = (xi-xj)**2 + (yi-yj)**2 + (zi-zj)**2
-            if dista2 < (max_dista+ri)**2:
-                consider_j.append(i_prev)
-        return consider_j
 
     with Pool(ncores) as p:
         consider=list(tqdm(p.imap(p_consider, range(n_post)), total=n_post))
     consider = {i: ci for i,ci in enumerate(consider)}
-    
-    #for j_post in tqdm(range(n_post)):
-    #    xj,yj,zj=(haloes_post[aaa][j_post] for aaa in ['x','y','z'])
-    #    for i_prev in range(n_prev):
-    #        xi,yi,zi=(haloes_prev[aaa][i_prev] for aaa in ['x','y','z'])
-    #        dista2 = (xi-xj)**2 + (yi-yj)**2 + (zi-zj)**2
-    #        if dista2 < max_dista2:
-    #            consider[j_post].append(i_prev)
 
     print('Possible relations to check: ', sum([len(v) for v in consider.values()]))
-
-    def p_intersect(j_post):
-        id_j_post = int(haloes_post['id'][j_post])
-        merger_tree_j_post = []
-
-        oripas_post = particles_haloes_post[id_j_post]
-        mpost = sum([particledict[oripa_i] for oripa_i in oripas_post])
-        mostBoundPost = haloes_post['mostBoundPart'][j_post]
-
-        for i_prev in consider[j_post]:
-            id_i_prev = int(haloes_prev['id'][i_prev])
-
-            oripas_prev = particles_haloes_prev[id_i_prev]
-            mprev = sum([particledict[oripa_i] for oripa_i in oripas_prev])
-            intersection = sum([particledict[oripa_i] for oripa_i in snp.intersect(oripas_post, oripas_prev)])
-            mostBoundPrev = haloes_prev['mostBoundPart'][i_prev]
-            if intersection > 0.001*mpost:
-                #print(j_post, 'from', i_prev, intersection)
-                merger_tree_j_post.append({'id': id_i_prev,
-                                           'givenMassFraction': intersection/mpost,
-                                           'retainedMassFraction': intersection/mprev,
-                                           'retention': intersection/np.sqrt(mprev*mpost),
-                                           'containsMostBound': (mostBoundPost in oripas_prev) and (mostBoundPrev in oripas_post),
-                                           'position': [haloes_prev[aaa][i_prev] for aaa in ['x','y','z']],
-                                           'radius': haloes_prev['R'][i_prev], 'mass': haloes_prev['M'][i_prev]})
-
-        return merger_tree_j_post
 
     with Pool(ncores) as p:
         merger_tree=list(tqdm(p.imap(p_intersect, range(n_post)), total=n_post))
     merger_tree = {int(haloes_post['id'][j_post]): v for j_post, v in enumerate(merger_tree)}
 
-
-    #merger_tree={}
-    #for j_post in tqdm(range(n_post)):
-    #    id_j_post = int(haloes_post['id'][j_post])
-    #    merger_tree[id_j_post] = []
-    #
-    #    oripas_post = particles_haloes_post[id_j_post]
-    #    mpost = sum([particledict[oripa_i] for oripa_i in oripas_post])
-    #    mostBoundPost = haloes_post['mostBoundPart'][j_post]
-    #
-    #    for i_prev in consider[j_post]:
-    #        id_i_prev = int(haloes_prev['id'][i_prev])
-    #        
-    #        oripas_prev = particles_haloes_prev[id_i_prev]
-    #        mprev = sum([particledict[oripa_i] for oripa_i in oripas_prev])
-    #        intersection = sum([particledict[oripa_i] for oripa_i in snp.intersect(oripas_post, oripas_prev)])
-    #        mostBoundPrev = haloes_prev['mostBoundPart'][i_prev]
-    #        if intersection > 0.001*mpost:
-    #            #print(j_post, 'from', i_prev, intersection)
-    #            merger_tree[id_j_post].append({'id': id_i_prev, 
-    #                                           'givenMassFraction': intersection/mpost, 
-    #                                           'retainedMassFraction': intersection/mprev, 
-    #                                           'retention': intersection/np.sqrt(mprev*mpost), 
-    #                                           'containsMostBound': (mostBoundPost in oripas_prev) and (mostBoundPrev in oripas_post),
-    #                                           'position': [haloes_prev[aaa][i_prev] for aaa in ['x','y','z']],
-    #                                           'radius': haloes_prev['R'][i_prev], 'mass': haloes_prev['M'][i_prev]})
-
-        #print('----------------',j_post,id_j_post)
-        #for aaa in merger_tree[id_j_post]:
-        #    print(aaa)
-
     with open(os.path.join(outputs_ASOHF, 'mtree_{:05d}_{:05d}.json'.format(it_prev, it_post)), 'w') as f:
-        #json_string = json.dumps(merger_tree, indent=4)
         json.dump(merger_tree, f, indent=4)
+
+    # find 'Lost haloes'
+    if look_further_iterations:
+        lost = []
+        for j_post in range(n_post):
+            found=False
+            for prog in merger_tree[int(haloes_post['id'][j_post])]:
+                if prog['containsMostBound'] is True:
+                    found=True
+                    break
+            if not found:
+                lost.append(j_post)
+
+        print('** Number of lost haloes:', len(lost))
+
+        for it_prev in range(it_post-2*every, max([itini-every, it_post-(2+max_iterations_back)*every]), -every):
+            haloes_prev, zeta_prev = read_families(it_prev, path=outputs_ASOHF,
+                                                   output_format='arrays', output_redshift=True)
+            particles_haloes_prev = read_particles(it_prev, path=outputs_ASOHF)
+            print('\n==> Iteration {:}, redshift {:.2f}: read! {:} haloes, {:} substructure <=='.format(it_prev, zeta_prev,
+                                                                                              haloes_prev['substructureOf'].size,
+                                                                                              (haloes_prev['substructureOf'] > 0).sum()))
+            n_prev = haloes_prev['id'].size
+
+            maxv = max([haloes_prev['max_v'].max() * (1 + zeta_prev), maxv*299792.458])
+            maxv2 = max([haloes_prev['vx'].max(), haloes_prev['vy'].max(), haloes_prev['vz'].max()]) * (1 + zeta_prev)
+            maxv = max([maxv, maxv2]) / 299792.458
+            Dt = LCDM_time(zeta_prev, zeta_post, omegam, omegalambda, h)
+            max_dista = Dt * (maxv * 3.06392e-7)
+            print('Time span, max velocity, max distance to consider: {:.3f} Gyr, {:.3e} c, {:.2f} Mpc'.format(Dt / 1e9, maxv, max_dista))
+            print('Finding candidates...')
+
+            with Pool(ncores) as p:
+                consider = list(tqdm(p.imap(p_consider, lost), total=len(lost)))
+            consider = {i: ci for i, ci in zip(lost, consider)}
+
+            print('Possible relations to check: ', sum([len(v) for v in consider.values()]))
+
+            with Pool(ncores) as p:
+                merger_tree = list(tqdm(p.imap(p_intersect, consider), total=len(consider)))
+            merger_tree = {int(haloes_post['id'][j_post]): v for j_post, v in zip(lost, merger_tree)}
+
+            lost0 = [i for i in lost]
+            lost = []
+            for j_post in lost0:
+                found = False
+                for prog in merger_tree[int(haloes_post['id'][j_post])]:
+                    if prog['containsMostBound'] is True:
+                        found = True
+                        break
+                if not found:
+                    lost.append(j_post)
+
+            print('Number of lost haloes: {:}. Recovered: {:}'.format(len(lost), len(lost0)-len(lost)))
+
+            with open(os.path.join(outputs_ASOHF, 'mtree_{:05d}_{:05d}.json'.format(it_prev, it_post)), 'w') as f:
+                json.dump(merger_tree, f, indent=4)
+
 
 
