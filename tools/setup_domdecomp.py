@@ -15,7 +15,7 @@ div_z=2
 sec_boundary=2500.
 
 dd_foldername='domain_{:}_{:}_{:}'
-executable='asohf_sa.x'
+executable='asohf.x'
 other_files=['run.sh']
 simulation_foldername='simulation'
 ##################################################
