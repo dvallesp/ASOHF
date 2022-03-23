@@ -1449,7 +1449,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        ELSE ! sampling
         NSAMPLE=MAX(1000,INT(0.01*KONTA2))
         NBAS64=NSAMPLE
-        NPAIRS_EXPECT=NBAS64*(NBAS64-1)/2
+        NPAIRS_EXPECT=NBAS64**2
         NPAIRS=0
 
         CALL RANDOM_SEED() ! set the seed for random numbers
@@ -1471,7 +1471,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
          BAS=0.D0
 
-         DO KKK=JJJ+1,NSAMPLE
+         DO KKK=1,NSAMPLE
           FLAG=0
           DO WHILE (FLAG.EQ.0)
            CALL RANDOM_NUMBER(U)
