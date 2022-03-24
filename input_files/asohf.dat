@@ -68,8 +68,8 @@ FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
 1
 Search for substructure (=1 yes, =0 no) ------------------------------>
 0
-Compute kinetic and potential energies (=1 yes, =0 no) --------------->
-0
+Compute energies (=1 yes, =0 no), max num of part. for direct sum ---->
+0,4000
 Minimum number of particles per halo --------------------------------->
 25
 ***********************************************************************

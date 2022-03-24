@@ -514,7 +514,7 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,
-     &      MIN_NUM_PART,NDMPART_X,VAR)
+     &      MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -550,8 +550,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER DO_COMPUTE_ENERGIES
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
-       INTEGER MIN_NUM_PART
-       INTEGER NDMPART_X(0:NMAX),VAR
+       INTEGER MIN_NUM_PART,NDMPART_X(0:NMAX),VAR,MAX_PART_DSUM
 
        REAL*4 PI,ACHE,T0,RE0
        COMMON /DOS/ACHE,T0,RE0
@@ -651,7 +650,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
 !$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,XLDOM,NDMPART_X,VAR,
-!$OMP+           PARTI),
+!$OMP+           PARTI,MAX_PART_DSUM),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -1237,7 +1236,7 @@ C            END IF
 
          IF (DO_COMPUTE_ENERGIES.EQ.1) THEN
           CALL COMPUTE_EPOT(KONTA,KONTA2,LIP,CONTADM,EPOT,
-     &                      MOST_BOUND_IDX,MAX_NUM_PART)
+     &                      MOST_BOUND_IDX,MAX_NUM_PART,MAX_PART_DSUM)
           EPOT=EPOT*UM**2*GCONS ! Gravitational Energy in Msun * km^2 * s^-2
           EKIN=0.5*EKIN*UM*UV**2 ! Kinetic Energy in Msun * km^2 * s^-2
           KINETIC_E(I)=EKIN
@@ -1378,7 +1377,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 **********************************************************************
        SUBROUTINE COMPUTE_EPOT(KONTA,KONTA2,LIP,CONTADM,EPOT,
-     &                         MOST_BOUND_IDX,MAX_NUM_PART)
+     &                         MOST_BOUND_IDX,MAX_NUM_PART,MAX_PART_DSUM)
 **********************************************************************
 *      Computes the gravitational potential energy of a halo, taking
 *       into account only bound particles, by direct summation (small
@@ -1393,10 +1392,10 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        INTEGER CONTADM(MAX_NUM_PART)
        REAL EPOT
        INTEGER MOST_BOUND_IDX
-       INTEGER MAX_NUM_PART
+       INTEGER MAX_NUM_PART,MAX_PART_DSUM
 
        INTEGER J,JJ,K,KK,NSAMPLE!,NPAIRS
-       INTEGER FLAG,JJJ,KKK
+       INTEGER FLAG,JJJ,KKK,NSAMPLESUM_PAIRS,NDIRECTSUM_MAX
        REAL X1,X2,Y1,Y2,Z1,Z2,M1,M2,U,LARGEST_ENERGY
 
 *      DOUBLE PRECISION / LONG LOCAL VARIABLES
@@ -1407,8 +1406,10 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
        EPOT8=0.D0
 
+       NDIRECTSUM_MAX=MAX_PART_DSUM
+       NSAMPLESUM_PAIRS=INT(NDIRECTSUM_MAX/1.4)
 
-       IF (KONTA2.LT.1000) THEN ! direct summation
+       IF (KONTA2.LT.NDIRECTSUM_MAX) THEN ! direct summation
         ALLOCATE(EPOT_PART(KONTA))
 
         DO J=1,KONTA
@@ -1447,7 +1448,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
         DEALLOCATE(EPOT_PART)
        ELSE ! sampling
-        NSAMPLE=MAX(1000,INT(0.01*KONTA2))
+        NSAMPLE=MAX(NSAMPLESUM_PAIRS,INT(0.01*KONTA2))
         NBAS64=NSAMPLE
         NPAIRS_EXPECT=NBAS64**2
         NPAIRS=0
@@ -1493,7 +1494,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
          EPOT8=EPOT8+BAS
 
-         BAS=BAS/M1 ! gravitational energy per unit mass
+         BAS=BAS/M1 ! gravitational energy per unit mass (x NSAMPLE)
          IF (BAS.LT.LARGEST_ENERGY) THEN
           LARGEST_ENERGY=BAS
           MOST_BOUND_IDX=JJ

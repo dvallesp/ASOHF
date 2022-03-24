@@ -761,7 +761,8 @@ C        WRITE(*,*) 'Not found progenitor'
      &      CLUSRXCM,CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,
      &      PATCHCLUS,NPATCH,PROFILES,VELOCITY_DISPERSION,KINETIC_E,
      &      POTENTIAL_E,DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,
-     &      FLAG_WDM,ZETA,MIN_NUM_PART,MAX_NUM_PART,NDMPART_X,VAR)
+     &      FLAG_WDM,ZETA,MIN_NUM_PART,MAX_NUM_PART,NDMPART_X,VAR,
+     &      MAX_PART_DSUM)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -797,8 +798,8 @@ C        WRITE(*,*) 'Not found progenitor'
        INTEGER DO_COMPUTE_ENERGIES
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
-       INTEGER MIN_NUM_PART,MAX_NUM_PART
-       INTEGER NDMPART_X(0:NMAX),VAR
+       INTEGER MIN_NUM_PART,MAX_NUM_PART,NDMPART_X(0:NMAX),VAR
+       INTEGER MAX_PART_DSUM
 
        REAL*4 PI,ACHE,T0,RE0
        COMMON /DOS/ACHE,T0,RE0
@@ -891,7 +892,7 @@ C        WRITE(*,*) 'Not found progenitor'
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
 !$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,MAX_NUM_PART_COM,XLDOM,
-!$OMP+           NDMPART_X,VAR,PARTI),
+!$OMP+           NDMPART_X,VAR,PARTI,MAX_PART_DSUM),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -1588,7 +1589,7 @@ C            END IF
 
          IF (DO_COMPUTE_ENERGIES.EQ.1) THEN
           CALL COMPUTE_EPOT(KONTA,KONTA2,LIP,CONTADM,EPOT,
-     &                      MOST_BOUND_IDX,MAX_NUM_PART)
+     &                      MOST_BOUND_IDX,MAX_NUM_PART,MAX_PART_DSUM)
           EPOT=EPOT*UM**2*GCONS ! Gravitational Energy in Msun * km^2 * s^-2
           EKIN=0.5*EKIN*UM*UV**2 ! Kinetic Energy in Msun * km^2 * s^-2
           KINETIC_E(I)=EKIN
@@ -1683,9 +1684,6 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
         DEALLOCATE(HALOES_PROC, PARTICLES_PROC, PROC_NPARTICLES)
        END IF
-
-       WRITE(*,*) '===> TOTAL NUMBER OF SUBSTRCTURES:',
-     &            COUNT(REALCLUS(1:NCLUS).GT.0),' <==='
 
        RETURN
        END

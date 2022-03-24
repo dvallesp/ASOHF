@@ -159,7 +159,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER FLAG_SA,FLAG_GAS,FLAG_MASCLET,FLAG_WDM
        INTEGER N_DM,N_PARTICLES,N_ST,N_GAS,IR_KERN_STARS,MIN_NUM_PART
        INTEGER SPLIT_SPECIES,BORDES,PARCHLIM,MIN_NUM_PART_ST
-       INTEGER MPAPOLEV(NLEVELS)
+       INTEGER MPAPOLEV(NLEVELS),MAX_PART_DSUM
        INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE
        INTEGER BOR,BORAMR,BOR_OVLP
        REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND,FDM
@@ -276,8 +276,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FLAG_SUBS
        !READ(1,*) !Search for cores (max sigma_v of bound particles) (=1 yes, =0 no) --->
        !READ(1,*) FLAG_CENTRAL
-       READ(1,*) !Compute kinetic and potential energies (=1 yes, =0 no) --------------->
-       READ(1,*) DO_COMPUTE_ENERGIES
+       READ(1,*) !Compute energies (=1 yes, =0 no), max num of part. for direct sum ---->
+       READ(1,*) DO_COMPUTE_ENERGIES,MAX_PART_DSUM
        READ(1,*) !Minimum number of particles per halo --------------------------------->
        READ(1,*) MIN_NUM_PART
        READ(1,*) !***********************************************************************
@@ -694,7 +694,7 @@ c     &                     U11)
      &      CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,
-     &      MIN_NUM_PART,NDMPART_X,VAR)
+     &      MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM)
 
 *************************************************
 ******** GENERAL CHECKING ***********************
@@ -803,7 +803,8 @@ c       WRITE(*,*)'===================================='
      &      CLUSRXCM,CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,SUBS_LEV,
      &      PATCHCLUS,NPATCH,PROFILES,VELOCITY_DISPERSION,KINETIC_E,
      &      POTENTIAL_E,DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,
-     &      FLAG_WDM,ZETA,MIN_NUM_PART,MAX_NUM_PART,NDMPART_X,VAR)
+     &      FLAG_WDM,ZETA,MIN_NUM_PART,MAX_NUM_PART,NDMPART_X,VAR,
+     &      MAX_PART_DSUM)
 
          IF (FW5.EQ.1) THEN
           open(99, file='./output_files/substructureparticles'//
@@ -815,6 +816,9 @@ c       WRITE(*,*)'===================================='
           close(99)
          END IF
         END DO
+
+        WRITE(*,*) '===> TOTAL NUMBER OF SUBSTRCTURES:',
+     &             COUNT(REALCLUS(1:NCLUS).GT.0),' <==='
 
         CALL FRACTION_MASS_SUBS(NCLUS,REALCLUS,MASA,MSUB,FSUB,NSUBS)
        END IF
