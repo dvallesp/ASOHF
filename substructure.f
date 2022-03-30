@@ -987,7 +987,9 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/rsub(i)
 *********************************************************************
         WELL_ALLOCATED=0
         DO WHILE (WELL_ALLOCATED.EQ.0)
-         IF (ALLOCATED(LIP)) DEALLOCATE(CONTADM,LIP,DISTA)
+         IF (ALLOCATED(LIP)) DEALLOCATE(LIP)
+         IF (ALLOCATED(CONTADM)) DEALLOCATE(CONTADM)
+         IF (ALLOCATED(DISTA)) DEALLOCATE(DISTA)
          ALLOCATE(LIP(MAX_NUM_PART),CONTADM(MAX_NUM_PART))
          ALLOCATE (DISTA(0:MAX_NUM_PART))
 
@@ -1120,6 +1122,7 @@ c            WRITE(*,*) J,DISTA(J),MASADM*UM,EQ_JACOBI_R
          IF (WELL_ALLOCATED.EQ.0) THEN
           !WRITE(*,*) 'WARNING: konta>max_num_part',KONTA,MAX_NUM_PART,I
           MAX_NUM_PART=MAX_NUM_PART*2
+          DEALLOCATE(LIP,DISTA,CONTADM)
          END IF
         END DO ! WHILE (WELL_ALLOCATED.EQ.0)
 
@@ -1135,6 +1138,7 @@ c        WRITE(*,*) 'THUS, RJ,MJ,KONTA=',RCLUS,MASADM*UM,KONTA
 
         IF (MASADM.LE.0.D0.OR.KONTA.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
+         DEALLOCATE(LIP,CONTADM,DISTA)
          CYCLE
         END IF
 
@@ -1194,6 +1198,7 @@ c     &             '. Pruned:',count_1,'. Iters:', FAC
 
         IF (KONTA2.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
+         DEALLOCATE(LIP,CONTADM,DISTA)
          CYCLE
         END IF
 
@@ -1226,6 +1231,7 @@ c        write(*,*) '--'
 
         IF (KONTA2.LT.MIN_NUM_PART) THEN
          REALCLUS(I)=0
+         DEALLOCATE(LIP,CONTADM,DISTA)
          CYCLE
         END IF
 
@@ -1568,6 +1574,7 @@ C            END IF
          DMPCLUS(I)=KONTA2
          IF (KONTA2.LT.MIN_NUM_PART) THEN
           REALCLUS(I)=0
+          DEALLOCATE(LIP,CONTADM,DISTA)
           CYCLE
          END IF
 
@@ -1645,8 +1652,8 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 ************ FIN HALO I ******************
 ******************************************
         END IF ! (ELSE of KONTA2.LT.MIN_NUM_PART) (poor haloes after unbinding)
+        DEALLOCATE(LIP,CONTADM,DISTA)
        END IF ! (realclus(i).ne.0)
-
 *****************
        END DO   !I=LOWH1,LOWH2
 ****************

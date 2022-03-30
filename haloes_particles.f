@@ -1377,7 +1377,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
 **********************************************************************
        SUBROUTINE COMPUTE_EPOT(KONTA,KONTA2,LIP,CONTADM,EPOT,
-     &                         MOST_BOUND_IDX,MAX_NUM_PART,MAX_PART_DSUM)
+     &                       MOST_BOUND_IDX,MAX_NUM_PART,MAX_PART_DSUM)
 **********************************************************************
 *      Computes the gravitational potential energy of a halo, taking
 *       into account only bound particles, by direct summation (small

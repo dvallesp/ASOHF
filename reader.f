@@ -375,14 +375,14 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
        CLOSE(32)
 
-*      Fix ORIPAs: particles of the heavier species get negative 
+*      Fix ORIPAs: particles of the heavier species get negative
        BAS=MAXVAL(MASAP(1:N_DM))
        IF (BAS.GT.4.0*MINVAL(MASAP(1:N_DM))) THEN
         BAS=0.9*BAS
 !$OMP PARALLEL DO SHARED(N_DM,BAS,ORIPA,MASAP),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
-        DO I=1,N_DM 
+        DO I=1,N_DM
          IF (MASAP(I).GT.BAS) ORIPA(I)=-ABS(ORIPA(I))
         END DO
        END IF
@@ -878,7 +878,11 @@ C       stop
         IF (KZ.LT.1) KZ=1
         IF (KZ.GT.NZ) KZ=NZ
         BAS=DENS(IX,JY,KZ)
-        MOCKLEVEL(I)=MAX(MIN(INT(LOG(BAS)/LOG(8.0)),N_ESP-1),0)
+        IF (BAS.GT.0.0) THEN
+         MOCKLEVEL(I)=MAX(MIN(INT(LOG(BAS)/LOG(8.0)),N_ESP-1),0)
+        ELSE
+         MOCKLEVEL(I)=0
+        END IF
        END DO
 
        DEALLOCATE(DENS)
