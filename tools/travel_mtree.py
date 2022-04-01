@@ -3,16 +3,19 @@
 #### Going up the main branch of the merger tree
 ##################################################
 
-import json, numpy as np
+import json, numpy as np, sys
+
+arg1 = int(sys.argv[1])
+arg2 = int(sys.argv[2])
 
 ######### Parameters
-itfin=1100 # last iteration
-itini=500 # first iteration
+itfin=arg1 # last iteration
+itini=100 # first iteration
 every=50 # spacing of the snapshots
 
 max_iterations_back=4 # same as in mtree.f
 
-halo=639 # ID of the halo where to start to navigate, in iteration itfin
+halo=arg2 # ID of the halo where to start to navigate, in iteration itfin
 #########
 
 itpost=itfin
@@ -20,6 +23,9 @@ it_back=0
 print(itpost, halo)
 while itpost > itini:
     itprev=itpost-(it_back+1)*every
+    if itprev < itini:
+        break
+
     with open('mtree_{:05d}_{:05d}.json'.format(itprev,itpost), 'r') as f:
         mtree=json.load(f)
     if str(halo) in mtree.keys():
@@ -36,9 +42,11 @@ while itpost > itini:
         it_back=0
         halo=halotry
         itpost=itprev
-        print(itprev, halo)
+        print(itprev, halo, 'M={:.3e} Msun, R={:.3f} cMpc'.format(prog['mass'], prog['radius']))
     if not flag:
         print(itprev, '--')
         it_back+=1
+        if it_back > max_iterations_back:
+            break
 
 

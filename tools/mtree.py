@@ -2,6 +2,7 @@ import os, sys, numpy as np, sortednp as snp, json, datetime
 from scipy import integrate
 from readers import *
 from multiprocessing import Pool
+import gc
 
 from tqdm import tqdm
 ## if tqdm not installed, comment the above line and uncomment the following
@@ -18,7 +19,8 @@ h=0.6711
 omegam=0.3026
 omegalambda=1-omegam
 
-ncores=12
+ncores_distance=20
+ncores_intersect=4
 
 min_given_mass = 0.001 # fraction of mass of the progenitor given to the descendant to report this progenitor
 
@@ -122,11 +124,13 @@ def p_intersect(j_post):
             merger_tree_j_post.append({'id': id_i_prev,
                                        'givenMassFraction': intersection/mpost,
                                        'retainedMassFraction': intersection/mprev,
-                                       'retention': intersection/np.sqrt(mprev*mpost),
+                                       'normalisedIntersection': intersection/np.sqrt(mprev*mpost),
                                        'containsMostBound': (mostBoundPost in oripas_prev) and (mostBoundPrev in oripas_post),
                                        'position': [haloes_prev[aaa][i_prev] for aaa in ['x','y','z']],
                                        'radius': haloes_prev['R'][i_prev], 'mass': haloes_prev['M'][i_prev]})
+        del oripas_prev
 
+    del oripas_post 
     return merger_tree_j_post
 
 particledict = IDs_to_masses(itini, simulation_results)
@@ -165,15 +169,16 @@ for it_post in range(itini+every, itfin+every, every):
     print('Time span, max velocity, max distance to consider: {:.3f} Gyr, {:.3e} c, {:.2f} Mpc'.format(Dt/1e9, maxv, max_dista))
     print('Finding candidates...')
 
-    with Pool(ncores) as p:
+    with Pool(ncores_distance) as p:
         consider=list(tqdm(p.imap(p_consider, range(n_post)), total=n_post))
     consider = {i: ci for i,ci in enumerate(consider)}
 
     print('Possible relations to check: ', sum([len(v) for v in consider.values()]))
 
-    with Pool(ncores) as p:
+    with Pool(ncores_intersect) as p:
         merger_tree=list(tqdm(p.imap(p_intersect, range(n_post)), total=n_post))
     merger_tree = {int(haloes_post['id'][j_post]): v for j_post, v in enumerate(merger_tree)}
+    gc.collect()
 
     with open(os.path.join(outputs_ASOHF, 'mtree_{:05d}_{:05d}.json'.format(it_prev, it_post)), 'w') as f:
         json.dump(merger_tree, f, indent=4)
@@ -209,13 +214,13 @@ for it_post in range(itini+every, itfin+every, every):
             print('Time span, max velocity, max distance to consider: {:.3f} Gyr, {:.3e} c, {:.2f} Mpc'.format(Dt / 1e9, maxv, max_dista))
             print('Finding candidates...')
 
-            with Pool(ncores) as p:
+            with Pool(ncores_distance) as p:
                 consider = list(tqdm(p.imap(p_consider, lost), total=len(lost)))
             consider = {i: ci for i, ci in zip(lost, consider)}
 
             print('Possible relations to check: ', sum([len(v) for v in consider.values()]))
 
-            with Pool(ncores) as p:
+            with Pool(ncores_intersect) as p:
                 merger_tree = list(tqdm(p.imap(p_intersect, consider), total=len(consider)))
             merger_tree = {int(haloes_post['id'][j_post]): v for j_post, v in zip(lost, merger_tree)}
 
@@ -235,5 +240,4 @@ for it_post in range(itini+every, itfin+every, every):
             with open(os.path.join(outputs_ASOHF, 'mtree_{:05d}_{:05d}.json'.format(it_prev, it_post)), 'w') as f:
                 json.dump(merger_tree, f, indent=4)
 
-
-
+            gc.collect()
