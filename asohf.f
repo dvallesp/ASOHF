@@ -47,7 +47,6 @@
 *------------------------PREVIOUS SETTINGS----------------------------*
 *      FLAG_SA     --> stand-alone halo finder(=0) or MASCLETs grid(=1)
 *      FLAG_MASCLET--> MASCLET "as" stand-alone (=1)(it needs flag_sa=0)
-*      FLAG_GAS    --> there is gas(=1) or only DM(=0) (see VAR!!)
 *
 *      If PLOT=2---> MERGER TREE WITH % (ONLY FOR HALOES AT IR=0)
 *      If PLOT=3---> REDUCED MERGER TREE (ONLY FOR HALOES AT IR=0)
@@ -212,8 +211,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) LADO0
        READ(1,*) !Parallel(=1),serial(=0)/ Number of processors ------------------------>
        READ(1,*) FLAG_PARALLEL,NUM
-       READ(1,*) !Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
-       READ(1,*) FLAG_SA,FLAG_MASCLET,FLAG_GAS
+       READ(1,*) !Reading flags: IS_MASCLET (=0, no; =1, yes), MASCLET_GRID ------------>
+       READ(1,*) FLAG_MASCLET,FLAG_SA
        READ(1,*) !Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
        READ(1,*) FW1,FW2,FW3,FW4,FW5
        READ(1,*) !Input units: MASS (Msun; <0 for cMpc/h), LENGTH (cMpc; <0 for cMpc/h),

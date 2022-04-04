@@ -15,8 +15,8 @@ Max box sidelength (in input length units) --------------------------->
 40.0
 Parallel(=1),serial(=0) / Number of processors ----------------------->
 1,24
-Reading flags: FLAG_SA,FLAG_MASCLET,FLAG_GAS ------------------------->
-0,1,0
+Reading flags: IS_MASCLET (=0, no; =1, yes), MASCLET_GRID ------------>
+1,0
 Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
 0,0,0,0,0
 Input units: MASS (Msun; <0 for Msun/h), LENGTH (cMpc; <0 for cMpc/h),
