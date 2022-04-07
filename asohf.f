@@ -995,8 +995,8 @@ c       WRITE(*,*)'===================================='
 ***********************************************************************
 *      Grid building
        INCLUDE 'grids.f'
-*      Routines from 'Numerical Recipes in Fortran90', Press, Teukoslky et al.
-       INCLUDE 'nr.f'
+*      Routines with basic numerical calculations stuff
+       INCLUDE 'num.f'
 *      Halo finding procedures using the grid
        INCLUDE 'haloes_grids.f'
 *      Halo finding procedures using particles
