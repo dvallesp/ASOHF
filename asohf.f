@@ -1,62 +1,14 @@
 **********************************************************************
-       PROGRAM ASOHF_v18
-***********************************************************************
+       PROGRAM ASOHF
 ***********************************************************************
 *      ASOHF IS AN ADAPTIVE SPHERICAL OVERDENSITY HALO FINDER.
-*      IT FINDS HALOES AND SUBHALOES IN A COSMOLOGICAL SIMULATION,
-*      BUILDS THEIR MERGING HISTORIES AND COMPUTES THEIR MAIN PHYSICAL
-*      PROPERTIES.
 ***********************************************************************
-*      For further details: Planelles & Quilis, 2010. A&A, 519:A94
+*      For further details, check:
+*      - Planelles & Quilis, 2010. A&A, 519:A94
+*      - Vallés-Pérez, Planelles & Quilis, 2022. A&A submitted
+*      - Code documentation: https://asohf.github.io/
 ***********************************************************************
-*
-*      Version: asohf_paralel_v8_NewVeins.f
-*      (masclet1:/scratch/planelles/project_statistics/ASOHF/ASOHF_SA)
-*
-*---------------------GENERAL CONSIDERATIONS--------------------------*
-*      In this version the merger tree is done every 2 iterations and
-*      therefore, MAXITER=2 and MAXITER2=real num. of iters (MARK)
-*
-*      # INPUT FILES:
-*           1)asohf_parameters.dat
-*           2)asohf.dat
-*
-*      # OUTPUT FILES:
-*           1)Families00000 ---> general information of all haloes
-*           2)Merger_t00000 (optional, PLOT=2) ---> with %
-*           3)Merger_r00000 (optional, PLOT=3) ---> main line
-*           4)Grid_asohf00000 (only when FLAG_SA=0)
-*
-*           If REALCLUS(I)= -1  ------> HALO
-*                             = 0   ------> RUBBISH (double or poor)
-*                             = #>0 ------> SUBHALO within #
-*
-*           Proceeding way: 1)Halo refinement with DM particles
-*                           2)Halo classification
-*
-*      # DATA TO READ:
-*           1) MASCLET simulation in the "simu_masclet" directory
-*           2) External file of particles: "particle_list.dat".
-*              File in ascci containing:
-*                #1st line        ---> NPARTICULAS,ZETA,T,N_GAS,N_DM
-*                #1 line/particle ---> ID,X,Y,Z,VX,VY,VZ,MASS
-*                 - Positions should go in units of Mpc within [0, L_box]
-*                 - Velocities should go in units of c.
-*                 - Masses should go in units of 9.1717e18 M_sun
-*
-*------------------------PREVIOUS SETTINGS----------------------------*
-*      FLAG_SA     --> stand-alone halo finder(=0) or MASCLETs grid(=1)
-*      FLAG_MASCLET--> MASCLET "as" stand-alone (=1)(it needs flag_sa=0)
-*
-*      If PLOT=2---> MERGER TREE WITH % (ONLY FOR HALOES AT IR=0)
-*      If PLOT=3---> REDUCED MERGER TREE (ONLY FOR HALOES AT IR=0)
-*
-*      OJO!!! ONLY INTERNAL USE!!! hay que cambiar a mano:
-*             1) El valor de las distintas COTAS
-*             2) Rellenar las distintas especies de particulas
-*             3) Tal y como esta, estamos pasando del gas al
-*                construir la malla aunque si que lo leemos
-**********************************************************************
+
        USE PARTICLES
        IMPLICIT NONE
 
@@ -423,21 +375,6 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
      &           U11,ROTE,RETE)
 
 
-C!$OMP PARALLEL DO SHARED(PABAS,U2DM,U3DM,U4DM,RXPA,RYPA,RZPA,
-C!$OMP+                   MASAP,ORIPA,PARTICLES_PER_HALO),
-C!$OMP+            PRIVATE(I)
-C        DO I=1,PABAS
-C         U2DM(I)=0.0
-C         U3DM(I)=0.0
-C         U4DM(I)=0.0
-C         RXPA(I)=0.0
-C         RYPA(I)=0.0
-C         RZPA(I)=0.0
-C         MASAP(I)=0.0
-C         ORIPA(I)=0
-C         PARTICLES_PER_HALO(I)=0
-C        END DO
-
 ***************************************************
 *     READING INPUT DATA
 ***************************************************
@@ -496,21 +433,6 @@ c        RETE=RE0/(1.0+ZETA)
      &                    BOR,BORAMR,BOR_OVLP,NPART_ESP,FW1)
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
-
-c        WRITE(*,*) 'TSC density interpolation, levels min,max:',0,NL_TSC
-c        CALL INTERPOLATE_DENSITY(ITER,NX,NY,NZ,NL_TSC,NPATCH,PARE,
-c     &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-c     &           PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,MASAP,
-c     &           N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
-c
-c        IF (NL_TSC.LT.NL) THEN
-c         WRITE(*,*) 'Smooth density interpolation, levels min,max:',
-c     &              NL_TSC+1,NL
-c         CALL INTERPOLATE_DENSITY_KERNEL(ITER,NX,NY,NZ,NL_TSC,
-c     &            NL,NPATCH,PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,
-c     &            PATCHY,PATCHZ,PATCHRX,PATCHRY,PATCHRZ,RXPA,RYPA,RZPA,
-c     &            MASAP,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,NPART_ESP)
-c        END IF
 
        CALL DENSITY(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
      &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
@@ -594,9 +516,6 @@ c       WRITE(*,*) '***************************'
         CLOSE(99)
        END IF
 *********************************************************************
-
-c       CALL CLEAN_OVERLAPS(NL,NPATCH,PATCHNX,PATCHNY,PATCHNZ,SOLAP,
-c     &                     U11)
 
 **********************************************************************
 ******************************HALO FINDER*****************************
@@ -705,18 +624,6 @@ c     &                     U11)
 
        WRITE(*,*) 'Total number of particles within halos:',
      &            SUM(DMPCLUS(1:NCLUS))
-
-
-c       WRITE(*,*)'After refining with DM particles...'
-c       WRITE(*,*)'===================================='
-c       DO I=0,NL
-c       WRITE(*,*)'Haloes at level ', I,' =',
-c     &            COUNT(LEVHAL(1:NCLUS).EQ.I
-c     &            .AND.REALCLUS(1:NCLUS).NE.0),
-c     &            COUNT(REALCLUS(1:NCLUS).EQ.-1)
-c       END DO
-c       WRITE(*,*)'===================================='
-
 *************************************************
 
 ************************************************
@@ -981,13 +888,9 @@ c       WRITE(*,*)'===================================='
        WRITE(*,*) 'DATE=',DATE(1),'/',DATE(2),'/',DATE(3)
        WRITE(*,*) 'TIME=',TIME(1),':',TIME(2),':',TIME(3)
 
-*      Si no se hace merger_tree hay que inicializar todo lo que depende de ITER!!
-
-       END DO    !FIN DE ITER
-*/////////////////////////////////////////
-
+       END DO ! IFI2
+**//////////////////////////////////////////////////////////////
        END
-
 **//////////////////////////////////////////////////////////////
 
 ***********************************************************************
@@ -1012,5 +915,3 @@ c       WRITE(*,*)'===================================='
 *      Solve Poisson's equation for the gravitational potential
 *       generated by DM
 c       INCLUDE 'poisson.f'
-*      Merger tree routines
-       !INCLUDE 'merger_tree.f'
