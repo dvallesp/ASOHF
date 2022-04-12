@@ -408,6 +408,12 @@ c        RETE=RE0/(1.0+ZETA)
          NPART_ESP(0)=N_DM
          NPART_ESP(1:N_ESP-1)=0
          IF (N_ST.GT.0) THEN
+          IF (IR_KERN_STARS.GT.N_ESP-1) THEN
+           WRITE(*,*) 'WARNING: IR_KERN_STARS > N_ESP-1',
+     &                IR_KERN_STARS,N_ESP-1
+           WRITE(*,*) 'Fix N_ESP to IR_KERN_STARS+1, at least'
+           STOP
+          END IF
           NPART_ESP(IR_KERN_STARS)=NPART_ESP(IR_KERN_STARS)+N_ST
           WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
      &               ', no. particles:',NPART_ESP(IR_KERN_STARS)
