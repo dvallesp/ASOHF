@@ -37,6 +37,8 @@
 *      ASOHF LIKE STAND ALONE                                      *
 *###################################################################
 
-*      Number of DM especies---------------------------------------
+*      Number of particle especies (kernel sizes)
+*      Kernel sizes will go from 0 to N_ESP-1, so that the smallest
+*      kernel will have size L/NMAX/2**(N_ESP-1)
        INTEGER N_ESP
        PARAMETER (N_ESP=4)
