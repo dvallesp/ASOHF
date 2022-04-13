@@ -104,12 +104,12 @@
 
       !WRITE(*,*) 'ORIPA LOT DONE!',MINORIPA,MAXORIPA
 
-      IF (FLAG_WDM.EQ.1) THEN
+c      IF (FLAG_WDM.EQ.1) THEN
        ALLOCATE(PARTICLES_PROC(N_ST,NUM_PROC),
      &          HALOES_PROC(3,NCLUS),
      &          PROC_NPARTICLES(NUM_PROC))
        PROC_NPARTICLES(1:NUM_PROC)=0
-      END IF
+c      END IF
 
 **********************************************************************
 *     Main loop through DM haloes
@@ -588,7 +588,7 @@ C       WRITE(*,*) '-->',VCMX,VCMY,VCMZ
         ST_EIGENVALUES(IX,I)=SQRT(5.0*BASEIGENVAL(IX))
        END DO
 
-       IF (FLAG_WDM.EQ.1) THEN
+c       IF (FLAG_WDM.EQ.1) THEN
         ID_PROC=OMP_GET_THREAD_NUM()+1
         IPART_PROC=PROC_NPARTICLES(ID_PROC)
         HALOES_PROC(1,I)=ID_PROC
@@ -600,13 +600,13 @@ C       WRITE(*,*) '-->',VCMX,VCMY,VCMZ
         END DO
         PROC_NPARTICLES(ID_PROC)=IPART_PROC
         HALOES_PROC(3,I)=IPART_PROC
-       END IF
+c       END IF
 c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
 
        DEALLOCATE(LIPST,CONTADM,DISTAST)
       END DO !(I=1,NCLUS)
 
-      IF (FLAG_WDM.EQ.1) THEN
+c      IF (FLAG_WDM.EQ.1) THEN
        J=0
        DO I=1,NCLUS
         IF (STPCLUS(I).EQ.0) THEN
@@ -630,7 +630,7 @@ c       write(*,*) i,j_halfmass,'--',lipst(1:j_halfmass)
        END DO
 
        DEALLOCATE(HALOES_PROC, PARTICLES_PROC, PROC_NPARTICLES)
-      END IF
+c      END IF
 
       WRITE(*,*) NCLUS_ST,'haloes preidentified'
 
