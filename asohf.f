@@ -683,9 +683,9 @@ c       WRITE(*,*) '***************************'
          CLOSE(99)
         END IF
         IF (FW5.EQ.1) THEN
-         OPEN(99, file='./output_files/substructureparticles'//
+         OPEN(100, file='./output_files/substructureparticles'//
      &        ITER_STRING//'.res',status='unknown')
-         CLOSE(99)
+         CLOSE(100)
         END IF
 
         DO IR=1,NL
@@ -719,13 +719,13 @@ c       WRITE(*,*) '***************************'
      &      MAX_PART_DSUM)
 
          IF (FW5.EQ.1) THEN
-          open(99, file='./output_files/substructureparticles'//
+          open(100, file='./output_files/substructureparticles'//
      &        ITER_STRING//'.res', status='unknown',position='append')
           do i=subs_lev(0)+1,nclus
-           write(99,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
+           write(100,*) clusrx(i),clusry(i),clusrz(i),msub(i),rsub(i),
      &              realclus(i)
           end do
-          close(99)
+          close(100)
          END IF
         END DO
 
