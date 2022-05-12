@@ -1,7 +1,8 @@
 import os, sys, numpy as np
 from cython_fortran_file import FortranFile as FF
 
-def read_families(it, path='', output_format='dictionaries', output_redshift=False):
+def read_families(it, path='', output_format='dictionaries', output_redshift=False,
+                  min_mass=None, exclude_subhaloes=False):
     '''
     Reads the families files, containing the halo catalogue.
     Can be outputted as a list of dictionaries, one per halo
@@ -75,6 +76,11 @@ def read_families(it, path='', output_format='dictionaries', output_redshift=Fal
             halo['Nsubs']=int(l[50])
 
             haloes.append(halo)
+    
+    if exclude_subhaloes:
+        haloes=[halo for halo in haloes if halo['substructureOf']==-1]
+    if min_mass is not None:
+        haloes=[halo for halo in haloes if halo['M']>min_mass]
 
     if output_format=='dictionaries':
         if output_redshift:
@@ -141,10 +147,12 @@ def read_stellar_haloes(it, path='', output_format='dictionaries'):
         return {k: np.array([h[k] for h in haloes]) for k in haloes[0].keys()}
 
 
-def read_particles(it, path='', parttype='DM'):
+def read_particles(it, path='', parttype='DM', sort='oripa'):
     '''
     Reads the particles list. Set parttype='DM' for DM particles,
     'stellar' for stellar particles.
+    - sort: 'oripa' (sort particles by increasing ID) or 'r' (sort by 
+       increasing radius).
     '''
     if parttype=='DM':
         filename='particles'
@@ -160,9 +168,15 @@ def read_particles(it, path='', parttype='DM'):
             particles_lut[nclus]=[i1-1,i2-1]
         f.read_vector('i4')
         particles=f.read_vector('i4')
-
-    for k,(i1,i2) in particles_lut.items():
-        particles_oripa[k]=np.sort(particles[i1:i2+1])
+    
+    if sort=='oripa':
+        for k,(i1,i2) in particles_lut.items():
+            particles_oripa[k]=np.sort(particles[i1:i2+1])
+    elif sort=='r':
+        for k,(i1,i2) in particles_lut.items():
+            particles_oripa[k]=particles[i1:i2+1]
+    else:
+        print('Error! sort should be either oripa or r')
 
     return particles_oripa
 
