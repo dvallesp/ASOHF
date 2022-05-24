@@ -74,7 +74,8 @@
       XLDOM=-LADO0/2.0
       PI=DACOS(-1.D0)
 
-      STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc
+      !STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc !in the asohf.f
+      !now!!!!
       DENS_CUT=STPAR_MIN_OVERDENS*ROTE*RETE**3
 
 **********************************************************************

@@ -258,6 +258,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        CIO_YC=0.5*(YLDOM+YRDOM)
        CIO_ZC=0.5*(ZLDOM+ZRDOM)
 
+       STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc
 **************************************************************
 *     ...PARALLEL RUNNING...
 !$OMP PARALLEL SHARED(NUM)
