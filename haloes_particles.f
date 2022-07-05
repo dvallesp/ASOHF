@@ -369,10 +369,12 @@
 
         INTEGER KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP,MAX_NUM_PART_LOCAL
         INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN,WELL_ALLOCATED
-        INTEGER LOWP1,LOWP2
-        REAL RADIO,XL,YL,ZL,DDXX
+        INTEGER LOWP1,LOWP2,PLEV,I1,I2,J1,J2,K1,K2,II,JJ,KK,III,JJJ,KKK
+        INTEGER KSIZE,NDEN
+        REAL RADIO,XL,YL,ZL,DDXX,MAXM,MINM,NORMA,BL,KERNX,KERNY,KERNZ
+        REAL KERN
         REAL*8 BAS,BASX,BASY,BASZ
-        REAL,ALLOCATABLE::DENS(:,:,:)
+        REAL*8,ALLOCATABLE::DENS(:,:,:)
         INTEGER,ALLOCATABLE::LIP(:)
 
         NUMPARTMIN=32 !4**3/2
@@ -391,6 +393,8 @@
           KONTA=0
           CALL FIND_PARTICLE_INDICES(CX,RADIO,XLDOM,NDMPART_X,
      &                               LOWP1,LOWP2)
+          MAXM=-1.E30
+          MINM=1.E30
           DO I=LOWP1,LOWP2
            IF (CX-RADIO.LT.RXPA(I).AND.RXPA(I).LT.CX+RADIO.AND.
      &         CY-RADIO.LT.RYPA(I).AND.RYPA(I).LT.CY+RADIO.AND.
@@ -401,6 +405,8 @@
              EXIT
             END IF
             LIP(KONTA)=I
+            MAXM=MAX(MAXM,MASAP(I))
+            MINM=MIN(MINM,MASAP(I))
            END IF
           END DO !I=LOWP1,LOWP2
 
@@ -432,25 +438,73 @@ c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
          DO KZ=1,NN
          DO JY=1,NN
          DO IX=1,NN
-          DENS(IX,JY,KZ)=0.0
+          DENS(IX,JY,KZ)=0.D0
          END DO
          END DO
          END DO
 
-         DO I=1,KONTA
-          IP=LIP(I)
-          IX=INT((RXPA(IP)-XL)/DDXX)+1
-          JY=INT((RYPA(IP)-YL)/DDXX)+1
-          KZ=INT((RZPA(IP)-ZL)/DDXX)+1
-          IF (IX.LT.1) IX=1
-          IF (IX.GT.NN) IX=NN
-          IF (JY.LT.1) JY=1
-          IF (JY.GT.NN) JY=NN
-          IF (KZ.LT.1) KZ=1
-          IF (KZ.GT.NN) KZ=NN
-          !IF (JY.EQ.0) WRITE(*,*) (RYPA(IP)-YL)/DDXX
-          DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(IP)
-         END DO
+         IF (MAXM/MINM.LT.8.0) THEN
+          DO I=1,KONTA
+           IP=LIP(I)
+           IX=INT((RXPA(IP)-XL)/DDXX)+1
+           JY=INT((RYPA(IP)-YL)/DDXX)+1
+           KZ=INT((RZPA(IP)-ZL)/DDXX)+1
+           IF (IX.LT.1) IX=1
+           IF (IX.GT.NN) IX=NN
+           IF (JY.LT.1) JY=1
+           IF (JY.GT.NN) JY=NN
+           IF (KZ.LT.1) KZ=1
+           IF (KZ.GT.NN) KZ=NN
+           !IF (JY.EQ.0) WRITE(*,*) (RYPA(IP)-YL)/DDXX
+           DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+DBLE(MASAP(IP))
+          END DO
+         ELSE 
+          !!!!! smooth for larger particles !!!!!
+          DO I=1,KONTA
+           IP=LIP(I)
+           IX=FLOOR((RXPA(IP)-XL)/DDXX)+1
+           JY=FLOOR((RYPA(IP)-YL)/DDXX)+1
+           KZ=FLOOR((RZPA(IP)-ZL)/DDXX)+1
+           ! the larger PLEV, the larger the kernel size (2**PLEV)
+           PLEV=MAX(INT(LOG(MASAP(IP)/MINM)/LOG(8.)),0)
+           IF (PLEV.EQ.0) THEN 
+            IF (IX.LT.1) IX=1
+            IF (IX.GT.NN) IX=NN
+            IF (JY.LT.1) JY=1
+            IF (JY.GT.NN) JY=NN
+            IF (KZ.LT.1) KZ=1
+            IF (KZ.GT.NN) KZ=NN
+            DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+DBLE(MASAP(IP))
+           ELSE
+            KSIZE=INT(0.25 + 0.5*2**PLEV)
+            NDEN=KSIZE+1
+            BL=1./FLOAT(NDEN)
+            NORMA=1./FLOAT(NDEN**3)
+            I1=MAX(IX-KSIZE,1)
+            J1=MAX(JY-KSIZE,1)
+            K1=MAX(KZ-KSIZE,1)
+            I2=MIN(IX+KSIZE,NN)
+            J2=MIN(JY+KSIZE,NN)
+            K2=MIN(KZ+KSIZE,NN)
+            DO KK=K1,K2
+            DO JJ=J1,J2
+            DO II=I1,I2
+             !!! II,JJ,KK are grid indices
+             !!! III,JJJ,KKK refer to the particle cloud
+             III=II-IX
+             JJJ=JJ-JY
+             KKK=KK-KZ
+             KERNX=1.-BL*ABS(III)
+             KERNY=1.-BL*ABS(JJJ)
+             KERNZ=1.-BL*ABS(KKK)
+             KERN=KERNX*KERNY*KERNZ*NORMA
+             DENS(II,JJ,KK)=DENS(II,JJ,KK)+KERN*DBLE(MASAP(IP))
+            END DO
+            END DO
+            END DO
+           END IF
+          END DO
+         END IF
 
          INMAX=MAXLOC(DENS)
          IX=INMAX(1)
@@ -466,6 +520,8 @@ c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
          DDXX=DDXX/2.0
 
          KONTA2=0
+         MAXM=-1.E30
+         MINM=1.E30
          DO I=1,KONTA
           IP=LIP(I)
           IF (CX-RADIO.LT.RXPA(IP).AND.RXPA(IP).LT.CX+RADIO.AND.
@@ -473,6 +529,8 @@ c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
      &        CZ-RADIO.LT.RZPA(IP).AND.RZPA(IP).LT.CZ+RADIO) THEN
            KONTA2=KONTA2+1
            LIP(KONTA2)=IP
+           MAXM=MAX(MAXM,MASAP(IP))
+           MINM=MIN(MINM,MASAP(IP))
           END IF
          END DO
 
