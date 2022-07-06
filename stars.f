@@ -813,8 +813,9 @@ c      END IF
         INTEGER KONTA,FLAG_LARGER,I,NN,IX,JY,KZ,IP
         INTEGER INMAX(3),KONTA2,FLAG_ITER,NUMPARTMIN,WELL_ALLOCATED
         INTEGER LOWP1,LOWP2
-        REAL RADIO,BAS,XL,YL,ZL,DDXX,BASX,BASY,BASZ
-        REAL,ALLOCATABLE::DENS(:,:,:)
+        REAL RADIO,XL,YL,ZL,DDXX
+        REAL*8 BAS,BASX,BASY,BASZ
+        REAL*8,ALLOCATABLE::DENS(:,:,:)
         INTEGER,ALLOCATABLE::LIP(:)
 
         NUMPARTMIN=27 !3**3
@@ -840,7 +841,7 @@ c      END IF
          DO KZ=1,NN
          DO JY=1,NN
          DO IX=1,NN
-          DENS(IX,JY,KZ)=0.0
+          DENS(IX,JY,KZ)=0.D0
          END DO
          END DO
          END DO
@@ -857,7 +858,7 @@ c      END IF
           IF (KZ.LT.1) KZ=1
           IF (KZ.GT.NN) KZ=NN
           !IF (JY.EQ.0) WRITE(*,*) (RYPA(IP)-YL)/DDXX
-          DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(IP)
+          DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+DBLE(MASAP(IP))
          END DO
 
          INMAX=MAXLOC(DENS)
@@ -901,10 +902,10 @@ C     &              IX,JY,KZ,FLAG_ITER
          BASZ=0.0
          DO I=1,KONTA
           IP=LIP(I)
-          BAS=BAS+MASAP(IP)
-          BASX=BASX+RXPA(IP)*MASAP(IP)
-          BASY=BASY+RYPA(IP)*MASAP(IP)
-          BASZ=BASZ+RZPA(IP)*MASAP(IP)
+          BAS=BAS+DBLE(MASAP(IP))
+          BASX=BASX+DBLE(RXPA(IP)*MASAP(IP))
+          BASY=BASY+DBLE(RYPA(IP)*MASAP(IP))
+          BASZ=BASZ+DBLE(RZPA(IP)*MASAP(IP))
          END DO
 
          CX=BASX/BAS
