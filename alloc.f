@@ -248,7 +248,10 @@
      &                               RZPA_R,ORIPA_R,N_DM,VAR,N_ST,UV,UM,
      &                               HUBBLE_LITTLEH)
         ELSE IF (FLAG_SA.EQ.1) THEN
-         WRITE(*,*) 'HERE WE WILL EXECUTE THE ASOHF GADGET READER'
+         CALL READ_GADGET_UNFORMATTED(ITER,NX,NY,NZ,T,ZETA,U2DM_R,
+     &                                U3DM_R,U4DM_R,MASAP_R,RXPA_R,
+     &                                RYPA_R,RZPA_R,ORIPA_R,N_DM,VAR,
+     &                                N_ST,UV,UM,HUBBLE_LITTLEH)
          STOP
         END IF
        END IF ! (FLAG_MASCLET.EQ.1) THEN, ELSE

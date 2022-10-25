@@ -671,6 +671,256 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       RETURN
       END
 
+
+*********************************************************************
+      SUBROUTINE READ_GADGET_UNFORMATTED(ITER,NX,NY,NZ,T,ZETA,
+     &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
+     &             N_DM,VAR,N_ST,UV,UM,HUBBLE_LITTLEH)
+*********************************************************************
+*      Reads data from generic input format
+*********************************************************************
+
+      IMPLICIT NONE
+
+      INCLUDE 'input_files/asohf_parameters.dat'
+
+      INTEGER NX,NY,NZ,ITER,NDXYZ
+      REAL*4 T,AAA,BBB,CCC,MAP,ZETA,UV,UM,HUBBLE_LITTLEH
+      INTEGER VAR !(=1: only DM; =2: DM+stars)
+
+      INTEGER N_DM,N_ST,NBAS,NST0
+
+      REAL*4 U2DM(PARTI_READ)
+      REAL*4 U3DM(PARTI_READ)
+      REAL*4 U4DM(PARTI_READ)
+      REAL*4 MASAP(PARTI_READ)
+      REAL*4 RXPA(PARTI_READ)
+      REAL*4 RYPA(PARTI_READ)
+      REAL*4 RZPA(PARTI_READ)
+      INTEGER ORIPA(PARTI_READ)
+
+      REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
+      COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
+     &                 CIO_YC,CIO_ZC
+      REAL FACT_MASS,FACT_SPEED,FACT_LENGTH
+
+*     Local variables
+      INTEGER NTOT,IGAS0,IGAS1,IDM0,IDM1,IST0,IST1,IBH0,IBH1,I,J
+
+*     IO variables
+      CHARACTER*4 BLOCKLABEL
+      INTEGER*4 BLOCKSIZE,NPP(6)
+      REAL*8 MASS_ARR(6)
+      REAL*8 TIME8,ZETA8
+      REAL*8 CACA(5)
+      REAL*8 BOXSIZE8,OMEGA_M8,OMEGA_LAMBDA8,HUBBLE_PARAM8
+
+      REAL*4,ALLOCATABLE::SCR41(:)
+      REAL*4,ALLOCATABLE::SCR42(:,:)
+      INTEGER*4,ALLOCATABLE::SCRINT1(:)
+
+      CHARACTER*3 ITER_STRING
+
+*     READING DATA
+      WRITE(ITER_STRING, '(I3.3)') ITER !For saving files to disk
+      WRITE(*,*) 'Reading iter',ITER,ITER_STRING
+
+      OPEN(11, FILE='./simulation/snap_'//ITER_STRING,
+     &     STATUS='UNKNOWN',ACTION='READ', FORM='UNFORMATTED')
+
+*      Read the header ************************************************
+       READ(11) BLOCKLABEL,BLOCKSIZE
+       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       READ(11) NPP,MASS_ARR,TIME8,ZETA8,CACA,BOXSIZE8,OMEGA_M8,
+     &          OMEGA_LAMBDA8,HUBBLE_PARAM8
+
+       !WRITE(*,*) NPP
+       !WRITE(*,*) MASS_ARR
+       WRITE(*,*) 'Redshift:', ZETA8
+       WRITE(*,*) 'Box size (ckpc/h):', BOXSIZE8
+       WRITE(*,*) 'Om, Olambda, h:', OMEGA_M8, OMEGA_LAMBDA8,
+     &            HUBBLE_PARAM8
+
+       NTOT=SUM(NPP)
+
+       IGAS0=1
+       IGAS1=NPP(1)
+       IDM0=IGAS1+1
+       IDM1=SUM(NPP(1:4))
+       IST0=IDM1+1
+       IST1=SUM(NPP(1:5))
+       IBH0=IST1+1
+       IBH1=SUM(NPP(1:6))
+       WRITE(*,*) 'Gas indices',IGAS0,IGAS1,IGAS1-IGAS0+1
+       WRITE(*,*) 'DM indices ',IDM0,IDM1,IDM1-IDM0+1
+       WRITE(*,*) 'ST indices ',IST0,IST1,IST1-IST0+1
+       WRITE(*,*) 'BH indices ',IBH0,IBH1,IBH1-IBH0+1
+
+       N_DM=IDM1-IDM0+1
+       IF (VAR.EQ.2) THEN
+        N_ST=IST1-IST0+1
+       ELSE
+        N_ST=0
+       END IF
+
+*      Read the particle positions ************************************
+       READ(11) BLOCKLABEL,BLOCKSIZE
+       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       ALLOCATE(SCR42(3,NTOT))
+       READ(11) ((SCR42(J,I),J=1,3),I=1,NTOT) ! all particles
+       WRITE(*,*) '-X-', MINVAL(SCR42(1,:)), MAXVAL(SCR42(1,:))
+       WRITE(*,*) '-Y-', MINVAL(SCR42(2,:)), MAXVAL(SCR42(2,:))
+       WRITE(*,*) '-Z-', MINVAL(SCR42(3,:)), MAXVAL(SCR42(3,:))
+       RXPA(1:N_DM)=SCR42(1,IDM0:IDM1)
+       RYPA(1:N_DM)=SCR42(2,IDM0:IDM1)
+       RZPA(1:N_DM)=SCR42(3,IDM0:IDM1)
+       IF (VAR.EQ.2) THEN
+        RXPA(N_DM+1:N_DM+N_ST)=SCR42(1,IST0:IST1)
+        RYPA(N_DM+1:N_DM+N_ST)=SCR42(2,IST0:IST1)
+        RZPA(N_DM+1:N_DM+N_ST)=SCR42(3,IST0:IST1)
+       END IF
+
+*      Read the particle velocities************************************
+       READ(11) BLOCKLABEL,BLOCKSIZE
+       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       READ(11) ((SCR42(J,I),J=1,3),I=1,NTOT) ! all particles
+       WRITE(*,*) '-VX-', MINVAL(SCR42(1,:)), MAXVAL(SCR42(1,:))
+       WRITE(*,*) '-VY-', MINVAL(SCR42(2,:)), MAXVAL(SCR42(2,:))
+       WRITE(*,*) '-VZ-', MINVAL(SCR42(3,:)), MAXVAL(SCR42(3,:))
+       U2DM(1:N_DM)=SCR42(1,IDM0:IDM1)
+       U3DM(1:N_DM)=SCR42(2,IDM0:IDM1)
+       U4DM(1:N_DM)=SCR42(3,IDM0:IDM1)
+       IF (VAR.EQ.2) THEN
+        U2DM(N_DM+1:N_DM+N_ST)=SCR42(1,IST0:IST1)
+        U3DM(N_DM+1:N_DM+N_ST)=SCR42(2,IST0:IST1)
+        U4DM(N_DM+1:N_DM+N_ST)=SCR42(3,IST0:IST1)
+       END IF
+       DEALLOCATE(SCR42)
+
+*      Read the particle ids****************************************
+       READ(11) BLOCKLABEL,BLOCKSIZE
+       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       ALLOCATE(SCRINT1(NTOT))
+       READ(11) (SCRINT1(I),I=1,NTOT) ! all particles
+       WRITE(*,*) '-ID-', MINVAL(SCRINT1(:)), MAXVAL(SCRINT1(:))
+       ORIPA(1:N_DM)=SCRINT1(IDM0:IDM1)
+       IF (VAR.EQ.2) THEN
+        ORIPA(N_DM+1:N_DM+N_ST)=SCRINT1(IST0:IST1)
+       END IF
+       DEALLOCATE(SCRINT1)
+
+       write(*,*) 'ndm=',n_dm
+
+*      Read the particle masses****************************************
+       READ(11) BLOCKLABEL,BLOCKSIZE
+       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       ALLOCATE(SCR41(NTOT))
+       READ(11) (SCR41(I),I=1,NTOT) ! all particles
+       WRITE(*,*) '-M-', MINVAL(SCR41(:)), MAXVAL(SCR41(:))
+       MASAP(1:N_DM)=SCR41(IDM0:IDM1)
+       IF (VAR.EQ.2) THEN
+        MASAP(N_DM+1:N_DM+N_ST)=SCR41(IST0:IST1)
+       END IF
+       DEALLOCATE(SCR41)
+
+      CLOSE(11)
+
+      write(*,*) 'ndm=',n_dm
+
+      IF (N_DM+N_ST.GT.PARTI_READ) THEN
+       WRITE(*,*) 'WARNING: bad dimensioning of PARTI_READ',
+     &            N_DM+N_ST,'>',PARTI_READ
+       STOP
+      END IF
+      WRITE(*,*)
+      WRITE(*,*) 'INPUT. DM x positions (min,max):',
+     &            MINVAL(RXPA(1:N_DM)),MAXVAL(RXPA(1:N_DM))
+      WRITE(*,*) 'INPUT. DM y positions (min,max):',
+     &            MINVAL(RYPA(1:N_DM)),MAXVAL(RYPA(1:N_DM))
+      WRITE(*,*) 'INPUT. DM z positions (min,max):',
+     &            MINVAL(RZPA(1:N_DM)),MAXVAL(RZPA(1:N_DM))
+      WRITE(*,*) 'INPUT. DM x velocities (min,max):',
+     &            MINVAL(U2DM(1:N_DM)),MAXVAL(U2DM(1:N_DM))
+      WRITE(*,*) 'INPUT. DM y velocities (min,max):',
+     &            MINVAL(U3DM(1:N_DM)),MAXVAL(U3DM(1:N_DM))
+      WRITE(*,*) 'INPUT. DM z velocities (min,max):',
+     &            MINVAL(U4DM(1:N_DM)),MAXVAL(U4DM(1:N_DM))
+      WRITE(*,*) 'INPUT. DM masses (min,max):',
+     &            MINVAL(MASAP(1:N_DM)),MAXVAL(MASAP(1:N_DM))
+      WRITE(*,*) 'INPUT. DM unique IDs (min,max):',
+     &            MINVAL(ORIPA(1:N_DM)),MAXVAL(ORIPA(1:N_DM))
+      WRITE(*,*)
+      WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',N_DM
+
+
+      IF (VAR.EQ.2) THEN
+       WRITE(*,*)
+       WRITE(*,*) 'INPUT. ST x positions (min,max):',
+     &     MINVAL(RXPA(N_DM+1:N_DM+N_ST)),MAXVAL(RXPA(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. ST y positions (min,max):',
+     &     MINVAL(RYPA(N_DM+1:N_DM+N_ST)),MAXVAL(RYPA(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. ST z positions (min,max):',
+     &     MINVAL(RZPA(N_DM+1:N_DM+N_ST)),MAXVAL(RZPA(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. ST x velocities (min,max):',
+     &     MINVAL(U2DM(N_DM+1:N_DM+N_ST)),MAXVAL(U2DM(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. ST y velocities (min,max):',
+     &     MINVAL(U3DM(N_DM+1:N_DM+N_ST)),MAXVAL(U3DM(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. ST z velocities (min,max):',
+     &     MINVAL(U4DM(N_DM+1:N_DM+N_ST)),MAXVAL(U4DM(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. ST masses (min,max):',
+     &   MINVAL(MASAP(N_DM+1:N_DM+N_ST)),MAXVAL(MASAP(N_DM+1:N_DM+N_ST))
+       WRITE(*,*) 'INPUT. ST unique IDs (min,max):',
+     &   MINVAL(ORIPA(N_DM+1:N_DM+N_ST)),MAXVAL(ORIPA(N_DM+1:N_DM+N_ST))
+       WRITE(*,*)
+       WRITE(*,*) 'TOTAL STELLAR PARTICLES IN ITER=',N_ST
+      END IF
+
+      STOP
+
+      FACT_MASS=CIO_MASS/UM
+      FACT_SPEED=(CIO_SPEED/UV)*(1+ZETA)**(CIO_ALPHA-1.0)
+      FACT_LENGTH=CIO_LENGTH
+
+!$OMP PARALLEL DO SHARED(N_DM,N_ST,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   FACT_LENGTH,FACT_SPEED,FACT_MASS,CIO_XC,CIO_YC,
+!$OMP+                   CIO_ZC),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+      DO I=1,N_DM+N_ST
+       RXPA(I)=(RXPA(I)-CIO_XC)*FACT_LENGTH
+       RYPA(I)=(RYPA(I)-CIO_YC)*FACT_LENGTH
+       RZPA(I)=(RZPA(I)-CIO_ZC)*FACT_LENGTH
+
+       U2DM(I)=U2DM(I)*FACT_SPEED
+       U3DM(I)=U3DM(I)*FACT_SPEED
+       U4DM(I)=U4DM(I)*FACT_SPEED
+
+       MASAP(I)=MASAP(I)*FACT_MASS
+      END DO
+
+      WRITE(*,*)
+      WRITE(*,*) 'After unit conversion...'
+      WRITE(*,*) 'x positions (min,max), in Mpc:',
+     &     MINVAL(RXPA(1:N_DM+N_ST)),MAXVAL(RXPA(1:N_DM+N_ST))
+      WRITE(*,*) 'y positions (min,max), in Mpc:',
+     &     MINVAL(RYPA(1:N_DM+N_ST)),MAXVAL(RYPA(1:N_DM+N_ST))
+      WRITE(*,*) 'z positions (min,max), in Mpc:',
+     &     MINVAL(RZPA(1:N_DM+N_ST)),MAXVAL(RZPA(1:N_DM+N_ST))
+      WRITE(*,*) 'x velocities (min,max), in c:',
+     &     MINVAL(U2DM(1:N_DM+N_ST)),MAXVAL(U2DM(1:N_DM+N_ST))
+      WRITE(*,*) 'y velocities (min,max), in c:',
+     &     MINVAL(U3DM(1:N_DM+N_ST)),MAXVAL(U3DM(1:N_DM+N_ST))
+      WRITE(*,*) 'z velocities (min,max), in c:',
+     &     MINVAL(U4DM(1:N_DM+N_ST)),MAXVAL(U4DM(1:N_DM+N_ST))
+      WRITE(*,*) 'Masses (min,max), in internal units:',
+     &   MINVAL(MASAP(1:N_DM+N_ST)),MAXVAL(MASAP(1:N_DM+N_ST))
+      WRITE(*,*) 'Unique IDs (min,max):',
+     &   MINVAL(ORIPA(1:N_DM+N_ST)),MAXVAL(ORIPA(1:N_DM+N_ST))
+      WRITE(*,*)
+
+      RETURN
+      END
+
 *********************************************************************
        SUBROUTINE SORT_DM_PARTICLES(N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
 *********************************************************************
