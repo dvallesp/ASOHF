@@ -163,7 +163,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) LADO0
        READ(1,*) !Parallel(=1),serial(=0)/ Number of processors ------------------------>
        READ(1,*) FLAG_PARALLEL,NUM
-       READ(1,*) !Reading flags: IS_MASCLET (=0, no; =1, yes), MASCLET_GRID ------------>
+       READ(1,*) !Reading: IS_MASCLET (=0, no; =1, yes), GENERIC READER (see docs) ----->
        READ(1,*) FLAG_MASCLET,FLAG_SA
        READ(1,*) !Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
        READ(1,*) FW1,FW2,FW3,FW4,FW5
@@ -282,12 +282,12 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        END IF
        IF (FLAG_PARALLEL.EQ.0)  WRITE(*,*)'Running in SERIAL...'
 
-       IF(FLAG_SA.EQ.0.AND.FLAG_MASCLET.EQ.0)
-     &       WRITE(*,*) 'ASOHF as stand-alone Halo Finder...'
-       IF(FLAG_SA.EQ.0.AND.FLAG_MASCLET.EQ.1)
+       IF (FLAG_MASCLET.EQ.1)
      &       WRITE(*,*) 'ASOHF reading MASCLET PARTICLES...'
-       IF(FLAG_SA.EQ.1)
-     &       WRITE(*,*) 'ASOHF reading MASCLETs GRID...'
+       IF (FLAG_MASCLET.EQ.0.AND.FLAG_SA.EQ.0)
+     &       WRITE(*,*) 'ASOHF reading GENERIC PARTICLE DATA...'
+       IF (FLAG_MASCLET.EQ.0.AND.FLAG_SA.EQ.1)
+     &       WRITE(*,*) 'ASOHF reading GADGET UNFORMATTED FILES...'
 
        IF(VAR.EQ.1) WRITE(*,*) 'Analysing only DM'
        IF(VAR.EQ.2) WRITE(*,*) 'Analysing DM+stars'
@@ -380,25 +380,10 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 *     READING INPUT DATA
 ***************************************************
 
-       IF (FLAG_SA.EQ.1) THEN
-*       Reading MASCLET files directly
-         WRITE(*,*) 'Reading MASCLET directly:',
-     &              'not supported in this version'
-         STOP
-c        CALL READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
-c     &            PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
-c     &            PATCHRX,PATCHRY,PATCHRZ,U2DM,U3DM,U4DM,MASAP,
-c     &            NPART,RXPA,RYPA,RZPA,ORIPA,N_DM)
-c
-c        ! Background cosmology variables
-c        ROTE=RODO*(1.0+ZETA)**3
-c        RETE=RE0/(1.0+ZETA)
-
-       ELSE
 *       Reading external list of particles (either Masclet particles
 *       or a general list of particles, depending on FLAG_MASCLET)
-        CALL READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,ITER,NX,NY,NZ,T,
-     &       ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
+        CALL READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,FLAG_SA,ITER,NX,NY,
+     &       NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
 
         IF (SPLIT_SPECIES.EQ.0) THEN
          CALL SORT_DM_PARTICLES(N_DM,NPART_ESP,N_ST,IR_KERN_STARS)
@@ -419,7 +404,7 @@ c        RETE=RE0/(1.0+ZETA)
           WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
      &               ', no. particles:',NPART_ESP(IR_KERN_STARS)
          END IF
-        END IF
+        END IF !(SPLIT_SPECIES.EQ.0)
 
         ! Background cosmology variables
         ROTE=RODO*(1.0+ZETA)**3
@@ -449,8 +434,6 @@ c        RETE=RE0/(1.0+ZETA)
        WRITE(*,*)'***************************'
        WRITE(*,*)'***** END MESHRENOEF ******'
        WRITE(*,*)'***************************'
-
-      END IF !(FLAG_SA.EQ.1) THEN - ELSE
 
 c       CALL POISSON(NL,NX,NY,NZ,DX,NPATCH,PARE,PATCHNX,PATCHNY,
 c     &              PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,

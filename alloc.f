@@ -193,14 +193,15 @@
       END
 
 ************************************************************************
-      SUBROUTINE READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,ITER,NX,NY,NZ,T,
-     &           ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
+      SUBROUTINE READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,FLAG_SA,ITER,NX,
+     &           NY,NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,
+     &           HUBBLE_LITTLEH)
 ************************************************************************
        USE PARTICLES
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER FLAG_MASCLET,ITER,NX,NY,NZ
+       INTEGER FLAG_MASCLET,FLAG_SA,ITER,NX,NY,NZ
        REAL T,ZETA
        INTEGER N_DM,VAR,N_ST,N_PARTICLES
        REAL UV,UM,HUBBLE_LITTLEH
@@ -241,10 +242,15 @@
      &                              U2DM_R,U3DM_R,U4DM_R,MASAP_R,RXPA_R,
      &                              RYPA_R,RZPA_R,ORIPA_R,N_DM,VAR,N_ST)
        ELSE
-        CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,U2DM_R,U3DM_R,
-     &                              U4DM_R,MASAP_R,RXPA_R,RYPA_R,RZPA_R,
-     &                              ORIPA_R,N_DM,VAR,N_ST,UV,UM,
-     &                              HUBBLE_LITTLEH)
+        IF (FLAG_SA.EQ.0) THEN
+         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,U2DM_R,U3DM_R,
+     &                               U4DM_R,MASAP_R,RXPA_R,RYPA_R,
+     &                               RZPA_R,ORIPA_R,N_DM,VAR,N_ST,UV,UM,
+     &                               HUBBLE_LITTLEH)
+        ELSE IF (FLAG_SA.EQ.1) THEN
+         WRITE(*,*) 'HERE WE WILL EXECUTE THE ASOHF GADGET READER'
+         STOP
+        END IF
        END IF ! (FLAG_MASCLET.EQ.1) THEN, ELSE
 
        IF (N_ST.GT.0) N_PARTICLES=N_DM+N_ST

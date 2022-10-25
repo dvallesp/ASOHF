@@ -15,7 +15,7 @@ Max box sidelength (in input length units) --------------------------->
 40.0
 Parallel(=1),serial(=0) / Number of processors ----------------------->
 1,24
-Reading flags: IS_MASCLET (=0, no; =1, yes), MASCLET_GRID ------------>
+Reading: IS_MASCLET (=0, no; =1, yes), GENERIC READER (see docs) ----->
 1,0
 Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
 0,0,0,0,0
