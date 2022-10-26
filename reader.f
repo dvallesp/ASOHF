@@ -391,8 +391,8 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 ***       END IF
        WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',CONTA
        IF (CONTA.NE.N_DM) THEN
-        WRITE(*,*) 'WARNING: CONTA != N_DM',CONTA,N_DM
-        STOP
+        WRITE(*,*) 'POSSIBLE WARNING: N_DM rewritten:',N_DM,'-->',CONTA
+        N_DM=CONTA
        END IF
 
        IF (VAR.EQ.2) THEN
@@ -534,9 +534,8 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       READ(32) ZETA
       READ(32) NBAS
       IF (NBAS.NE.N_DM) THEN
-       WRITE(*,*) 'WARNING: Number of DM particles badly specified',
-     &            NBAS,N_DM
-       STOP
+       WRITE(*,*) 'POSSIBLE WARNING: N_DM rewritten:',N_DM,'-->',NBAS
+       N_DM=NBAS
       END IF
 
       READ(32) (UBAS(I),I=1,N_DM)
