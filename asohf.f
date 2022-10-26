@@ -752,7 +752,7 @@ c       WRITE(*,*) '***************************'
 **********          STELLAR HALOES           *******
 ****************************************************
 
-       IF (VAR.GT.1.AND.N_ST.GT.0) THEN
+       IF (VAR.GT.1.AND.N_ST.GT.0.AND.FLAG_STELLAR.EQ.1) THEN
         WRITE(*,*)
         WRITE(*,*) '***************************'
         WRITE(*,*) '**    STELLAR HALOES     **'
