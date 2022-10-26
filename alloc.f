@@ -195,7 +195,7 @@
 ************************************************************************
       SUBROUTINE READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,FLAG_SA,ITER,NX,
      &           NY,NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,
-     &           HUBBLE_LITTLEH)
+     &           HUBBLE_LITTLEH,LADO0,LADO)
 ************************************************************************
        USE PARTICLES
        IMPLICIT NONE
@@ -204,7 +204,7 @@
        INTEGER FLAG_MASCLET,FLAG_SA,ITER,NX,NY,NZ
        REAL T,ZETA
        INTEGER N_DM,VAR,N_ST,N_PARTICLES
-       REAL UV,UM,HUBBLE_LITTLEH
+       REAL UV,UM,HUBBLE_LITTLEH,LADO0,LADO
 
        REAL*4 U2DM_R(PARTI_READ),U3DM_R(PARTI_READ),U4DM_R(PARTI_READ)
        REAL*4 MASAP_R(PARTI_READ)
@@ -221,6 +221,13 @@
        COMMON /DOM_DECOMP/ DO_DOMDECOMP,DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
        REAL X1,X2,Y1,Y2,Z1,Z2,FACT_LENGTH,BASX,BASY,BASZ
        INTEGER PARTIST,II
+
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
+       REAL*4  RADX(0:NMAX+1),RADY(0:NMAY+1),RADZ(0:NMAZ+1)
+       COMMON /GRID/   RADX,RADY,RADZ
+
+       REAL DDXC,DDYC,DDZC,SHIFT_X,SHIFT_Y,SHIFT_Z
 
 !$OMP PARALLEL DO SHARED(RXPA_R,RYPA_R,RZPA_R,U2DM_R,U3DM_R,U4DM_R,
 !$OMP+                   MASAP_R,ORIPA_R),
@@ -252,7 +259,6 @@
      &                                U3DM_R,U4DM_R,MASAP_R,RXPA_R,
      &                                RYPA_R,RZPA_R,ORIPA_R,N_DM,VAR,
      &                                N_ST,UV,UM,HUBBLE_LITTLEH)
-         STOP
         END IF
        END IF ! (FLAG_MASCLET.EQ.1) THEN, ELSE
 
@@ -348,6 +354,52 @@
        N_DM=PARTI-PARTIST
        N_ST=PARTIST
        N_PARTICLES=PARTI
+
+       IF (DO_DOMDECOMP.EQ.1) THEN !Rebuild the base grid, recenter stuff
+        LADO0=MAX(X2-X1,Y2-Y1,Z2-Z1)
+        LADO=LADO0-(LADO0/NX)
+        CALL MALLA(NX,NY,NZ,LADO)
+
+        WRITE(*,*)
+        WRITE(*,*) '************************************************'
+        WRITE(*,*) '                   NEW GRID                     '
+        WRITE(*,*) '************************************************'
+        WRITE(*,*) 'SIDE LENGTH=',LADO
+        WRITE(*,*) 'NX,DX,RADX(1),RADX(NX)=',NX,DX,RADX(1),RADX(NX)
+        WRITE(*,*)
+
+        DDXC=(X1+X2)/2.
+        DDYC=(Y1+Y2)/2.
+        DDZC=(Z1+Z2)/2.
+        SHIFT_X=DDXC
+        SHIFT_Y=DDYC
+        SHIFT_Z=DDZC
+
+!$OMP PARALLEL DO SHARED(RXPA,RYPA,RZPA,N_PARTICLES,SHIFT_X,SHIFT_Y,
+!$OMP+                   SHIFT_Z),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+        DO I=1,N_PARTICLES
+         RXPA(I)=RXPA(I)-SHIFT_X
+         RYPA(I)=RYPA(I)-SHIFT_Y
+         RZPA(I)=RZPA(I)-SHIFT_Z
+        END DO
+
+        CIO_XC=CIO_XC+SHIFT_X/CIO_LENGTH
+        CIO_YC=CIO_YC+SHIFT_Y/CIO_LENGTH
+        CIO_ZC=CIO_ZC+SHIFT_Z/CIO_LENGTH
+
+        WRITE(*,*)
+        WRITE(*,*) 'After domain decomposition...'
+        WRITE(*,*) 'x positions (min,max), in Mpc:',
+     &     MINVAL(RXPA(1:N_DM+N_ST)),MAXVAL(RXPA(1:N_DM+N_ST))
+        WRITE(*,*) 'y positions (min,max), in Mpc:',
+     &     MINVAL(RYPA(1:N_DM+N_ST)),MAXVAL(RYPA(1:N_DM+N_ST))
+        WRITE(*,*) 'z positions (min,max), in Mpc:',
+     &     MINVAL(RZPA(1:N_DM+N_ST)),MAXVAL(RZPA(1:N_DM+N_ST))
+        WRITE(*,*)
+
+       END IF !(DO_DOMDECOMP.EQ.1)
 
        RETURN
       END

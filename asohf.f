@@ -118,6 +118,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
        COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
      &                  CIO_YC,CIO_ZC
+       REAL CIO_XC0,CIO_YC0,CIO_ZC0,LADO_BKP,LADO0_BKP
+
        INTEGER DO_DOMDECOMP
        REAL DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
        COMMON /DOM_DECOMP/ DO_DOMDECOMP,DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
@@ -254,9 +256,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        IF (CIO_LENGTH.LT.0.) CIO_LENGTH=-CIO_LENGTH/HUBBLE_LITTLEH
        LADO0=LADO0*CIO_LENGTH
        ! center of the domain (in input length units)
-       CIO_XC=0.5*(XLDOM+XRDOM)
-       CIO_YC=0.5*(YLDOM+YRDOM)
-       CIO_ZC=0.5*(ZLDOM+ZRDOM)
+       CIO_XC0=0.5*(XLDOM+XRDOM)
+       CIO_YC0=0.5*(YLDOM+YRDOM)
+       CIO_ZC0=0.5*(ZLDOM+ZRDOM)
 
        STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc
 **************************************************************
@@ -314,7 +316,10 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        END IF
        WRITE(*,*)
 
-
+!      Backup these variables to avoid the domain decomposition messing
+!       around with them.
+       LADO_BKP=LADO
+       LADO0_BKP=LADO0_BKP
 
 *********************************************************************
 *      COSMOLOGICAL BACKGROUND
@@ -361,6 +366,14 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         WRITE(*,*)
         WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
 
+*       Recover these quantities from the backup, may have been change
+*        if DOMDECOMP is performed.
+        CIO_XC=CIO_XC0
+        CIO_YC=CIO_YC0
+        CIO_ZC=CIO_ZC0
+        LADO=LADO_BKP
+        LADO0=LADO0_BKP
+
         CALL INIT_OUTVARS(MASA,RADIO,CLUSRX,CLUSRY,CLUSRZ,CLUSRXCM,
      &           CLUSRYCM,CLUSRZCM,MSUB,RSUB,PATCHCLUS,REALCLUS,
      &           HALBORDERS,LEVHAL,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,
@@ -383,7 +396,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 *       Reading external list of particles (either Masclet particles
 *       or a general list of particles, depending on FLAG_MASCLET)
         CALL READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,FLAG_SA,ITER,NX,NY,
-     &       NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH)
+     &       NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH,
+     &       LADO0,LADO)
 
         IF (SPLIT_SPECIES.EQ.0) THEN
          CALL SORT_DM_PARTICLES(N_DM,NPART_ESP,N_ST,IR_KERN_STARS)

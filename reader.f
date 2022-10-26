@@ -721,25 +721,32 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
       CHARACTER*3 ITER_STRING
 
+***** FIX UNIT CONVERSIONS FOR GADGET *******
+      !CIO_MASS=1.E10/HUBBLE_LITTLEH
+      !CIO_SPEED=299792.458
+      !CIO_LENGTH=1.0/HUBBLE_LITTLEH
+      !CIO_ALPHA=0.5
+*********************************************
+
 *     READING DATA
       WRITE(ITER_STRING, '(I3.3)') ITER !For saving files to disk
-      WRITE(*,*) 'Reading iter',ITER,ITER_STRING
+      WRITE(*,*) ' > Reading iter',ITER_STRING
 
       OPEN(11, FILE='./simulation/snap_'//ITER_STRING,
      &     STATUS='UNKNOWN',ACTION='READ', FORM='UNFORMATTED')
 
 *      Read the header ************************************************
        READ(11) BLOCKLABEL,BLOCKSIZE
-       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       !WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
        READ(11) NPP,MASS_ARR,TIME8,ZETA8,CACA,BOXSIZE8,OMEGA_M8,
      &          OMEGA_LAMBDA8,HUBBLE_PARAM8
 
        !WRITE(*,*) NPP
        !WRITE(*,*) MASS_ARR
-       WRITE(*,*) 'Redshift:', ZETA8
-       WRITE(*,*) 'Box size (ckpc/h):', BOXSIZE8
-       WRITE(*,*) 'Om, Olambda, h:', OMEGA_M8, OMEGA_LAMBDA8,
-     &            HUBBLE_PARAM8
+       !WRITE(*,*) 'Redshift:', ZETA8
+       !WRITE(*,*) 'Box size (ckpc/h):', BOXSIZE8
+       !WRITE(*,*) 'Om, Olambda, h:', OMEGA_M8, OMEGA_LAMBDA8,
+       !&            HUBBLE_PARAM8
 
        NTOT=SUM(NPP)
 
@@ -751,10 +758,10 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        IST1=SUM(NPP(1:5))
        IBH0=IST1+1
        IBH1=SUM(NPP(1:6))
-       WRITE(*,*) 'Gas indices',IGAS0,IGAS1,IGAS1-IGAS0+1
-       WRITE(*,*) 'DM indices ',IDM0,IDM1,IDM1-IDM0+1
-       WRITE(*,*) 'ST indices ',IST0,IST1,IST1-IST0+1
-       WRITE(*,*) 'BH indices ',IBH0,IBH1,IBH1-IBH0+1
+       !WRITE(*,*) 'Gas indices',IGAS0,IGAS1,IGAS1-IGAS0+1
+       !WRITE(*,*) 'DM indices ',IDM0,IDM1,IDM1-IDM0+1
+       !WRITE(*,*) 'ST indices ',IST0,IST1,IST1-IST0+1
+       !WRITE(*,*) 'BH indices ',IBH0,IBH1,IBH1-IBH0+1
 
        N_DM=IDM1-IDM0+1
        IF (VAR.EQ.2) THEN
@@ -765,12 +772,12 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
 *      Read the particle positions ************************************
        READ(11) BLOCKLABEL,BLOCKSIZE
-       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       !WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
        ALLOCATE(SCR42(3,NTOT))
        READ(11) ((SCR42(J,I),J=1,3),I=1,NTOT) ! all particles
-       WRITE(*,*) '-X-', MINVAL(SCR42(1,:)), MAXVAL(SCR42(1,:))
-       WRITE(*,*) '-Y-', MINVAL(SCR42(2,:)), MAXVAL(SCR42(2,:))
-       WRITE(*,*) '-Z-', MINVAL(SCR42(3,:)), MAXVAL(SCR42(3,:))
+       !WRITE(*,*) '-X-', MINVAL(SCR42(1,:)), MAXVAL(SCR42(1,:))
+       !WRITE(*,*) '-Y-', MINVAL(SCR42(2,:)), MAXVAL(SCR42(2,:))
+       !WRITE(*,*) '-Z-', MINVAL(SCR42(3,:)), MAXVAL(SCR42(3,:))
        RXPA(1:N_DM)=SCR42(1,IDM0:IDM1)
        RYPA(1:N_DM)=SCR42(2,IDM0:IDM1)
        RZPA(1:N_DM)=SCR42(3,IDM0:IDM1)
@@ -782,11 +789,11 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
 *      Read the particle velocities************************************
        READ(11) BLOCKLABEL,BLOCKSIZE
-       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       !WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
        READ(11) ((SCR42(J,I),J=1,3),I=1,NTOT) ! all particles
-       WRITE(*,*) '-VX-', MINVAL(SCR42(1,:)), MAXVAL(SCR42(1,:))
-       WRITE(*,*) '-VY-', MINVAL(SCR42(2,:)), MAXVAL(SCR42(2,:))
-       WRITE(*,*) '-VZ-', MINVAL(SCR42(3,:)), MAXVAL(SCR42(3,:))
+       !WRITE(*,*) '-VX-', MINVAL(SCR42(1,:)), MAXVAL(SCR42(1,:))
+       !WRITE(*,*) '-VY-', MINVAL(SCR42(2,:)), MAXVAL(SCR42(2,:))
+       !WRITE(*,*) '-VZ-', MINVAL(SCR42(3,:)), MAXVAL(SCR42(3,:))
        U2DM(1:N_DM)=SCR42(1,IDM0:IDM1)
        U3DM(1:N_DM)=SCR42(2,IDM0:IDM1)
        U4DM(1:N_DM)=SCR42(3,IDM0:IDM1)
@@ -799,24 +806,22 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
 *      Read the particle ids****************************************
        READ(11) BLOCKLABEL,BLOCKSIZE
-       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       !WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
        ALLOCATE(SCRINT1(NTOT))
        READ(11) (SCRINT1(I),I=1,NTOT) ! all particles
-       WRITE(*,*) '-ID-', MINVAL(SCRINT1(:)), MAXVAL(SCRINT1(:))
+       !WRITE(*,*) '-ID-', MINVAL(SCRINT1(:)), MAXVAL(SCRINT1(:))
        ORIPA(1:N_DM)=SCRINT1(IDM0:IDM1)
        IF (VAR.EQ.2) THEN
         ORIPA(N_DM+1:N_DM+N_ST)=SCRINT1(IST0:IST1)
        END IF
        DEALLOCATE(SCRINT1)
 
-       write(*,*) 'ndm=',n_dm
-
 *      Read the particle masses****************************************
        READ(11) BLOCKLABEL,BLOCKSIZE
-       WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
+       !WRITE(*,*) 'Found block ', BLOCKLABEL, ' with length', BLOCKSIZE
        ALLOCATE(SCR41(NTOT))
        READ(11) (SCR41(I),I=1,NTOT) ! all particles
-       WRITE(*,*) '-M-', MINVAL(SCR41(:)), MAXVAL(SCR41(:))
+       !WRITE(*,*) '-M-', MINVAL(SCR41(:)), MAXVAL(SCR41(:))
        MASAP(1:N_DM)=SCR41(IDM0:IDM1)
        IF (VAR.EQ.2) THEN
         MASAP(N_DM+1:N_DM+N_ST)=SCR41(IST0:IST1)
@@ -824,8 +829,6 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        DEALLOCATE(SCR41)
 
       CLOSE(11)
-
-      write(*,*) 'ndm=',n_dm
 
       IF (N_DM+N_ST.GT.PARTI_READ) THEN
        WRITE(*,*) 'WARNING: bad dimensioning of PARTI_READ',
@@ -875,8 +878,6 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        WRITE(*,*) 'TOTAL STELLAR PARTICLES IN ITER=',N_ST
       END IF
 
-      STOP
-
       FACT_MASS=CIO_MASS/UM
       FACT_SPEED=(CIO_SPEED/UV)*(1+ZETA)**(CIO_ALPHA-1.0)
       FACT_LENGTH=CIO_LENGTH
@@ -917,6 +918,8 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       WRITE(*,*) 'Unique IDs (min,max):',
      &   MINVAL(ORIPA(1:N_DM+N_ST)),MAXVAL(ORIPA(1:N_DM+N_ST))
       WRITE(*,*)
+
+      ZETA=ZETA8
 
       RETURN
       END
