@@ -157,7 +157,7 @@ def read_particles(it, path='', parttype='DM', sort='oripa'):
     if parttype=='DM':
         filename='particles'
     elif parttype=='stellar':
-        filename='particles_stellar'
+        filename='stellar_particles'
 
     particles_oripa={}
     particles_lut={}
