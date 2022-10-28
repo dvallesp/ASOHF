@@ -85,3 +85,5 @@ Cut stellar halo if radial distance of consecutive stars > (ckpc) ---->
 10.0
 Cut stellar halo if rho_* falls below this factor of rho_B ----------->
 1.0
+Cut stellar halo at a maximum (physical) radius of (kpc) ------------->
+200.0

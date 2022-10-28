@@ -130,7 +130,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        INTEGER FLAG_SUBS,FLAG_CENTRAL,DO_COMPUTE_ENERGIES,FLAG_STELLAR
        INTEGER FW1,FW2,FW3,FW4,FW5
-       REAL STPAR_FACT_INC,STPAR_MAX_DIST,STPAR_MIN_OVERDENS
+       REAL STPAR_FACT_INC,STPAR_MAX_DIST,STPAR_MIN_OVERDENS,
+     &      STPAR_MAX_R_PHYS
 
        INTEGER CR0AMR(NMAX,NMAY,NMAZ)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
@@ -246,6 +247,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) STPAR_MAX_DIST
        READ(1,*) !Cut stellar halo if rho_* falls below this factor of rho_B ----------->
        READ(1,*) STPAR_MIN_OVERDENS
+       READ(1,*) !Cut stellar halo at a maximum (physical) radius of (kpc) ------------->
+       READ(1,*) STPAR_MAX_R_PHYS
 
        CLOSE(1)
 
@@ -261,6 +264,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        CIO_ZC0=0.5*(ZLDOM+ZRDOM)
 
        STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc
+       STPAR_MAX_R_PHYS=STPAR_MAX_R_PHYS/1000.0 ! to Mpc
 **************************************************************
 *     ...PARALLEL RUNNING...
 !$OMP PARALLEL SHARED(NUM)
@@ -763,7 +767,7 @@ c       WRITE(*,*) '***************************'
      &                      INDCS_PARTICLES_PER_HALO,UM,UV,
      &                      MIN_NUM_PART_ST,FLAG_WDM,ITER,ZETA,
      &                      STPAR_FACT_INC,STPAR_MAX_DIST,
-     &                      STPAR_MIN_OVERDENS)
+     &                      STPAR_MIN_OVERDENS,STPAR_MAX_R_PHYS)
        END IF
 
 *************************************************

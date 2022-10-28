@@ -4,7 +4,7 @@
      &                          N_ST,NX,LADO0,INDCS_PARTICLES_PER_HALO,
      &                          UM,UV,MIN_NUM_PART_ST,FLAG_WDM,ITER,
      &                          ZETA,STPAR_FACT_INC,STPAR_MAX_DIST,
-     &                          STPAR_MIN_OVERDENS)
+     &                          STPAR_MIN_OVERDENS,STPAR_MAX_R_PHYS)
 ********************************************************************
 *     Looks for stellar haloes (galaxies) hosted by the previously
 *      found DM haloes
@@ -25,6 +25,7 @@
       INTEGER MIN_NUM_PART_ST,FLAG_WDM,ITER
       REAL*4 ZETA
       REAL STPAR_FACT_INC,STPAR_MAX_DIST,STPAR_MIN_OVERDENS
+      REAL STPAR_MAX_R_PHYS
 
       REAL*4 RETE,HTE,ROTE
       COMMON /BACK/ RETE,HTE,ROTE
@@ -38,7 +39,7 @@
       REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX,BASVECCM(3),BASVCM(3)
       REAL RHALFMASS,MHALFMASS,XPEAK,YPEAK,ZPEAK,VVV2,INERTIA4(3,3)
       REAL BASEIGENVAL(3),R1,R2,MMM,DENS,MINDENS,PI,DENS_CUT
-      REAL X1,X2,Y1,Y2,Z1,Z2
+      REAL X1,X2,Y1,Y2,Z1,Z2,STPAR_MAX_R_COM
 
       REAL*8 M8,X8,Y8,Z8,VX8,VY8,VZ8,LX8,LY8,LZ8,INERTIA8(3,3)
       REAL*8 SIGMA_HALO8
@@ -77,6 +78,7 @@
       !STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc !in the asohf.f
       !now!!!!
       DENS_CUT=STPAR_MIN_OVERDENS*ROTE*RETE**3
+      STPAR_MAX_R_COM=STPAR_MAX_R_PHYS*(1+ZETA)
 
 **********************************************************************
 *     Sort stellar particles
@@ -128,7 +130,7 @@ c      END IF
 !$OMP+                   U2DM,U3DM,U4DM,N_DM,UM,UV,FLAG_WDM,
 !$OMP+                   PROC_NPARTICLES,HALOES_PROC,PARTICLES_PROC,
 !$OMP+                   ORIPA,PI,STPAR_MAX_DIST,DENS_CUT,
-!$OMP+                   STPAR_FACT_INC),
+!$OMP+                   STPAR_FACT_INC,STPAR_MAX_R_COM),
 !$OMP+            PRIVATE(I,CX,CY,CZ,RCLUS,RCLUS2,LOWP1,LOWP2,
 !$OMP+                    MAX_NUM_PART_LOCAL,J,LIPST,JJ,NDM_HALO,
 !$OMP+                    NST_HALO,NPART_HALO,LIP,CONTADM,DISTA,DISTAST,
@@ -281,7 +283,8 @@ C       END IF
           DENS=MMM/((4.*PI/3.)*(R2**3-R1**3))
           IF (DENS.LT.MINDENS) MINDENS=DENS
 C          IF (I.EQ.80) WRITE(*,*) DENS,MINDENS,I1,I2,R1,R2
-          IF (DENS.GT.STPAR_FACT_INC*MINDENS.OR.DENS.LT.DENS_CUT) THEN
+          IF (DENS.GT.STPAR_FACT_INC*MINDENS.OR.DENS.LT.DENS_CUT.OR.
+     &        R2.GT.STPAR_MAX_R_COM) THEN
            IDX_CUT=J
            IDX_CUT_ST=I1
            EXIT
