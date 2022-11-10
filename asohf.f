@@ -323,7 +323,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 !      Backup these variables to avoid the domain decomposition messing
 !       around with them.
        LADO_BKP=LADO
-       LADO0_BKP=LADO0_BKP
+       LADO0_BKP=LADO0
 
 *********************************************************************
 *      COSMOLOGICAL BACKGROUND
