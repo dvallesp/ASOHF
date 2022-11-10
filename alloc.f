@@ -262,7 +262,7 @@
         END IF
        END IF ! (FLAG_MASCLET.EQ.1) THEN, ELSE
 
-       IF (N_ST.GT.0) N_PARTICLES=N_DM+N_ST
+       N_PARTICLES=N_DM+N_ST
        WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES
 
 ****************************
