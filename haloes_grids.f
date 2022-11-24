@@ -692,7 +692,7 @@ c           WRITE(*,*) BASX,BASY,BASZ,BAS
          ESP=0.2*DXPA
          ESP_LOG=1.05
          BORAMR=1
-         BOUNDIR=MAX(BOUND/1.5**IR,2.0)
+         BOUNDIR=MAX(BOUND/1.5**IR,3.0)
 
 *        estimation to allocate
          KK_ENTERO=0
