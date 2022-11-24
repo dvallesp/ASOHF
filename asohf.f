@@ -39,7 +39,7 @@
 
        REAL*4 UV, UM
 
-       INTEGER IX,JY,KZ,NL,IR,L1
+       INTEGER IX,JY,KZ,NL,IR,L1,NL_INPUT
        REAL*4 RX2,RY2,RZ2,A1,A2,B1,C1,A3,A4
        REAL*4 DXPA,DYPA,DZPA
 
@@ -186,7 +186,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) !*       Mesh building parameters block                                *
        READ(1,*) !***********************************************************************
        READ(1,*) !Levels for the mesh (stand-alone) ------------------------------------>
-       READ(1,*) NL
+       READ(1,*) NL_INPUT
+       NL=NL_INPUT
        IF (NL.GT.NLEVELS) THEN
         WRITE(*,*) 'Fatal ERROR: NLEVELS too small in parameters file',
      &             NL,NLEVELS
@@ -323,7 +324,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 !      Backup these variables to avoid the domain decomposition messing
 !       around with them.
        LADO_BKP=LADO
-       LADO0_BKP=LADO0
+       LADO0_BKP=LADO0_BKP
 
 *********************************************************************
 *      COSMOLOGICAL BACKGROUND
@@ -433,7 +434,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         WRITE(*,*)'***** MESHRENOEF ******'
         WRITE(*,*)'***********************'
         WRITE(*,*)
-
+        
+        NL=NL_INPUT ! Recover from backup!
         IF (NL.GT.0) THEN
          WRITE(*,*)'==== Building the grid...', ITER, NL
          CALL CREATE_MESH(ITER,NX,NY,NZ,NL,NPATCH,PARE,PATCHNX,PATCHNY,
