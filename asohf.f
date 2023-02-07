@@ -113,6 +113,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER MPAPOLEV(NLEVELS),MAX_PART_DSUM
        INTEGER REFINE_THR,MIN_PATCHSIZE,INTERP_DEGREE
        INTEGER BOR,BORAMR,BOR_OVLP
+       INTEGER LOW1,LOW2
        REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND,FDM
        REAL XLDOM,XRDOM,YLDOM,YRDOM,ZLDOM,ZRDOM
        REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
@@ -434,7 +435,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
         WRITE(*,*)'***** MESHRENOEF ******'
         WRITE(*,*)'***********************'
         WRITE(*,*)
-        
+
         NL=NL_INPUT ! Recover from backup!
         IF (NL.GT.0) THEN
          WRITE(*,*)'==== Building the grid...', ITER, NL
@@ -538,124 +539,117 @@ c       WRITE(*,*) '***************************'
 
        CALL SORT_DM_PARTICLES_X(N_DM,NDMPART_X,NX,LADO0)
 
+       open(55,file='./output_files/haloesgrids'//ITER_STRING//'.res',
+     &        status='unknown')
+       close(55)
 
 **********************************************************
-*      Looking for candidate haloes at the AMR levels
+*      We proceed level by level, from coarse to fine
 **********************************************************
+       DO IR=0,NL
 
-       CALL HALOFIND_GRID(NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
-     &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
-     &                    PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
-     &                    CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
-     &                    NHALLEV,BOUND,CONTRASTEC,RODO,
-     &                    SOLAP,CR0AMR,CR0AMR11,PATCHCLUS,
-     &                    VOL_SOLAP_LOW,CLUSRXCM,CLUSRYCM,CLUSRZCM)
+*       Looking for candidate haloes at each of the AMR levels
 
-       IF (FW3.EQ.1) THEN
-        open(55,
-     &       file='./output_files/haloesgrids'//ITER_STRING//'.res',
-     &       status='unknown')
-        do i=1,nclus
-         write(55,*) clusrx(i),clusry(i),clusrz(i),radio(i),masa(i),
-     &               levhal(i), realclus(i), patchclus(i)
-        end do
-        close(55)
-       END IF
+        CALL HALOFIND_GRID(IR,NL,NX,NY,NZ,NPATCH,PATCHNX,PATCHNY,
+     &                     PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,
+     &                     PATCHRY,PATCHRZ,PARE,NCLUS,MASA,RADIO,
+     &                     CLUSRX,CLUSRY,CLUSRZ,REALCLUS,LEVHAL,
+     &                     NHALLEV,BOUND,CONTRASTEC,RODO,
+     &                     SOLAP,CR0AMR,CR0AMR11,PATCHCLUS,
+     &                     VOL_SOLAP_LOW,CLUSRXCM,CLUSRYCM,CLUSRZCM)
 
-*******************************************************
-*      SORTING OUT ALL THE CLUSTERS
-*******************************************************
 
-       CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
-     &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
+*       Debug dumps
 
-       WRITE(*,*)'MASSES: MIN, MAX AND MEAN=', MINVAL(MASA(1:NCLUS))*UM,
-     &            MAXVAL(MASA(1:NCLUS))*UM, SUM(MASA(1:NCLUS))/NCLUS*UM
-       WRITE(*,*) 'NCLUS=', NCLUS
+        IF (FW3.EQ.1) THEN
+         open(55,
+     &        file='./output_files/haloesgrids'//ITER_STRING//'.res',
+     &        status='unknown',position='append')
+         do i=1,nclus
+          write(55,*) clusrx(i),clusry(i),clusrz(i),radio(i),masa(i),
+     &                levhal(i), realclus(i), patchclus(i)
+         end do
+         close(55)
+        END IF
 
-***************************************************************
-**     HALOES AT THE EDGES OF THE BOX (JUST FOR CAUTION!)     *
-***************************************************************
+        IF (NHALLEV(IR).EQ.0) CYCLE
 
-       IF (BORDES.EQ.1) THEN
-        CALL HALOES_BORDER(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,LADO0,
-     &                     HALBORDERS)
-        WRITE(*,*) 'Haloes close to the box borders:',
-     &             SUM(HALBORDERS(1:NCLUS))
-       END IF
+*       Sorting out all the haloes
 
-************************************************************
-**     Eliminating POOR haloes (less than a minimum number of particles)
-**     (We start here to work with partciles for the 1st time)
-************************************************************
+        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
+     &                      RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS,
+     &                      HALBORDERS,CLUSRXCM,CLUSRYCM,CLUSRZCM,IR)
 
-       CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                        REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
-     &                        NDMPART_X,LADO0,1.0,1)
-       CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
-     &                     RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS)
+        LOW1=SUM(NHALLEV(0:IR-1))+1
+        LOW2=SUM(NHALLEV(0:IR))
+        WRITE(*,*)'... Masses: MIN, MAX and MEAN=',
+     &             MINVAL(MASA(LOW1:LOW2))*UM,
+     &             MAXVAL(MASA(LOW1:LOW2))*UM,
+     &             SUM(MASA(LOW1:LOW2))/NHALLEV(IR)*UM
+        !WRITE(*,*) 'NCLUS=', NCLUS
 
-*********************************************************
-*      CHECKING....
-*********************************************************
-       WRITE(*,*) '---------------------------------'
-       WRITE(*,*) 'CHECKING GRID FINDING:'
-       KONTA2=COUNT(REALCLUS(1:NCLUS).EQ.-1)
-       WRITE(*,*) 'REAL, FREE HALOS --->', KONTA2
-       WRITE(*,*) '---------------------------------'
-*********************************************************
+*       Haloes at the edge of the box (JUST FOR CAUTION!)
 
-************************************************************
-*      REFINING REAL HALOES WITH THE DM PARTICLES ONLY     *
-************************************************************
+        IF (BORDES.EQ.1) THEN
+         CALL HALOES_BORDER(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,LADO0,
+     &                      HALBORDERS,LOW1,LOW2)
+         WRITE(*,*) '... Haloes close to the box borders:',
+     &              SUM(HALBORDERS(LOW1:LOW2))
+        END IF
 
-       WRITE(*,*)
-       WRITE(*,*)'=================================='
-       WRITE(*,*)'Refining with DM particles...'
-       WRITE(*,*)'=================================='
+*       Eliminating POOR haloes (less than a minimum number of particles)
+*       (We start here to work with partciles for the 1st time)
 
-       CALL HALOFIND_PARTICLES(NL,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
-     &      CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,VY,VZ,
-     &      VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
-     &      MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
-     &      LEVHAL,EIGENVAL,N_DM,CONTRASTEC,OMEGAZ,UM,UV,LADO0,CLUSRXCM,
-     &      CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,
-     &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
-     &      DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,
-     &      MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM)
+        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+     &                         REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
+     &                         NDMPART_X,LADO0,1.0,1,LOW1,LOW2)
+        CALL RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
+     &                      RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS,
+     &                      HALBORDERS,CLUSRXCM,CLUSRYCM,CLUSRZCM,IR)
 
-*************************************************
-******** GENERAL CHECKING ***********************
-*************************************************
+        LOW1=SUM(NHALLEV(0:IR-1))+1
+        LOW2=SUM(NHALLEV(0:IR))
 
-       WRITE(*,*)'HALOES WITHOUT MASS=',
-     &        COUNT(MASA(1:NCLUS).LE.0.0)
-*       WRITE(*,*)'KKKONTA=',KKKONTA
+        !WRITE(*,*) '---------------------------------'
+        !WRITE(*,*) 'CHECKING GRID FINDING AT LEVEL',IR
+        KONTA2=COUNT(REALCLUS(LOW1:LOW2).EQ.-1)
+        WRITE(*,*) 'Candidates at this level --->', KONTA2
+        !WRITE(*,*) '---------------------------------'
 
-       WRITE(*,*) 'Total number of particles within halos:',
-     &            SUM(DMPCLUS(1:NCLUS))
-*************************************************
+*       REFINING REAL HALOES WITH THE DM PARTICLES ONLY
 
-************************************************
-************ REMOVING POOR HALOES **************
-************************************************
-       CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                        REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
-     &                        NDMPART_X,LADO0,1.0,0)
+        WRITE(*,*)
+        WRITE(*,*)'Refining with DM particles...'
 
-************************************************
-************** RUBBISH (overlaps) **************
-************************************************
+        CALL HALOFIND_PARTICLES(NL,NCLUS,MASA,RADIO,CLUSRX,CLUSRY,
+     &       CLUSRZ,REALCLUS,CONCENTRA,ANGULARM,VMAXCLUS,IPLIP,VX,VY,VZ,
+     &       VCMAX,MCMAX,RCMAX,M200C,M500C,M2500C,M200M,M500M,M2500M,
+     &       MSUB,R200C,R500C,R2500C,R200M,R500M,R2500M,RSUB,DMPCLUS,
+     &       LEVHAL,EIGENVAL,N_DM,CONTRASTEC,OMEGAZ,UM,UV,LADO0,
+     &       CLUSRXCM,CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,
+     &       PATCHCLUS,PROFILES,VELOCITY_DISPERSION,KINETIC_E,
+     &       POTENTIAL_E,DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,
+     &       FLAG_WDM,ZETA,MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM,
+     &       LOW1,LOW2)
 
-       CALL CHECK_RUBISH(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,VX,VY,VZ,
-     &                   MASA,RADIO,LEVHAL)
+*       General CHECKING
+        !WRITE(*,*)'HALOES WITHOUT MASS=',COUNT(MASA(LOW1:LOW2).LE.0.0)
+        WRITE(*,*) '... Total number of particles within halos at IR:',
+     &              SUM(DMPCLUS(LOW1:LOW2))
 
-****************************************************
-********* PRUNING ACCIDENTAL SUBSTRUCTURE **********
-****************************************************
+        CALL PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
+     &                         REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
+     &                         NDMPART_X,LADO0,1.0,0,LOW1,LOW2)
+        CALL CHECK_RUBISH(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,VX,VY,VZ,
+     &                    MASA,RADIO,LEVHAL)
+        CALL ACCIDENTAL_SUBSTRUCTURE(NCLUS,REALCLUS,CLUSRX,CLUSRY,
+     &                               CLUSRZ,VX,VY,VZ,MASA,RADIO,LEVHAL)
 
-       CALL ACCIDENTAL_SUBSTRUCTURE(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,
-     &                              VX,VY,VZ,MASA,RADIO,LEVHAL)
+
+        WRITE(*,*) 'Finally, haloes found at this level --->',
+     &             COUNT(REALCLUS(LOW1:LOW2).EQ.-1)
+
+       END DO !IR=0,NL
 
        WRITE(*,*)
        WRITE(*,*) 'At the end...'

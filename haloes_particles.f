@@ -1,7 +1,8 @@
 **********************************************************************
        SUBROUTINE RE_SORT_HALOES(NCLUS,NHALLEV,REALCLUS,CLUSRX,CLUSRY,
      &                           CLUSRZ,RADIO,MASA,LEVHAL,PATCHCLUS,
-     &                           DMPCLUS)
+     &                           DMPCLUS,HALBORDERS,CLUSRXCM,CLUSRYCM,
+     &                           CLUSRZCM,IR)
 **********************************************************************
 *      Resorts the clusters, getting rid of REALCLUS=0 ones
 **********************************************************************
@@ -14,15 +15,20 @@
         REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
         REAL*4 MASA(MAXNCLUS), RADIO(MAXNCLUS)
         INTEGER LEVHAL(MAXNCLUS),PATCHCLUS(MAXNCLUS)
-        INTEGER DMPCLUS(MAXNCLUS)
+        INTEGER DMPCLUS(MAXNCLUS),HALBORDERS(MAXNCLUS)
+        REAL*4 CLUSRXCM(MAXNCLUS),CLUSRYCM(MAXNCLUS),CLUSRZCM(MAXNCLUS)
+        INTEGER IR
 
-        INTEGER I,J
+        INTEGER I,J,LOWH1,LOWH2
         INTEGER,ALLOCATABLE::RESORT(:)
 
-        NHALLEV(:)=0
-        J=0
-        ALLOCATE(RESORT(NCLUS))
-        DO I=1,NCLUS
+        LOWH1=SUM(NHALLEV(0:IR-1))+1
+        LOWH2=SUM(NHALLEV(0:IR))
+
+        NHALLEV(IR)=0
+        J=LOWH1-1
+        ALLOCATE(RESORT(LOWH1:LOWH2))
+        DO I=LOWH1,LOWH2
          IF (REALCLUS(I).EQ.0) CYCLE
          J=J+1
          RESORT(I)=J
@@ -34,12 +40,16 @@
          LEVHAL(J)=LEVHAL(I)
          PATCHCLUS(J)=PATCHCLUS(I)
          DMPCLUS(J)=DMPCLUS(I)
+         HALBORDERS(J)=HALBORDERS(I)
+         CLUSRXCM(J)=CLUSRXCM(I)
+         CLUSRYCM(J)=CLUSRYCM(I)
+         CLUSRZCM(J)=CLUSRZCM(I)
          IF (REALCLUS(I).LE.0) THEN
           REALCLUS(J)=REALCLUS(I)
          ELSE
           REALCLUS(J)=RESORT(REALCLUS(I))
          END IF
-         NHALLEV(LEVHAL(J))=NHALLEV(LEVHAL(J))+1
+         NHALLEV(IR)=NHALLEV(IR)+1
         END DO
 
         NCLUS=J
@@ -51,7 +61,7 @@
 
 **********************************************************************
         SUBROUTINE HALOES_BORDER(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
-     &                           LADO0,HALBORDERS)
+     &                           LADO0,HALBORDERS,LOW1,LOW2)
 **********************************************************************
 *       Identifies the haloes at the border of the box for special
 *        treatment if necessary
@@ -65,7 +75,7 @@
         REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
         REAL*4 RADIO(MAXNCLUS)
         REAL LADO0
-        INTEGER HALBORDERS(MAXNCLUS)
+        INTEGER HALBORDERS(MAXNCLUS),LOW1,LOW2
 
         INTEGER I
         REAL XL,XR,X1,X2,Y1,Y2,Z1,Z2,XC,YC,ZC,RC
@@ -73,16 +83,16 @@
         XL=-LADO0/2
         XR=LADO0/2
 
-!$OMP PARALLEL DO SHARED(NCLUS,HALBORDERS),PRIVATE(I),DEFAULT(NONE)
-        DO I=1,NCLUS
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,HALBORDERS),PRIVATE(I),DEFAULT(NONE)
+        DO I=LOW1,LOW2
          HALBORDERS(I)=0
         END DO
 
-!$OMP PARALLEL DO SHARED(NCLUS,RADIO,CLUSRX,CLUSRY,CLUSRZ,XL,XR,
+!$OMP PARALLEL DO SHARED(LOW1,LOW2,RADIO,CLUSRX,CLUSRY,CLUSRZ,XL,XR,
 !$OMP+                   HALBORDERS),
 !$OMP+            PRIVATE(I,RC,XC,YC,ZC,X1,X2,Y1,Y2,Z1,Z2),
 !$OMP+            DEFAULT(NONE)
-        DO I=1,NCLUS
+        DO I=LOW1,LOW2
          RC=RADIO(I)
          XC=CLUSRX(I)
          YC=CLUSRY(I)
@@ -174,7 +184,7 @@
        SUBROUTINE PRUNE_POOR_HALOES(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,
      &                              REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
      &                              NDMPART_X,LADO0,FACRAD,
-     &                              DO_NEED_TO_COUNT)
+     &                              DO_NEED_TO_COUNT,LOW1,LOW2)
 **********************************************************************
 *       Removes haloes with too few particles
 **********************************************************************
@@ -190,7 +200,7 @@
         INTEGER DMPCLUS(MAXNCLUS)
         INTEGER NDMPART_X(0:NMAX)
         REAL LADO0,FACRAD
-        INTEGER DO_NEED_TO_COUNT
+        INTEGER DO_NEED_TO_COUNT,LOW1,LOW2
 
         INTEGER I,BASINT,KONTA2
         REAL CMX,CMY,CMZ,RR,XLDOM
@@ -201,12 +211,12 @@
         IF (DO_NEED_TO_COUNT.EQ.1) THEN
 !$OMP PARALLEL DO SHARED(NCLUS,CLUSRX,CLUSRY,CLUSRZ,RADIO,N_DM,
 !$OMP+                   MIN_NUM_PART,REALCLUS,RXPA,RYPA,RZPA,FACRAD,
-!$OMP+                   DMPCLUS,NDMPART_X,XLDOM),
+!$OMP+                   DMPCLUS,NDMPART_X,XLDOM,LOW1,LOW2),
 !$OMP+            PRIVATE(I,CMX,CMY,CMZ,RR,BASINT),
 !$OMP+            REDUCTION(+:KONTA2)
 !$OMP+            DEFAULT(NONE)
 ****************************
-         DO I=1,NCLUS
+         DO I=LOW1,LOW2
 ****************************
           CMX=CLUSRX(I)
           CMY=CLUSRY(I)
@@ -227,19 +237,19 @@
 *****************************
          END DO        !I
 *****************************
-         WRITE(*,*)'CHECKING POOR HALOS----->', KONTA2
+         WRITE(*,*)'... Poor haloes ----->', KONTA2
         ELSE
-!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,MIN_NUM_PART,
+!$OMP  PARALLEL DO SHARED(NCLUS,DMPCLUS,MIN_NUM_PART,LOW1,LOW2,
 !$OMP+             REALCLUS),PRIVATE(I,BASINT),
 !$OMP+             REDUCTION(+:KONTA2)
-         DO I=1, NCLUS
+         DO I=LOW1,LOW2
           BASINT=DMPCLUS(I)
           IF (BASINT.LT.MIN_NUM_PART) THEN
            REALCLUS(I)=0
            KONTA2=KONTA2+1
           END IF
          END DO
-         WRITE(*,*)'RE-CHECKING POOR HALOS----->', KONTA2
+         WRITE(*,*)'... Poor haloes ----->', KONTA2
         END IF
 
         RETURN
@@ -301,7 +311,7 @@
         END IF   !realclus
        END DO
 
-       WRITE(*,*)'CHECKING RUBBISH----->', KONTA
+       WRITE(*,*)'... Checking rubbish ----->', KONTA
 
 
        RETURN
@@ -348,7 +358,7 @@
         END IF
        END DO
 
-       WRITE(*,*)'CHECKING ACCIDENTAL SUBSTRUCTURE----->', KONTA
+       WRITE(*,*)'... Checking accidental substructure ----->', KONTA
 
        RETURN
        END
@@ -458,7 +468,7 @@ c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
            !IF (JY.EQ.0) WRITE(*,*) (RYPA(IP)-YL)/DDXX
            DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+DBLE(MASAP(IP))
           END DO
-         ELSE 
+         ELSE
           !!!!! smooth for larger particles !!!!!
           DO I=1,KONTA
            IP=LIP(I)
@@ -467,7 +477,7 @@ c        WRITE(*,*) RADIO,KONTA,CX,CY,CZ
            KZ=FLOOR((RZPA(IP)-ZL)/DDXX)+1
            ! the larger PLEV, the larger the kernel size (2**PLEV)
            PLEV=MAX(INT(LOG(MASAP(IP)/MINM)/LOG(8.)),0)
-           IF (PLEV.EQ.0) THEN 
+           IF (PLEV.EQ.0) THEN
             IF (IX.LT.1) IX=1
             IF (IX.GT.NN) IX=NN
             IF (JY.LT.1) JY=1
@@ -573,7 +583,7 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,
-     &      MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM)
+     &      MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM,LOWH1,LOWH2)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -610,6 +620,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        INTEGER INDCS_PARTICLES_PER_HALO(2,NMAXNCLUS),FLAG_WDM
        REAL*4 ZETA
        INTEGER MIN_NUM_PART,NDMPART_X(0:NMAX),VAR,MAX_PART_DSUM
+       INTEGER LOWH1,LOWH2
 
        REAL*4 PI,ACHE,T0,RE0
        COMMON /DOS/ACHE,T0,RE0
@@ -673,15 +684,13 @@ c     &                       LEVHAL(1:NCLUS).EQ.I)
 c       END DO
 c       WRITE(*,*)'=================================='
 
-       MAX_NUM_PART=MAXVAL(DMPCLUS(1:NCLUS))
-       WRITE(*,*) 'Max num. of part. in a halo=',
-     &            MAX_NUM_PART
+       MAX_NUM_PART=MAXVAL(DMPCLUS(LOWH1:LOWH2))
        KONTA1=100000000
-       DO I=1,NCLUS
+       DO I=LOWH1,LOWH2
         IF (REALCLUS(I).NE.0) KONTA1=MIN(KONTA1,DMPCLUS(I))
        END DO
-       WRITE(*,*) 'Min num. of part. in a halo=',KONTA1
-       WRITE(*,*) 'NCLUS=', NCLUS
+       WRITE(*,*) '... Num haloes, min & max num. particles',
+     &            LOWH2-LOWH1+1,KONTA1,MAX_NUM_PART
 
        NORMA=MAXVAL(MASAP)
 
@@ -697,7 +706,7 @@ c       WRITE(*,*)'=================================='
      &                   MAX_NUM_PART*(CONTRASTEC/MINOVERDENS)**(1.0))),
      &                  PARTI)
 
-!$OMP  PARALLEL DO SHARED(NCLUS,REALCLUS,PATCHCLUS,NPATCH,
+!$OMP  PARALLEL DO SHARED(LOWH1,LOWH2,REALCLUS,PATCHCLUS,NPATCH,
 !$OMP+           LEVHAL,RXPA,RYPA,RZPA,CLUSRX,CLUSRY,CLUSRZ,NL,MASAP,
 !$OMP+           U2DM,U3DM,U4DM,VX,VY,VZ,ACHE,PI,RETE,ROTE,VCMAX,
 !$OMP+           MCMAX,RCMAX,CONTRASTEC,OMEGAZ,CGR,UM,UV,DMPCLUS,
@@ -725,7 +734,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           WELL_ALLOCATED,IDX_VIR,LOWP1,LOWP2),
 !$OMP+   SCHEDULE(DYNAMIC), DEFAULT(NONE)
 *****************************
-       DO I=1,NCLUS
+       DO I=LOWH1,LOWH2
 ****************************
        KK_ENTERO=REALCLUS(I)
        IF (KK_ENTERO.NE.0) THEN
@@ -1361,13 +1370,13 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
        END IF ! (realclus(i).ne.0)
 
 *****************
-       END DO   !I=IP,IP2
+       END DO   !I=LOWH1,LOWH2
 ****************
 
        IF (FLAG_WDM.EQ.1.OR.VAR.GT.1) THEN
         J=0
 
-        DO I=1,NCLUS
+        DO I=LOWH1,LOWH2
          IF (REALCLUS(I).EQ.0) THEN
           INDCS_PARTICLES_PER_HALO(1,I)=-1
           INDCS_PARTICLES_PER_HALO(2,I)=-1
