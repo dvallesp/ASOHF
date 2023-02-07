@@ -61,7 +61,7 @@
       WRITE(ITER_STRING, '(I5.5)') ITER
 
 !     hard-coded parameters (for now, at least)
-      INI_EXTENSION=2 !initial extension of a patch around a cell (on each direction)
+      INI_EXTENSION=1 !initial extension of a patch around a cell (on each direction)
       NPALEV3=(INT(NAMRX/5)**3)+1
       write(*,*) 'NPALEV3=',NPALEV3
 
@@ -255,7 +255,7 @@
        END DO !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
        NBIS=MIN(N1,N2,N3)
-       IF (NBIS.LE.MIN_PATCHSIZE) THEN
+       IF (NBIS.LT.MIN_PATCHSIZE) THEN
         DO II=I1,I2
         DO JJ=J1,J2
         DO KK=K1,K2
@@ -546,7 +546,7 @@ c       WRITE(*,*) 'REFINABLE CELLS:', REFINE_COUNT
          END DO !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
          NBIS=MIN(N1,N2,N3)
-         IF (NBIS.LE.MIN_PATCHSIZE) THEN
+         IF (NBIS.LT.MIN_PATCHSIZE) THEN
           CR01(I1:I2,J1:J2,K1:K2,IPARE)=0
           CONTA11(I1:I2,J1:J2,K1:K2,IPARE)=0
          ELSE
