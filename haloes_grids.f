@@ -119,7 +119,7 @@
             ! We shall remove the smallest one.
             IMAXCLUS=I
             IMINCLUS=J
-            IF (R2.GT.R1) THEN
+            IF (R2.GT.R1.AND.LEVHAL(J).LE.LEVHAL(I)) THEN
              IMAXCLUS=J
              IMINCLUS=I
             END IF !(R2.GT.R1)
@@ -163,7 +163,7 @@
             IF (VINT.GT.SOLAP_LOWER_THR) THEN
              IMAXCLUS=I
              IMINCLUS=J
-             IF (R2.GT.1.5*R1) THEN
+             IF (R2.GT.1.5*R1.AND.LEVHAL(J).LE.LEVHAL(I)) THEN
               IMAXCLUS=J
               IMINCLUS=I
              END IF !(R2.GT.R1)

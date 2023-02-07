@@ -257,7 +257,7 @@
 
 **********************************************************************
        SUBROUTINE CHECK_RUBISH(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,VX,
-     &                         VY,VZ,MASA,RADIO,LEVHAL)
+     &                         VY,VZ,MASA,RADIO,LEVHAL,LOWH1,LOWH2)
 **********************************************************************
 *      Looks for overlapping haloes
 **********************************************************************
@@ -269,7 +269,7 @@
        REAL*4 CLUSRX(MAXNCLUS),CLUSRY(MAXNCLUS),CLUSRZ(MAXNCLUS)
        REAL*4 VX(NMAXNCLUS),VY(NMAXNCLUS),VZ(NMAXNCLUS)
        REAL*4 RADIO(MAXNCLUS),MASA(MAXNCLUS)
-       INTEGER LEVHAL(MAXNCLUS)
+       INTEGER LEVHAL(MAXNCLUS),LOWH1,LOWH2
 
        INTEGER KONTA,I,J
        REAL A1,A2,A3,DIS,VVV1,VVV2
@@ -278,7 +278,7 @@
 
        DO I=1, NCLUS
         IF (REALCLUS(I).NE.0) THEN
-         DO J=1, NCLUS
+         DO J=LOWH1,LOWH2
           IF (REALCLUS(J).NE.0.AND.LEVHAL(J).GT.
      &        LEVHAL(I)) THEN
 
@@ -297,13 +297,13 @@
            A3=MIN(RADIO(I),RADIO(J))
 
            IF (DIS.LT.1.01*A3.AND.A1.GT.0.2.AND.A2.LT.3.0) THEN
-            IF (MASA(I).GT.MASA(J)) THEN
+            !IF (MASA(I).GT.MASA(J)) THEN
              REALCLUS(J)=0
              KONTA=KONTA+1
-            ELSE
-             REALCLUS(I)=0
-             KONTA=KONTA+1
-            END IF
+            !ELSE
+             !REALCLUS(I)=0
+             !KONTA=KONTA+1
+            !END IF
            END IF
 
           END IF   !realclus

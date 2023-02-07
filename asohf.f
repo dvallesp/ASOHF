@@ -641,7 +641,7 @@ c       WRITE(*,*) '***************************'
      &                         REALCLUS,N_DM,MIN_NUM_PART,DMPCLUS,
      &                         NDMPART_X,LADO0,1.0,0,LOW1,LOW2)
         CALL CHECK_RUBISH(NCLUS,REALCLUS,CLUSRX,CLUSRY,CLUSRZ,VX,VY,VZ,
-     &                    MASA,RADIO,LEVHAL)
+     &                    MASA,RADIO,LEVHAL,LOW1,LOW2)
         CALL ACCIDENTAL_SUBSTRUCTURE(NCLUS,REALCLUS,CLUSRX,CLUSRY,
      &                               CLUSRZ,VX,VY,VZ,MASA,RADIO,LEVHAL)
 
