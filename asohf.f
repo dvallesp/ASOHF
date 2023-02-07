@@ -159,14 +159,10 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) FIRST,LAST,EVERY
        READ(1,*) !Cells per direction (NX,NY,NZ) --------------------------------------->
        READ(1,*) NX,NY,NZ
-       READ(1,*) !DM particles (all levels) -------------------------------------------->
-       READ(1,*) N_DM
        READ(1,*) !Hubble constant (h), omega matter, fraction of DM to total mass ------>
        READ(1,*) ACHE,OMEGA0,FDM
        READ(1,*) !Max box sizelength (in length units specified below) ----------------->
        READ(1,*) LADO0
-       READ(1,*) !Parallel(=1),serial(=0)/ Number of processors ------------------------>
-       READ(1,*) FLAG_PARALLEL,NUM
        READ(1,*) !Reading: IS_MASCLET (=0, no; =1, yes), GENERIC READER (see docs) ----->
        READ(1,*) FLAG_MASCLET,FLAG_SA
        READ(1,*) !Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
@@ -249,7 +245,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) STPAR_MAX_DIST
        READ(1,*) !Cut stellar halo if rho_* falls below this factor of rho_B ----------->
        READ(1,*) STPAR_MIN_OVERDENS
-       READ(1,*) !Cut stellar halo at a maximum (physical) radius of (kpc) ------------->
+       READ(1,*) !Cut stellar halo at a maximum (>0, physical; <0, comoving) radius of
+       READ(1,*) !(kpc) ---------------------------------------------------------------->
        READ(1,*) STPAR_MAX_R_PHYS
 
        CLOSE(1)
@@ -271,9 +268,11 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 *     ...PARALLEL RUNNING...
 !$OMP PARALLEL SHARED(NUM)
 !$OMP SINGLE
-!$      NUM=OMP_GET_NUM_THREADS()
+      NUM=OMP_GET_NUM_THREADS()
 !$OMP END SINGLE NOWAIT
 !$OMP END PARALLEL
+      FLAG_PARALLEL=0
+      IF (NUM.GT.1) FLAG_PARALLEL=1
 **************************************************************
 
        CALL IDATE(DATE)

@@ -375,6 +375,13 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
        CLOSE(32)
 
+       WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',CONTA
+       N_DM=SUM(NPART(0:NL))
+       IF (CONTA.NE.N_DM) THEN
+        WRITE(*,*) 'WARNING: N_DM rewritten:',N_DM,'-->',CONTA
+        N_DM=CONTA
+       END IF
+
 *      Fix ORIPAs: particles of the heavier species get negative
        BAS=MAXVAL(MASAP(1:N_DM))
        IF (BAS.GT.4.0*MINVAL(MASAP(1:N_DM))) THEN
@@ -388,15 +395,15 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        END IF
 *      END Fix ORIPAs
 
-***       END IF
-       WRITE(*,*) 'TOTAL DM PARTICLES IN ITER=',CONTA
-       IF (CONTA.NE.N_DM) THEN
-        WRITE(*,*) 'POSSIBLE WARNING: N_DM rewritten:',N_DM,'-->',CONTA
-        N_DM=CONTA
-       END IF
-
        IF (VAR.EQ.2) THEN
         N_ST=SUM(NPARTST(0:NL))+SUM(NPARTBH(0:NL))
+
+        IF (N_DM+N_ST.GT.PARTI_READ) THEN
+         WRITE(*,*) 'WARNING: bad dimensioning of PARTI_READ',
+     &               N_DM+N_ST,'>',PARTI_READ
+         STOP
+        END IF
+
         OPEN (34,FILE='./simu_masclet/clst'//ITER_STRING,
      &        STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
 
@@ -532,11 +539,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
       OPEN (32,FILE='./simulation/particles'//ITER_STRING,
      &         STATUS='UNKNOWN',ACTION='READ',FORM='UNFORMATTED')
       READ(32) ZETA
-      READ(32) NBAS
-      IF (NBAS.NE.N_DM) THEN
-       WRITE(*,*) 'POSSIBLE WARNING: N_DM rewritten:',N_DM,'-->',NBAS
-       N_DM=NBAS
-      END IF
+      READ(32) N_DM
 
       READ(32) (UBAS(I),I=1,N_DM)
       RXPA(1:N_DM)=UBAS(1:N_DM)

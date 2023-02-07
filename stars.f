@@ -4,7 +4,7 @@
      &                          N_ST,NX,LADO0,INDCS_PARTICLES_PER_HALO,
      &                          UM,UV,MIN_NUM_PART_ST,FLAG_WDM,ITER,
      &                          ZETA,STPAR_FACT_INC,STPAR_MAX_DIST,
-     &                          STPAR_MIN_OVERDENS,STPAR_MAX_R_PHYS)
+     &                          STPAR_MIN_OVERDENS,STPAR_MAX_R_GLOB)
 ********************************************************************
 *     Looks for stellar haloes (galaxies) hosted by the previously
 *      found DM haloes
@@ -25,7 +25,7 @@
       INTEGER MIN_NUM_PART_ST,FLAG_WDM,ITER
       REAL*4 ZETA
       REAL STPAR_FACT_INC,STPAR_MAX_DIST,STPAR_MIN_OVERDENS
-      REAL STPAR_MAX_R_PHYS
+      REAL STPAR_MAX_R_GLOB
 
       REAL*4 RETE,HTE,ROTE
       COMMON /BACK/ RETE,HTE,ROTE
@@ -78,7 +78,11 @@
       !STPAR_MAX_DIST=STPAR_MAX_DIST/1000.0 ! to cMpc !in the asohf.f
       !now!!!!
       DENS_CUT=STPAR_MIN_OVERDENS*ROTE*RETE**3
-      STPAR_MAX_R_COM=STPAR_MAX_R_PHYS*(1+ZETA)
+      IF (STPAR_MAX_R_GLOB.GT.0) THEN
+       STPAR_MAX_R_COM=STPAR_MAX_R_GLOB*(1+ZETA)
+      ELSE
+       STPAR_MAX_R_COM=-STPAR_MAX_R_GLOB
+      END IF
 
 **********************************************************************
 *     Sort stellar particles
