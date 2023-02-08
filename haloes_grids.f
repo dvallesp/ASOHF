@@ -1212,7 +1212,7 @@ c        WRITE(*,*) Z1,Z2,Z3,Z4,K1,K2
         END DO
         END DO
 
-        IF (CURRENTMAX.LT.0.0) THEN
+        !IF (CURRENTMAX.LT.0.0) THEN
          DO KK=2,5
          DO JJ=2,5
          DO II=2,5
@@ -1234,7 +1234,7 @@ c        WRITE(*,*) Z1,Z2,Z3,Z4,K1,K2
          END DO
          END DO
          END DO
-        END IF
+        !END IF
 
         IF (CURRENTMAX.LT.0.0) EXIT loop_levels
 
