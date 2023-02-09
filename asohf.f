@@ -423,6 +423,9 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
           WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
      &               ', no. particles:',NPART_ESP(IR_KERN_STARS)
          END IF
+        ELSE IF (SPLIT_SPECIES.EQ.3) THEN
+         CALL SORT_DM_PARTICLES_LOCALDENSITY_AND_MASS(N_DM,NPART_ESP,
+     &                                    N_ST,IR_KERN_STARS,RODO,RE0)
         END IF !(SPLIT_SPECIES.EQ.0)
 
         ! Background cosmology variables

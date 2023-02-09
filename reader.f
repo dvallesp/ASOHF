@@ -1229,3 +1229,216 @@ C       stop
 
        RETURN
        END
+
+*********************************************************************
+       SUBROUTINE SORT_DM_PARTICLES_LOCALDENSITY_AND_MASS(N_DM,
+     &                   NPART_ESP,N_ST,IR_KERN_STARS,RODO,RE0)
+*********************************************************************
+*      Assigns DM particles in species, according to local density,
+*       and reorders them accordingly.
+*********************************************************************
+       USE PARTICLES
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER N_DM
+       INTEGER NPART_ESP(0:N_ESP-1)
+       INTEGER N_ST,IR_KERN_STARS
+       REAL*4 RODO,RE0
+
+       REAL*4 DX,DY,DZ
+       COMMON /ESPACIADO/ DX,DY,DZ
+
+       INTEGER I,J,K,N,IESP,CONTA,NX,NY,NZ,IX,JY,KZ,PLEV,NN,II,JJ,KK
+       INTEGER FAC_GRID,MAXLEV
+       REAL MLOW,MHIGH,BAS,MAXMASS,MINMASS,FAC
+       REAL XMIN,YMIN,ZMIN,DXPA,DYPA,DZPA
+       INTEGER,ALLOCATABLE::INDICES(:)
+       REAL,ALLOCATABLE::SCR(:,:)
+       INTEGER,ALLOCATABLE::SCRINT(:,:)
+       REAL,ALLOCATABLE::DENS(:,:,:)
+       INTEGER,ALLOCATABLE::MOCKLEVEL(:)
+
+       MAXMASS=MAXVAL(MASAP(1:N_DM))
+       MINMASS=MINVAL(MASAP(1:N_DM))
+       FAC_GRID=2
+       MAXLEV=FAC_GRID
+
+       NX=NMAX*FAC_GRID
+       NY=NMAY*FAC_GRID
+       NZ=NMAZ*FAC_GRID
+
+       DXPA=DX/FAC_GRID
+       DYPA=DY/FAC_GRID
+       DZPA=DZ/FAC_GRID
+
+       ALLOCATE(DENS(NX,NY,NZ))
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,DENS),
+!$OMP+            PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX
+        DENS(IX,JY,KZ)=0.0
+       END DO
+       END DO
+       END DO
+
+       XMIN=-NX*DXPA/2.0
+       YMIN=-NY*DYPA/2.0
+       ZMIN=-NZ*DZPA/2.0
+!$OMP PARALLEL DO SHARED(N_DM,RXPA,RYPA,RZPA,XMIN,YMIN,ZMIN,DXPA,DYPA,
+!$OMP+                   DZPA,MASAP,NX,NY,NZ,MAXMASS,MAXLEV),
+!$OMP+            PRIVATE(IX,JY,KZ,I,PLEV,II,JJ,KK,NN,FAC),
+!$OMP+            REDUCTION(+:DENS), DEFAULT(NONE)
+       DO I=1,N_DM
+        IX=INT((RXPA(I)-XMIN)/DXPA)+1
+        JY=INT((RYPA(I)-YMIN)/DYPA)+1
+        KZ=INT((RZPA(I)-ZMIN)/DZPA)+1
+        IF (IX.LT.1) IX=1
+        IF (IX.GT.NX) IX=NX
+        IF (JY.LT.1) JY=1
+        IF (JY.GT.NY) JY=NY
+        IF (KZ.LT.1) KZ=1
+        IF (KZ.GT.NZ) KZ=NZ
+        PLEV=INT(LOG(MAXMASS/MASAP(I))+0.01)
+        NN=2**MAX(MAXLEV-PLEV,0)-1
+        FAC=1./FLOAT((2*NN+1)**3)
+        DO KK=-NN,NN
+        DO JJ=-NN,NN
+        DO II=-NN,NN
+         DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(I)
+        END DO
+        END DO
+        END DO
+
+
+       END DO
+
+       BAS=DX*DY*DZ*RODO*RE0**3
+!$OMP PARALLEL DO SHARED(NX,NY,NZ,DENS,BAS),
+!$OMP+            PRIVATE(IX,JY,KZ),
+!$OMP+            DEFAULT(NONE)
+       DO KZ=1,NZ
+       DO JY=1,NY
+       DO IX=1,NX
+        DENS(IX,JY,KZ)=DENS(IX,JY,KZ)/BAS
+       END DO
+       END DO
+       END DO
+
+       ALLOCATE(MOCKLEVEL(N_DM))
+
+!$OMP PARALLEL DO SHARED(N_DM,RXPA,RYPA,RZPA,XMIN,YMIN,ZMIN,DXPA,DYPA,
+!$OMP+                   DZPA,NX,NY,NZ,DENS,MOCKLEVEL,MAXMASS,MASAP),
+!$OMP+            PRIVATE(IX,JY,KZ,I,BAS),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        IX=INT((RXPA(I)-XMIN)/DXPA)+1
+        JY=INT((RYPA(I)-YMIN)/DYPA)+1
+        KZ=INT((RZPA(I)-ZMIN)/DZPA)+1
+        IF (IX.LT.1) IX=1
+        IF (IX.GT.NX) IX=NX
+        IF (JY.LT.1) JY=1
+        IF (JY.GT.NY) JY=NY
+        IF (KZ.LT.1) KZ=1
+        IF (KZ.GT.NZ) KZ=NZ
+        BAS=DENS(IX,JY,KZ)
+        IF (BAS.GT.0.0) THEN
+         MOCKLEVEL(I)=MAX(MIN(
+     &                   INT(LOG(BAS*MAXMASS/MASAP(I))/LOG(8.0)),
+     &                N_ESP-1),0)
+        ELSE
+         MOCKLEVEL(I)=0
+        END IF
+       END DO
+
+       DEALLOCATE(DENS)
+
+       WRITE(*,*) 'Sorting particles by local density + particle mass'
+
+       NPART_ESP=0
+       CONTA=0
+
+       ALLOCATE(INDICES(1:N_DM))
+       DO IESP=0,N_ESP-1
+        DO I=1,N_DM
+         PLEV=MOCKLEVEL(I)
+         IF (PLEV.EQ.IESP) THEN
+          CONTA=CONTA+1
+          INDICES(CONTA)=I
+         END IF
+        END DO
+        IF (IESP.EQ.0) THEN
+         NPART_ESP(IESP)=CONTA
+        ELSE
+         NPART_ESP(IESP)=CONTA-SUM(NPART_ESP(0:IESP-1))
+        END IF
+        IF (NPART_ESP(IESP).GT.0) THEN
+         WRITE(*,*) 'Of species',IESP,', no. particles:',NPART_ESP(IESP)
+        END IF
+       END DO
+
+       DEALLOCATE(MOCKLEVEL)
+
+       IF (CONTA.NE.N_DM.OR.SUM(NPART_ESP(0:N_ESP-1)).NE.N_DM) THEN
+        WRITE(*,*) 'Wrong sorting, cannot continue',CONTA,N_DM
+        STOP
+       END IF
+
+       ALLOCATE(SCR(7,N_DM),SCRINT(1,N_DM))
+
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        SCR(1,I)=RXPA(INDICES(I))
+        SCR(2,I)=RYPA(INDICES(I))
+        SCR(3,I)=RZPA(INDICES(I))
+        SCR(4,I)=U2DM(INDICES(I))
+        SCR(5,I)=U3DM(INDICES(I))
+        SCR(6,I)=U4DM(INDICES(I))
+        SCR(7,I)=MASAP(INDICES(I))
+        SCRINT(1,I)=ORIPA(INDICES(I))
+       END DO
+
+       DEALLOCATE(INDICES)
+
+!$OMP PARALLEL DO SHARED(SCR,SCRINT,RXPA,RYPA,RZPA,U2DM,U3DM,U4DM,MASAP,
+!$OMP+                   ORIPA,INDICES,N_DM),
+!$OMP+            PRIVATE(I),
+!$OMP+            DEFAULT(NONE)
+       DO I=1,N_DM
+        RXPA(I)=SCR(1,I)
+        RYPA(I)=SCR(2,I)
+        RZPA(I)=SCR(3,I)
+        U2DM(I)=SCR(4,I)
+        U3DM(I)=SCR(5,I)
+        U4DM(I)=SCR(6,I)
+        MASAP(I)=SCR(7,I)
+        ORIPA(I)=SCRINT(1,I)
+       END DO
+
+       DEALLOCATE(SCR,SCRINT)
+
+       IF (N_ST.GT.0) THEN
+        NPART_ESP(IR_KERN_STARS)=NPART_ESP(IR_KERN_STARS)+N_ST
+        WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,
+     &             ', no. particles:',NPART_ESP(IR_KERN_STARS)
+       END IF
+
+C       WRITE(*,*) 'Checking...'
+*      CHECK
+C       BAS=MASAP(1)
+C       DO I=2,N_DM
+C        IF (MASAP(I).GT.1.0001*BAS) THEN
+C         WRITE(*,*) 'Wrong, I=',I
+C         STOP
+C        END IF
+C        BAS=MASAP(I)
+C       END DO
+C       stop
+
+       RETURN
+       END
