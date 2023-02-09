@@ -1251,7 +1251,7 @@ C       stop
 
        INTEGER I,J,K,N,IESP,CONTA,NX,NY,NZ,IX,JY,KZ,PLEV,NN,II,JJ,KK
        INTEGER FAC_GRID,MAXLEV
-       REAL MLOW,MHIGH,BAS,MAXMASS,MINMASS,FAC
+       REAL MLOW,MHIGH,BAS,MAXMASS,MINMASS,FAC,LEVMASS,LEVDENS
        REAL XMIN,YMIN,ZMIN,DXPA,DYPA,DZPA
        INTEGER,ALLOCATABLE::INDICES(:)
        REAL,ALLOCATABLE::SCR(:,:)
@@ -1261,8 +1261,9 @@ C       stop
 
        MAXMASS=MAXVAL(MASAP(1:N_DM))
        MINMASS=MINVAL(MASAP(1:N_DM))
-       FAC_GRID=2
-       MAXLEV=FAC_GRID
+       MAXLEV=1 ! particles at this level and above are pointlike, lower bigger cloud
+       FAC_GRID=2 ! we consider this factor the base grid
+
 
        NX=NMAX*FAC_GRID
        NY=NMAY*FAC_GRID
@@ -1307,12 +1308,10 @@ C       stop
         DO KK=-NN,NN
         DO JJ=-NN,NN
         DO II=-NN,NN
-         DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+MASAP(I)
+         DENS(IX,JY,KZ)=DENS(IX,JY,KZ)+FAC*MASAP(I)
         END DO
         END DO
         END DO
-
-
        END DO
 
        BAS=DX*DY*DZ*RODO*RE0**3
@@ -1331,7 +1330,7 @@ C       stop
 
 !$OMP PARALLEL DO SHARED(N_DM,RXPA,RYPA,RZPA,XMIN,YMIN,ZMIN,DXPA,DYPA,
 !$OMP+                   DZPA,NX,NY,NZ,DENS,MOCKLEVEL,MAXMASS,MASAP),
-!$OMP+            PRIVATE(IX,JY,KZ,I,BAS),
+!$OMP+            PRIVATE(IX,JY,KZ,I,BAS,LEVMASS,LEVDENS),
 !$OMP+            DEFAULT(NONE)
        DO I=1,N_DM
         IX=INT((RXPA(I)-XMIN)/DXPA)+1
@@ -1345,8 +1344,10 @@ C       stop
         IF (KZ.GT.NZ) KZ=NZ
         BAS=DENS(IX,JY,KZ)
         IF (BAS.GT.0.0) THEN
+         LEVMASS=LOG(MAXMASS/MASAP(I))/LOG(8.0)
+         LEVDENS=LOG(BAS)/LOG(8.0)
          MOCKLEVEL(I)=MAX(MIN(
-     &                   INT(LOG(BAS*MAXMASS/MASAP(I))/LOG(8.0)),
+     &                   INT(MAX(LEVMASS,LEVDENS)+0.01),
      &                N_ESP-1),0)
         ELSE
          MOCKLEVEL(I)=0
