@@ -80,9 +80,9 @@
       WRITE(*,*) 'Particle levels: min and max values:', MINVAL(PLEV),
      &           MAXVAL(PLEV)
 
-      XL=-FLOAT(NMAX)*DX/2.
-      YL=-FLOAT(NMAY)*DY/2.
-      ZL=-FLOAT(NMAZ)*DZ/2.
+      XL=-NX*DX/2.
+      YL=-NY*DY/2.
+      ZL=-NZ*DZ/2.
 
 *     FIRST LEVEL OF REFINEMENT ========================================
       IR=1
