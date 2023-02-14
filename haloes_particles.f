@@ -1375,6 +1375,11 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
        IF (FLAG_WDM.EQ.1.OR.VAR.GT.1) THEN
         J=0
+        DO I=1,LOWH1-1
+!         IF (REALCLUS(I).NE.0) J=J+(INDCS_PARTICLES_PER_HALO(2,I)-
+!     &                              INDCS_PARTICLES_PER_HALO(1,I)+1)
+         IF (REALCLUS(I).NE.0) J=MAX(J,INDCS_PARTICLES_PER_HALO(2,I))
+        END DO
 
         DO I=LOWH1,LOWH2
          IF (REALCLUS(I).EQ.0) THEN
