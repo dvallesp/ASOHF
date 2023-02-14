@@ -257,6 +257,7 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
 
        REAL BAS
        INTEGER I,J,K,IX,NL,IR,IRR,N1,N2,N3,N_DM,N_ST,NBAS,ARE_BH,NST0
+       INTEGER CONSIDER_BH
 
        INTEGER,ALLOCATABLE::NPATCH(:)
 
@@ -274,9 +275,13 @@ C        WRITE(*,*)'HOLA2', MAXVAL(RXPA(1:NDXYZ)), MAXVAL(RYPA(1:NDXYZ))
        REAL*4 UBAS(0:PARTI_READ)
        INTEGER UBAS2(0:PARTI_READ),CONTA,LOW1,LOW2
 
+       INTEGER MAX_ORIPA_DM
+       COMMON /ORIPASTCORRECT/ MAX_ORIPA_DM
+
        CHARACTER*5 ITER_STRING
 
        ARE_BH=1 ! Depends on MASCLET version (are there BHs??)
+       CONSIDER_BH=0
 
 *      READING DATA
        WRITE(ITER_STRING, '(I5.5)') ITER !For saving files to disk
@@ -396,6 +401,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 *      END Fix ORIPAs
 
        IF (VAR.EQ.2) THEN
+        MAX_ORIPA_DM = MAXVAL(ORIPA(1:N_DM))
         N_ST=SUM(NPARTST(0:NL))+SUM(NPARTBH(0:NL))
 
         IF (N_DM+N_ST.GT.PARTI_READ) THEN
@@ -409,6 +415,9 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
         READ(34) !ITER,T4,ZETA
         !IR=0
+        ! NOTE: IN PRINCIPLE WE ASSUME NO STELLAR PARTICLES WILL BE
+        !  LOCATED AT L=0. THIS IS AN ASSUMPTION IN MASCLET IN ITS
+        !  PRESENT VERSION.
         NBAS=NPARTST(0)+NPARTBH(0)
         READ(34) !(((U1ST(I,J,K),I=1,NX),J=1,NY),K=1,NZ)
         READ(34) (UBAS(I),I=1,NBAS)
@@ -455,28 +464,52 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
          MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
          READ(34)
          READ(34)
-         READ(34) ! ORIPAST
+         READ(34) (UBAS2(IX),IX=1,NBAS)
+         ORIPA(CONTA+1:CONTA+NBAS)=MAX_ORIPA_DM+UBAS2(1:NBAS)
+
          CONTA=CONTA+NBAS
 
          NBAS=NPARTBH(IR)
          IF (ARE_BH.EQ.1) THEN
-          READ(34) (UBAS(IX),IX=1,NBAS)
-          RXPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
-          READ(34) (UBAS(IX),IX=1,NBAS)
-          RYPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
-          READ(34) (UBAS(IX),IX=1,NBAS)
-          RZPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
-          READ(34) (UBAS(IX),IX=1,NBAS)
-          U2DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
-          READ(34) (UBAS(IX),IX=1,NBAS)
-          U3DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
-          READ(34) (UBAS(IX),IX=1,NBAS)
-          U4DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
-          READ(34) (UBAS(IX),IX=1,NBAS)
-          MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
-          READ(34)
-          READ(34)
-          CONTA=CONTA+NBAS
+          IF (CONSIDER_BH.EQ.1) THEN
+           READ(34) (UBAS(IX),IX=1,NBAS)
+           RXPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) (UBAS(IX),IX=1,NBAS)
+           RYPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) (UBAS(IX),IX=1,NBAS)
+           RZPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) (UBAS(IX),IX=1,NBAS)
+           U2DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) (UBAS(IX),IX=1,NBAS)
+           U3DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) (UBAS(IX),IX=1,NBAS)
+           U4DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) (UBAS(IX),IX=1,NBAS)
+           MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34)
+           READ(34) (UBAS2(IX),IX=1,NBAS)
+           ORIPA(CONTA+1:CONTA+NBAS)=UBAS2(1:NBAS)
+           CONTA=CONTA+NBAS
+          ELSE
+           READ(34) !(UBAS(IX),IX=1,NBAS)
+           !RXPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) !(UBAS(IX),IX=1,NBAS)
+           !RYPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) !(UBAS(IX),IX=1,NBAS)
+           !RZPA(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) !(UBAS(IX),IX=1,NBAS)
+           !U2DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) !(UBAS(IX),IX=1,NBAS)
+           !U3DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) !(UBAS(IX),IX=1,NBAS)
+           !U4DM(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) !(UBAS(IX),IX=1,NBAS)
+           !MASAP(CONTA+1:CONTA+NBAS)=UBAS(1:NBAS)
+           READ(34) !
+           READ(34) !(UBAS2(IX),IX=1,NBAS)
+           !ORIPA(CONTA+1:CONTA+NBAS)=UBAS2(1:NBAS)
+           !CONTA=CONTA+NBAS
+          END IF
          END IF
 
          WRITE(*,*) 'NST(IR)=',IR,NPARTST(IR)+NPARTBH(IR),CONTA
