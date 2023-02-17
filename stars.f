@@ -200,6 +200,12 @@ C       WRITE(*,*) 'HALO, NUM STARS:',I,MAX_NUM_PART_LOCAL,LOWP1,LOWP2
         CYCLE
        END IF
 
+       !WRITE(*,*) 'halo',I,CX,CY,CZ
+       CALL RECENTER_DENSITY_PEAK_STARS(CX,CY,CZ,
+     &                 RCLUS/SQRT(3.),MAX_NUM_PART_LOCAL,LIPST,
+     &                 MAX_NUM_PART_LOCAL)
+       !WRITE(*,*) 'halo',I,CX,CY,CZ,'recentred'
+
        !***********************************************
        !!! RESCUE DM PARTICLES
        !***********************************************
