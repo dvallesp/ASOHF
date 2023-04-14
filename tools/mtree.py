@@ -14,6 +14,7 @@ simulation_results='simu_masclet/'
 itini=100
 itfin=1550
 every=50
+itini_back=100 # useful for restarting the code with look_further_iterations=True 
 
 h=0.6711
 omegam=0.3026
@@ -197,7 +198,7 @@ for it_post in range(itini+every, itfin+every, every):
 
         print('** Number of lost haloes:', len(lost))
 
-        for it_prev in range(it_post-2*every, max([itini-every, it_post-(2+max_iterations_back)*every]), -every):
+        for it_prev in range(it_post-2*every, max([itini_back-every, it_post-(2+max_iterations_back)*every]), -every):
             haloes_prev, zeta_prev = read_families(it_prev, path=outputs_ASOHF,
                                                    output_format='arrays', output_redshift=True)
             particles_haloes_prev = read_particles(it_prev, path=outputs_ASOHF)
