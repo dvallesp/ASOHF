@@ -32,9 +32,9 @@ Domain to keep particles (in input length units; x1,x2,y1,y2,z1,z2) -->
 ***********************************************************************
 Levels for the mesh (stand-alone) ------------------------------------>
 4
-PARCHLIM(=0 no limit patches/level,>0 limit) ------------------------->
+PARCHLIM(=0 no limit patches/level, =1 do limit) --------------------->
 0
-Max num of patches per level(needs PARCHLIM>0) ----------------------->
+Max num of patches per level(needs PARCHLIM>0; 1 limit per level) ---->
 1000
 Refinement threshold (num. part.), refinable fraction to extend ------>
 3,0.05

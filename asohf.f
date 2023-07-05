@@ -190,13 +190,14 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
      &             NL,NLEVELS
         STOP
        END IF
-       READ(1,*) !PARCHLIM(=0 no limit patches/level,>0 limit) ------------------------->
+       READ(1,*) !PARCHLIM(=0 no limit patches/level, =1 do limit) --------------------->
        READ(1,*) PARCHLIM
-       READ(1,*) !LIM=max num patches/level(needs PARCHLIM>0) -------------------------->
+       READ(1,*) !Max num of patches per level(needs PARCHLIM>0; 1 limit per level) ---->
        IF (PARCHLIM.EQ.1) THEN
         READ(1,*) (MPAPOLEV(I),I=1,NL)
        ELSE
         READ(1,*)
+        MPAPOLEV(1:NLEVELS)=NPALEV
        END IF
        READ(1,*) !Refinement threshold (num. part.), refinable fraction to extend ------>
        READ(1,*) REFINE_THR,MINFRAC_REFINABLE
@@ -445,7 +446,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
      &                    PATCHNZ,PATCHX,PATCHY,PATCHZ,PATCHRX,PATCHRY,
      &                    PATCHRZ,N_PARTICLES,N_DM,N_GAS,LADO0,T,ZETA,
      &                    REFINE_THR,MIN_PATCHSIZE,MINFRAC_REFINABLE,
-     &                    BOR,BORAMR,BOR_OVLP,NPART_ESP,FW1)
+     &                    BOR,BORAMR,BOR_OVLP,NPART_ESP,FW1,MPAPOLEV)
          WRITE(*,*)'==== END building the grid...', ITER, NL
         END IF
 

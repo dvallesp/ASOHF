@@ -3,7 +3,7 @@
      &           PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
      &           PATCHRX,PATCHRY,PATCHRZ,N_PARTICLES,N_DM,N_GAS,LADO0,T,
      &           ZETA,REFINE_THR,MIN_PATCHSIZE,FRAC_REFINABLE,BOR,
-     &           BORAMR,BOR_OVLP,NPART_ESP,FW1)
+     &           BORAMR,BOR_OVLP,NPART_ESP,FW1,MPAPOLEV)
 ************************************************************************
 *     Creats a mesh hierarchy for the given particle distribution
 ************************************************************************
@@ -22,7 +22,7 @@
       INTEGER REFINE_THR,MIN_PATCHSIZE
       REAL FRAC_REFINABLE
       INTEGER BOR,BORAMR
-      INTEGER NPART_ESP(0:N_ESP-1),FW1
+      INTEGER NPART_ESP(0:N_ESP-1),FW1,MPAPOLEV(NLEVELS)
 
 *     COMMON VARIABLES
       REAL DX,DY,DZ
@@ -303,6 +303,8 @@ c       write(*,*) '***',REFINE_COUNT
 
         PARE(IPATCH)=0
        END IF
+
+       IF (IPATCH.GE.MPAPOLEV(IR)) EXIT
 
        !REFINE_COUNT=COUNT(CR0.GE.REFINE_THR)
        !WRITE(*,*) REFINE_COUNT
@@ -617,6 +619,8 @@ C        WRITE(*,*) LVAL(I,IPARE)
         PATCHRZ(IPATCH)=LPATCHRZ(I,IPARE)
 
         PARE(IPATCH)=IPARE
+
+        IF (IPATCH-LOW2.GE.MPAPOLEV(IR)) EXIT
        END DO
 
        NPATCH(IR)=IPATCH-SUM(NPATCH(0:IR-1))
