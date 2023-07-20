@@ -610,6 +610,11 @@ c       WRITE(*,*) '***************************'
      &                      RADIO,MASA,LEVHAL,PATCHCLUS,DMPCLUS,
      &                      HALBORDERS,CLUSRXCM,CLUSRYCM,CLUSRZCM,IR)
 
+        ! This is just to touch the variable
+        LOW1=COUNT(REALCLUS(LOW1:LOW2).EQ.-1)
+        LOW2=COUNT(REALCLUS(LOW1:LOW2).EQ.-1)
+        ! 
+
         LOW1=SUM(NHALLEV(0:IR-1))+1
         LOW2=SUM(NHALLEV(0:IR))
 
