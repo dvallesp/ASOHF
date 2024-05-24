@@ -4,7 +4,7 @@
 
        SAVE
 
-       INTEGER PARTI
+       INTEGER PARTI, PARTI_PPH
 
        REAL,ALLOCATABLE::RXPA(:),RYPA(:),RZPA(:)
        REAL,ALLOCATABLE::U2DM(:),U3DM(:),U4DM(:)

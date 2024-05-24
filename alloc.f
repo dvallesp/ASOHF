@@ -328,7 +328,8 @@
        ALLOCATE(U2DM(PARTI), U3DM(PARTI), U4DM(PARTI))
        ALLOCATE(MASAP(PARTI))
        ALLOCATE(ORIPA(PARTI))
-       ALLOCATE(PARTICLES_PER_HALO(PARTI))
+       PARTI_PPH = PARTI
+       ALLOCATE(PARTICLES_PER_HALO(PARTI_PPH))
 ***********************************************
 
        II=0

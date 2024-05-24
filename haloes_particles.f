@@ -1393,6 +1393,8 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
          LOWP1=HALOES_PROC(2,I)
          LOWP2=HALOES_PROC(3,I)
 
+         CALL CHECK_REALLOC(J,LOWP1,LOWP2)
+
          DO IPART_PROC=LOWP1,LOWP2
           J=J+1
           PARTICLES_PER_HALO(J)=PARTICLES_PROC(IPART_PROC,ID_PROC)
@@ -1406,6 +1408,45 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
        RETURN
        END
+
+**********************************************************************
+       SUBROUTINE CHECK_REALLOC(JFILL, LOWP1, LOWP2)
+**********************************************************************
+*      Estimates the virial radius (before unbounding)
+**********************************************************************
+       USE PARTICLES 
+       IMPLICIT NONE
+       INCLUDE 'input_files/asohf_parameters.dat'
+
+       INTEGER JFILL, LOWP1, LOWP2, PARTI_PPH_OLD, I
+       INTEGER BKP(PARTI_PPH)
+
+       IF (JFILL + (LOWP2-LOWP1) .GT. PARTI_PPH) THEN 
+        PARTI_PPH_OLD = PARTI_PPH
+        PARTI_PPH = 3*PARTI_PPH/2 
+
+        WRITE(*,*) 'Reallocating PARTICLES_PER_HALO',PARTI_PPH_OLD,
+     &             '->',PARTI_PPH
+
+!$OMP PARALLEL DO SHARED(BKP, PARTICLES_PER_HALO, JFILL),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+        DO I=1,JFILL
+         BKP(I) = PARTICLES_PER_HALO(I)
+        END DO
+
+        DEALLOCATE(PARTICLES_PER_HALO)
+
+        ALLOCATE(PARTICLES_PER_HALO(PARTI_PPH))
+
+!$OMP PARALLEL DO SHARED(BKP, PARTICLES_PER_HALO, JFILL),
+!$OMP+            PRIVATE(I), DEFAULT(NONE)
+        DO I=1,JFILL
+         PARTICLES_PER_HALO(I) = BKP(I)
+        END DO
+       END IF
+       
+       RETURN 
+       END 
 
 **********************************************************************
        SUBROUTINE FIND_IDX_VIR(DISTA,LIP,MAX_NUM_PART,ROTE,RETE,PI,
