@@ -1074,6 +1074,10 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 !!!!   This may increase a lot the number of particles read, most of them being outside the domain
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!   I still need to read redshift!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 *     2nd read DM (for now only PartType1)
        if (precision == 32) then
@@ -1281,11 +1285,6 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        fact_mass=cio_mass/um
        fact_speed=(cio_speed/uv)*(1+zeta)**(cio_alpha-1.0)
        fact_length=cio_length
-       write(*,*) 'unit conversion factors:'
-       write(*,*) 'mass factor:',fact_mass
-       write(*,*) 'speed factor:',fact_speed
-       write(*,*) 'length factor:',fact_length
-       write(*,*) 'redshift zeta:',zeta
 
 !$omp parallel do shared(n_dm,n_st,rxpa,rypa,rzpa,u2dm,u3dm,u4dm,masap,
 !$omp+                   fact_length,fact_speed,fact_mass,cio_xc,cio_yc,
@@ -1306,11 +1305,11 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
        write(*,*)
        write(*,*) 'after unit conversion...'
-       write(*,*) 'x positions (min,max), in mpc:',
+       write(*,*) 'x positions (min,max), in Mpc:',
      &     minval(rxpa(1:n_dm+n_st)),maxval(rxpa(1:n_dm+n_st))
-       write(*,*) 'y positions (min,max), in mpc:',
+       write(*,*) 'y positions (min,max), in Mpc:',
      &     minval(rypa(1:n_dm+n_st)),maxval(rypa(1:n_dm+n_st))
-       write(*,*) 'z positions (min,max), in mpc:',
+       write(*,*) 'z positions (min,max), in Mpc:',
      &     minval(rzpa(1:n_dm+n_st)),maxval(rzpa(1:n_dm+n_st))
        write(*,*) 'x velocities (min,max), in c:',
      &     minval(u2dm(1:n_dm+n_st)),maxval(u2dm(1:n_dm+n_st))
@@ -1323,8 +1322,6 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
        write(*,*) 'unique ids (min,max):',
      &   minval(oripa(1:n_dm+n_st)),maxval(oripa(1:n_dm+n_st))
        write(*,*)
-
-       stop
 
        return
        end
