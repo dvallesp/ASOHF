@@ -193,7 +193,7 @@
       END
 
 ************************************************************************
-      SUBROUTINE READ_AND_ALLOC_PARTICLES(FLAG_MASCLET,FLAG_SA,ITER,NX,
+      SUBROUTINE READ_AND_ALLOC_PARTICLES(ITER,NX,
      &           NY,NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,
      &           HUBBLE_LITTLEH,LADO0,LADO)
 ************************************************************************
@@ -201,7 +201,7 @@
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER FLAG_MASCLET,FLAG_SA,ITER,NX,NY,NZ
+       INTEGER ITER,NX,NY,NZ
        REAL T,ZETA
        INTEGER N_DM,VAR,N_ST,N_PARTICLES
        REAL UV,UM,HUBBLE_LITTLEH,LADO0,LADO
@@ -244,23 +244,24 @@
         ORIPA_R(I)=0
        END DO
 
-       IF (FLAG_MASCLET.EQ.1) THEN
+#if reader == 1
         CALL READ_PARTICLES_MASCLET(ITER,NX,NY,NZ,T,ZETA,
-     &                              U2DM_R,U3DM_R,U4DM_R,MASAP_R,RXPA_R,
-     &                              RYPA_R,RZPA_R,ORIPA_R,N_DM,VAR,N_ST)
-       ELSE
-        IF (FLAG_SA.EQ.0) THEN
-         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,U2DM_R,U3DM_R,
-     &                               U4DM_R,MASAP_R,RXPA_R,RYPA_R,
-     &                               RZPA_R,ORIPA_R,N_DM,VAR,N_ST,UV,UM,
-     &                               HUBBLE_LITTLEH)
-        ELSE IF (FLAG_SA.EQ.1) THEN
-         CALL READ_GADGET_UNFORMATTED(ITER,NX,NY,NZ,T,ZETA,U2DM_R,
-     &                                U3DM_R,U4DM_R,MASAP_R,RXPA_R,
-     &                                RYPA_R,RZPA_R,ORIPA_R,N_DM,VAR,
-     &                                N_ST,UV,UM,HUBBLE_LITTLEH)
-        END IF
-       END IF ! (FLAG_MASCLET.EQ.1) THEN, ELSE
+     &                              U2DM_R,U3DM_R,U4DM_R,MASAP_R,
+     &                              RXPA_R,RYPA_R,RZPA_R,ORIPA_R,
+     &                              N_DM,VAR,N_ST)
+#elif reader == 0
+         CALL READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,
+     &                               U2DM_R,U3DM_R,U4DM_R,MASAP_R,
+     &                               RXPA_R,RYPA_R,RZPA_R,ORIPA_R,
+     &                               N_DM,VAR,N_ST,
+     &                               UV,UM,HUBBLE_LITTLEH)
+#elif reader == 2
+         CALL READ_GADGET_UNFORMATTED(ITER,NX,NY,NZ,T,ZETA,
+     &                                U2DM_R,U3DM_R,U4DM_R,MASAP_R,
+     &                                RXPA_R,RYPA_R,RZPA_R,ORIPA_R,
+     &                                N_DM,VAR,N_ST,
+     &                                UV,UM,HUBBLE_LITTLEH)
+#endif
 
        N_PARTICLES=N_DM+N_ST
        WRITE(*,*) 'DM, stars, total particles:',N_DM,N_ST,N_PARTICLES

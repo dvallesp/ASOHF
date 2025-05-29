@@ -1,3 +1,4 @@
+#if reader == 1
 *********************************************************************
        SUBROUTINE READ_MASCLET(VAR,ITER,NX,NY,NZ,NDXYZ,T,ZETA,NL,NPATCH,
      &           PARE,PATCHNX,PATCHNY,PATCHNZ,PATCHX,PATCHY,PATCHZ,
@@ -524,8 +525,9 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
        RETURN
        END
+#endif
 
-
+#if reader == 0
 *********************************************************************
       SUBROUTINE READ_PARTICLES_GENERAL(ITER,NX,NY,NZ,T,ZETA,
      &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
@@ -705,8 +707,9 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
       RETURN
       END
+#endif
 
-
+#if reader == 2
 *********************************************************************
       SUBROUTINE READ_GADGET_UNFORMATTED(ITER,NX,NY,NZ,T,ZETA,
      &             U2DM,U3DM,U4DM,MASAP,RXPA,RYPA,RZPA,ORIPA,
@@ -958,6 +961,7 @@ C     &                      MINVAL(ORIPA(1:NDXYZ))
 
       RETURN
       END
+#endif
 
 *********************************************************************
        SUBROUTINE SORT_DM_PARTICLES(N_DM,NPART_ESP,N_ST,IR_KERN_STARS)

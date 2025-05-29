@@ -11,8 +11,6 @@ Hubble constant (h), omega matter, fraction of DM to total mass ------>
 0.678,0.31,0.845
 Max box sidelength (in input length units) --------------------------->
 40.0
-Reading: IS_MASCLET (=0, no; =1, yes), GENERIC READER (see docs) ----->
-1,0
 Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
 0,0,0,0,0
 Input units: MASS (Msun; <0 for Msun/h), LENGTH (cMpc; <0 for cMpc/h),
