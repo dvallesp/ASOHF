@@ -138,6 +138,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        CHARACTER*5 ITER_STRING
+       character*200 postfix
+       common /POSTFIX/ postfix
 
 **************************************************************
 *      OPENING FILES
@@ -247,6 +249,11 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) !Cut stellar halo at a maximum (>0, physical; <0, comoving) radius of
        READ(1,*) !(kpc) ---------------------------------------------------------------->
        READ(1,*) STPAR_MAX_R_PHYS
+       READ(1,*) !***********************************************************************
+       READ(1,*) !*       Only for READER=3, input customization block                  *
+       READ(1,*) !***********************************************************************
+       READ(1,*) !Input file postfix (leave blank line if none) ------------------------>
+       READ(1,'(A)') postfix
 
        CLOSE(1)
 

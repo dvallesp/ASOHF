@@ -82,3 +82,9 @@ Cut stellar halo if rho_* falls below this factor of rho_B ----------->
 Cut stellar halo at a maximum (>0, physical; <0, comoving) radius of
  (kpc) --------------------------------------------------------------->
 200.0
+***********************************************************************
+*       Only for READER=3 (ASOHF like stand-alone) block              *
+***********************************************************************
+Input file postfix (leave blank line if none) ------------------------>
+_NewMDCLUSTER_0001.hdf5
+======= End of asohf.dat file =========================================

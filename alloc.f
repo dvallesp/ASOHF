@@ -261,6 +261,15 @@
      &                                RXPA_R,RYPA_R,RZPA_R,ORIPA_R,
      &                                N_DM,VAR,N_ST,
      &                                UV,UM,HUBBLE_LITTLEH)
+#elif reader == 3
+         CALL READ_GIZMO_HDF5(ITER,NX,NY,NZ,T,ZETA,
+     &                        U2DM_R,U3DM_R,U4DM_R,MASAP_R,
+     &                        RXPA_R,RYPA_R,RZPA_R,ORIPA_R,
+     &                        N_DM,VAR,N_ST,
+     &                        UV,UM,HUBBLE_LITTLEH)
+#else
+         WRITE(*,*) 'ERROR: reader not defined'
+         STOP
 #endif
 
        N_PARTICLES=N_DM+N_ST
