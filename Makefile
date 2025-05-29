@@ -24,6 +24,11 @@ ifeq ($(COMP),1)
 else ifeq ($(COMP),2)
     FC = ifort
     FLAGS = -O3 -mcmodel=medium -qopenmp -shared-intel -fp-model consistent -ipo -xHost -cpp
+else ifeq ($(COMP),999) # debug 
+	FC = gfortran
+	FLAGS = -Og -fopenmp -mcmodel=medium -fbounds-check -fbacktrace -cpp
+else
+	$(error Invalid COMP value. Use 1 for gfortran or 2 for ifort. 999 for debug)
 endif
 
 # Preprocessor flags
