@@ -124,7 +124,7 @@
       print *, 'Redshift = ', zeta
       ! Close everything
       call h5aclose_f(attr_id, ierr)
-      call h5dclose_f(dset_id, ierr)
+      call h5gclose_f(dset_id, ierr)
 
 
 *     2nd read DM (for now only PartType1)
