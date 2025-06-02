@@ -7,6 +7,7 @@
 *********************************************************************
 
        use hdf5
+       use iso_c_binding
        implicit none
 
        include 'input_files/asohf_parameters.dat'
@@ -39,6 +40,9 @@
        integer*4,allocatable::scrint1(:)
        real*8,allocatable::scr81(:)
        real*8,allocatable::scr82(:,:)
+       
+       type(c_ptr) :: redshift_ptr
+       real(c_double), target :: redshift
 
        character*3 iter_string
 
@@ -46,7 +50,7 @@
        common /POSTFIX/ postfix
        
        ! HDF5 variables
-       integer(HID_T) :: file_id, dset_id, dtype_id, space_id
+       integer(HID_T) :: file_id, dset_id, dtype_id, space_id, attr_id
        integer :: ierr
        integer(hsize_t), dimension(1) :: dims1d
        integer(hsize_t), dimension(2) :: dims2d, maxdims2d
@@ -109,9 +113,18 @@
 !!!!   This may increase a lot the number of particles read, most of them being outside the domain
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!   I still need to read redshift!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! Obtain the redshift of the snapshot
+      ! Redshift is an attribute of the header group, with name 'Redshift'
+      call h5gopen_f(file_id, '/Header', dset_id, ierr)
+      call h5aopen_f(dset_id, 'Redshift', attr_id, ierr)
+      redshift_ptr = c_loc(redshift)
+      call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, redshift_ptr, ierr)
+      zeta = redshift
+      ! Print the result
+      print *, 'Redshift = ', zeta
+      ! Close everything
+      call h5aclose_f(attr_id, ierr)
+      call h5dclose_f(dset_id, ierr)
 
 
 *     2nd read DM (for now only PartType1)
