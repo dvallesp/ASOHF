@@ -32,6 +32,7 @@
 
 *     local variables
       integer ntot,igas0,igas1,idm0,idm1,ist0,ist1,ibh0,ibh1,i,j
+      integer igas0m,igas1m,idm0m,idm1m,ist0m,ist1m,ibh0m,ibh1m ! indices for the mass arrays (may be different from the position, velocity arrays!!)
 
 *     io variables
       character*4 blocklabel
@@ -88,6 +89,27 @@
        !write(*,*) 'st indices ',ist0,ist1,ist1-ist0+1
        !write(*,*) 'bh indices ',ibh0,ibh1,ibh1-ibh0+1
 
+       if (mass_arr(2).gt.0.0) then
+        ! no DM particle masses written explicitlym they are in the header
+        igas0m=igas0
+        igas1m=igas1 
+        idm0m=-1
+        idm1m=-1
+        ist0m=igas1m+1 
+        ist1m=igas1m+npp(5)
+        ibh0m=ist1m+1
+        ibh1m=ist1m+npp(6)
+       else
+        igas0m=igas0
+        igas1m=igas1
+        idm0m=idm0
+        idm1m=idm1
+        ist0m=ist0
+        ist1m=ist1
+        ibh0m=ibh0
+        ibh1m=ibh1
+       end if
+
        n_dm=idm1-idm0+1
        if (var.eq.2) then
         n_st=ist1-ist0+1
@@ -141,15 +163,30 @@
        end if
        deallocate(scrint1)
 
+       ! Compatibility with 64-bit IDs: I will just number the particles in the input file
+       write(*,*) 'WARNING / NOTE: the unique ids of the particles are not read from the input file, but just numbered from 1 to n_dm+n_st'
+       oripa(1:n_dm)=(/ (idm0+i-1,i=1,n_dm) /)
+       if (var.eq.2) then
+        oripa(n_dm+1:n_dm+n_st)=(/ (ist0+i-1,i=1,n_st) /)
+       end if
+
 *      read the particle masses****************************************
        read(11) blocklabel,blocksize
        !write(*,*) 'found block ', blocklabel, ' with length', blocksize
        allocate(scr41(ntot))
-       read(11) (scr41(i),i=1,ntot) ! all particles
+       if (idm0m.gt.0) then
+        read(11) (scr41(i),i=1,ntot) ! all particles
+       else
+        read(11) (scr41(i),i=1,ntot-n_dm) ! all particles
+       end if
        !write(*,*) '-m-', minval(scr41(:)), maxval(scr41(:))
-       masap(1:n_dm)=scr41(idm0:idm1)
+       if (idm0m.gt.0) then
+        masap(1:n_dm)=scr41(idm0m:idm1m)
+       else
+        masap(1:n_dm)=mass_arr(2) ! all DM particles have the same mass
+       end if
        if (var.eq.2) then
-        masap(n_dm+1:n_dm+n_st)=scr41(ist0:ist1)
+        masap(n_dm+1:n_dm+n_st)=scr41(ist0m:ist1m)
        end if
        deallocate(scr41)
 
