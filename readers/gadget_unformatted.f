@@ -164,7 +164,9 @@
        deallocate(scrint1)
 
        ! Compatibility with 64-bit IDs: I will just number the particles in the input file
-       write(*,*) 'WARNING / NOTE: the unique ids of the particles are not read from the input file, but just numbered from 1 to n_dm+n_st'
+       write(*,*) 'WARNING / NOTE: the unique ids of the particles' 
+       write(*,*) ' are not read from the input file, but just numbered'
+       write(*,*) ' from 1 to n_dm+n_st'
        oripa(1:n_dm)=(/ (idm0+i-1,i=1,n_dm) /)
        if (var.eq.2) then
         oripa(n_dm+1:n_dm+n_st)=(/ (ist0+i-1,i=1,n_st) /)

@@ -623,6 +623,9 @@ c       WRITE(*,*) '***************************'
 
         ! This is just to touch the variable
         LOW1=COUNT(REALCLUS(LOW1:LOW2).EQ.-1)
+        if (low1.eq.0) then
+         low1=1
+        end if
         LOW2=COUNT(REALCLUS(LOW1:LOW2).EQ.-1)
         ! 
 
