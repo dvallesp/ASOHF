@@ -220,7 +220,7 @@
        REAL DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
        COMMON /DOM_DECOMP/ DO_DOMDECOMP,DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
        REAL X1,X2,Y1,Y2,Z1,Z2,FACT_LENGTH,BASX,BASY,BASZ
-       real basxc,basyc,baszc
+       real basxc,basyc,baszc,x3,x4,y3,y4,z3,z4
        INTEGER PARTIST,II
 
        REAL*4 DX,DY,DZ
@@ -309,58 +309,73 @@
         z2 = maxval(rzpa_r(1:n_dm+n_st))
 
         ! Detect if the halo goes through the periodic boundary
-        if (x2-x1 > 0.9*lado0) then
-         write(*,*) 'Warning: correcting for periodic boundary in x'
+        if (x2-x1 > 0.9*lado0) then ! particles span almost the full box
+         x3 = x1 + 0.25*(x2-x1)
+         x4 = x2 - 0.25*(x2-x1)
+         if (count(rxpa_r(1:n_dm+n_st).ge.x3.and.
+     &             rxpa_r(1:n_dm+n_st).le.x4).eq.0) then ! there's a gap between the two ends
+          write(*,*) 'Warning: correcting for periodic boundary in x'
 !$omp parallel do shared(rxpa_r,n_dm,n_st,lado0), 
 !$omp+            private(i), default(none)
-         do i=1,n_dm+n_st
-          if (rxpa_r(i).lt.0.) then 
-           rxpa_r(i)=rxpa_r(i)+lado0/2.
-          else
-           rxpa_r(i)=rxpa_r(i)-lado0/2.
-          end if
-         end do
-         shift_x0 = lado0/2.
+          do i=1,n_dm+n_st
+           if (rxpa_r(i).lt.0.) then 
+            rxpa_r(i)=rxpa_r(i)+lado0/2.
+           else
+            rxpa_r(i)=rxpa_r(i)-lado0/2.
+           end if
+          end do
+          shift_x0 = lado0/2.
 
-         x1 = minval(rxpa_r(1:n_dm+n_st))
-         x2 = maxval(rxpa_r(1:n_dm+n_st))
-         period_x = 1
+          x1 = minval(rxpa_r(1:n_dm+n_st))
+          x2 = maxval(rxpa_r(1:n_dm+n_st))
+          period_x = 1
+         end if ! count(...)
         end if !(x2-x1 > 0.9*lado0)
 
-        if (y2-y1 > 0.9*lado0) then
-         write(*,*) 'Warning: correcting for periodic boundary in y'
+        if (y2-y1 > 0.9*lado0) then ! particles span almost the full box
+         y3 = y1 + 0.25*(y2-y1)
+         y4 = y2 - 0.25*(y2-y1)
+         if (count(rypa_r(1:n_dm+n_st).ge.y3.and.
+     &             rypa_r(1:n_dm+n_st).le.y4).eq.0) then ! there's a gap between the two ends
+          write(*,*) 'Warning: correcting for periodic boundary in y'
 !$omp parallel do shared(rypa_r,n_dm,n_st,lado0), 
 !$omp+            private(i), default(none)
-         do i=1,n_dm+n_st
-          if (rypa_r(i).lt.0.) then 
-           rypa_r(i)=rypa_r(i)+lado0/2.
-          else
-           rypa_r(i)=rypa_r(i)-lado0/2.
-          end if
-         end do
-         shift_y0 = lado0/2.
+          do i=1,n_dm+n_st
+           if (rypa_r(i).lt.0.) then 
+            rypa_r(i)=rypa_r(i)+lado0/2.
+           else
+            rypa_r(i)=rypa_r(i)-lado0/2.
+           end if
+          end do
+          shift_y0 = lado0/2.
 
-         y1 = minval(rypa_r(1:n_dm+n_st))
-         y2 = maxval(rypa_r(1:n_dm+n_st))
-         period_y = 1
+          y1 = minval(rypa_r(1:n_dm+n_st))
+          y2 = maxval(rypa_r(1:n_dm+n_st))
+          period_y = 1
+         end if ! count(...)
         end if !(y2-y1 > 0.9*lado0)
 
-        if (z2-z1 > 0.9*lado0) then
-         write(*,*) 'Warning: correcting for periodic boundary in z'
+        if (z2-z1 > 0.9*lado0) then ! particles span almost the full box
+         z3 = z1 + 0.25*(z2-z1)
+         z4 = z2 - 0.25*(z2-z1)
+         if (count(rzpa_r(1:n_dm+n_st).ge.z3.and.
+     &             rzpa_r(1:n_dm+n_st).le.z4).eq.0) then ! there's a gap between the two ends
+          write(*,*) 'Warning: correcting for periodic boundary in z'
 !$omp parallel do shared(rzpa_r,n_dm,n_st,lado0), 
 !$omp+            private(i), default(none)
-         do i=1,n_dm+n_st
-          if (rzpa_r(i).lt.0.) then 
-           rzpa_r(i)=rzpa_r(i)+lado0/2.
-          else
-           rzpa_r(i)=rzpa_r(i)-lado0/2.
-          end if
-         end do
-         shift_z0 = lado0/2.
+          do i=1,n_dm+n_st
+           if (rzpa_r(i).lt.0.) then 
+            rzpa_r(i)=rzpa_r(i)+lado0/2.
+           else
+            rzpa_r(i)=rzpa_r(i)-lado0/2.
+           end if
+          end do
+          shift_z0 = lado0/2.
 
-         z1 = minval(rzpa_r(1:n_dm+n_st))
-         z2 = maxval(rzpa_r(1:n_dm+n_st))
-         period_z = 1
+          z1 = minval(rzpa_r(1:n_dm+n_st))
+          z2 = maxval(rzpa_r(1:n_dm+n_st))
+          period_z = 1
+         end if ! count(...)
         end if !(z2-z1 > 0.9*lado0)
 
         basx = (x2 - x1) * 1.1 / 2.
