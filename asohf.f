@@ -116,10 +116,13 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER LOW1,LOW2
        REAL MINFRAC_REFINABLE,VOL_SOLAP_LOW,BOUND,FDM
        REAL XLDOM,XRDOM,YLDOM,YRDOM,ZLDOM,ZRDOM
+       common /original_dom/ xldom, xrdom, yldom, yrdom, zldom, zrdom
        REAL CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,CIO_YC,CIO_ZC
        COMMON /CONV_IO/ CIO_MASS,CIO_SPEED,CIO_LENGTH,CIO_ALPHA,CIO_XC,
      &                  CIO_YC,CIO_ZC
        REAL CIO_XC0,CIO_YC0,CIO_ZC0,LADO_BKP,LADO0_BKP
+       integer period_x,period_y,period_z 
+       common /period_correct/ period_x,period_y,period_z
 
        INTEGER DO_DOMDECOMP
        REAL DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
@@ -793,7 +796,10 @@ c       WRITE(*,*) '***************************'
 *=================== OUTPUT FILES ===============
 *************************************************
 *************************************************
-
+C       write(*,*) 'lado0=',lado0
+C       write(*,*) 'cio_length=',cio_length
+C       write(*,*) 'original full domain', xldom,yrdom,zldom,
+C     &       xrdom,yrdom,zrdom
        CALL DECONVER_POSITIONS(NCLUS,REALCLUS,MAXNCLUS,MAXNCLUS,
      &                         CLUSRX,CLUSRY,CLUSRZ)
        CALL DECONVER_POSITIONS(NCLUS,REALCLUS,MAXNCLUS,MAXNCLUS,

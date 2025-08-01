@@ -2860,6 +2860,13 @@ c       END DO
        REAL SHIFT_X,SHIFT_Y,SHIFT_Z,FACT_LENGTH
        INTEGER I
 
+       real x1,y1,z1,x2,y2,z2,Lx,Ly,Lz
+       REAL xldom, xrdom, yldom, yrdom, zldom, zrdom
+       common /original_dom/ xldom, xrdom, yldom, yrdom, zldom, zrdom
+
+       integer period_x,period_y,period_z 
+       common /period_correct/ period_x,period_y,period_z
+
        FACT_LENGTH=CIO_LENGTH
        SHIFT_X=CIO_XC*FACT_LENGTH
        SHIFT_Y=CIO_YC*FACT_LENGTH
@@ -2876,6 +2883,42 @@ c       END DO
          ZARR(I)=ZARR(I)+SHIFT_Z
         END IF
        END DO
+
+       if (period_x.eq.1) then
+        x1 = xldom * cio_length
+        x2 = xrdom * cio_length
+        Lx = x2 - x1
+        do i=1,nclus
+         if (realclus(i).ne.0) then
+          if (xarr(i).lt.x1) xarr(i)=xarr(i)+Lx
+          if (xarr(i).gt.x2) xarr(i)=xarr(i)-Lx
+         end if
+        end do
+       end if
+
+       if (period_y.eq.1) then
+        y1 = yldom * cio_length
+        y2 = yrdom * cio_length
+        Ly = y2 - y1
+        do i=1,nclus
+         if (realclus(i).ne.0) then
+          if (yarr(i).lt.y1) yarr(i)=yarr(i)+Ly
+          if (yarr(i).gt.y2) yarr(i)=yarr(i)-Ly
+         end if
+        end do
+       end if
+
+       if (period_z.eq.1) then
+        z1 = zldom * cio_length
+        z2 = zrdom * cio_length
+        Lz = z2 - z1
+        do i=1,nclus
+         if (realclus(i).ne.0) then
+          if (zarr(i).lt.z1) zarr(i)=zarr(i)+Lz
+          if (zarr(i).gt.z2) zarr(i)=zarr(i)-Lz
+         end if
+        end do
+       end if
 
        RETURN
        END

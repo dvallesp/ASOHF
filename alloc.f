@@ -220,6 +220,7 @@
        REAL DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
        COMMON /DOM_DECOMP/ DO_DOMDECOMP,DDXL,DDXR,DDYL,DDYR,DDZL,DDZR
        REAL X1,X2,Y1,Y2,Z1,Z2,FACT_LENGTH,BASX,BASY,BASZ
+       real basxc,basyc,baszc
        INTEGER PARTIST,II
 
        REAL*4 DX,DY,DZ
@@ -228,6 +229,10 @@
        COMMON /GRID/   RADX,RADY,RADZ
 
        REAL DDXC,DDYC,DDZC,SHIFT_X,SHIFT_Y,SHIFT_Z
+       real shift_x0,shift_y0,shift_z0
+
+       integer period_x,period_y,period_z 
+       common /period_correct/ period_x,period_y,period_z
 
 !$OMP PARALLEL DO SHARED(RXPA_R,RYPA_R,RZPA_R,U2DM_R,U3DM_R,U4DM_R,
 !$OMP+                   MASAP_R,ORIPA_R),
@@ -286,6 +291,95 @@
        Z1=(DDZL-CIO_ZC)*CIO_LENGTH
        Z2=(DDZR-CIO_ZC)*CIO_LENGTH
 
+       if (do_domdecomp.eq.2) then ! we automatically select the region,
+              ! based on the particles read, with some extra buffer 
+        ! For periodicity correction
+        shift_x0 = 0. 
+        shift_y0 = 0. 
+        shift_z0 = 0.
+        period_x = 0
+        period_y = 0
+        period_z = 0
+
+        x1 = minval(rxpa_r(1:n_dm+n_st))
+        x2 = maxval(rxpa_r(1:n_dm+n_st))
+        y1 = minval(rypa_r(1:n_dm+n_st))
+        y2 = maxval(rypa_r(1:n_dm+n_st))
+        z1 = minval(rzpa_r(1:n_dm+n_st))
+        z2 = maxval(rzpa_r(1:n_dm+n_st))
+
+        ! Detect if the halo goes through the periodic boundary
+        if (x2-x1 > 0.9*lado0) then
+         write(*,*) 'Warning: correcting for periodic boundary in x'
+!$omp parallel do shared(rxpa_r,n_dm,n_st,lado0), 
+!$omp+            private(i), default(none)
+         do i=1,n_dm+n_st
+          if (rxpa_r(i).lt.0.) then 
+           rxpa_r(i)=rxpa_r(i)+lado0/2.
+          else
+           rxpa_r(i)=rxpa_r(i)-lado0/2.
+          end if
+         end do
+         shift_x0 = lado0/2.
+
+         x1 = minval(rxpa_r(1:n_dm+n_st))
+         x2 = maxval(rxpa_r(1:n_dm+n_st))
+         period_x = 1
+        end if !(x2-x1 > 0.9*lado0)
+
+        if (y2-y1 > 0.9*lado0) then
+         write(*,*) 'Warning: correcting for periodic boundary in y'
+!$omp parallel do shared(rypa_r,n_dm,n_st,lado0), 
+!$omp+            private(i), default(none)
+         do i=1,n_dm+n_st
+          if (rypa_r(i).lt.0.) then 
+           rypa_r(i)=rypa_r(i)+lado0/2.
+          else
+           rypa_r(i)=rypa_r(i)-lado0/2.
+          end if
+         end do
+         shift_y0 = lado0/2.
+
+         y1 = minval(rypa_r(1:n_dm+n_st))
+         y2 = maxval(rypa_r(1:n_dm+n_st))
+         period_y = 1
+        end if !(y2-y1 > 0.9*lado0)
+
+        if (z2-z1 > 0.9*lado0) then
+         write(*,*) 'Warning: correcting for periodic boundary in z'
+!$omp parallel do shared(rzpa_r,n_dm,n_st,lado0), 
+!$omp+            private(i), default(none)
+         do i=1,n_dm+n_st
+          if (rzpa_r(i).lt.0.) then 
+           rzpa_r(i)=rzpa_r(i)+lado0/2.
+          else
+           rzpa_r(i)=rzpa_r(i)-lado0/2.
+          end if
+         end do
+         shift_z0 = lado0/2.
+
+         z1 = minval(rzpa_r(1:n_dm+n_st))
+         z2 = maxval(rzpa_r(1:n_dm+n_st))
+         period_z = 1
+        end if !(z2-z1 > 0.9*lado0)
+
+        basx = (x2 - x1) * 1.1 / 2.
+        basy = (y2 - y1) * 1.1 / 2.
+        basz = (z2 - z1) * 1.1 / 2.
+        basxc = (x2 + x1) / 2.
+        basyc = (y2 + y1) / 2.
+        baszc = (z2 + z1) / 2.
+
+        x1 = basxc - basx
+        x2 = basxc + basx
+        y1 = basyc - basy
+        y2 = basyc + basy
+        z1 = baszc - basz
+        z2 = baszc + basz
+
+        write(*,*) 'Domain decomposition automatically selected!'
+       end if ! (do_domdecomp.eq.2)
+
 !$OMP PARALLEL DO SHARED(KEEP,N_PARTICLES), PRIVATE(I), DEFAULT(NONE)
        DO I=1,N_PARTICLES
         KEEP(I)=1
@@ -294,7 +388,7 @@
        IF (DO_DOMDECOMP.EQ.0) THEN
         PARTI=N_PARTICLES
         PARTIST=N_ST
-       ELSE
+       ELSE ! options 1 and 2
         PARTI=0
         PARTIST=0
 !$OMP PARALLEL DO SHARED(N_PARTICLES,RXPA_R,RYPA_R,RZPA_R,X1,Y1,Z1,X2,
@@ -366,7 +460,7 @@
        N_ST=PARTIST
        N_PARTICLES=PARTI
 
-       IF (DO_DOMDECOMP.EQ.1) THEN !Rebuild the base grid, recenter stuff
+       IF (do_domdecomp.ne.0) THEN !Rebuild the base grid, recenter stuff
         LADO0=MAX(X2-X1,Y2-Y1,Z2-Z1)
         LADO=LADO0-(LADO0/NX)
         CALL MALLA(NX,NY,NZ,LADO)
@@ -387,7 +481,7 @@
         SHIFT_Z=DDZC
 
 !$OMP PARALLEL DO SHARED(RXPA,RYPA,RZPA,N_PARTICLES,SHIFT_X,SHIFT_Y,
-!$OMP+                   SHIFT_Z),
+!$OMP+                   SHIFT_Z,shift_x0,shift_y0,shift_z0),
 !$OMP+            PRIVATE(I),
 !$OMP+            DEFAULT(NONE)
         DO I=1,N_PARTICLES
@@ -396,9 +490,12 @@
          RZPA(I)=RZPA(I)-SHIFT_Z
         END DO
 
-        CIO_XC=CIO_XC+SHIFT_X/CIO_LENGTH
-        CIO_YC=CIO_YC+SHIFT_Y/CIO_LENGTH
-        CIO_ZC=CIO_ZC+SHIFT_Z/CIO_LENGTH
+        CIO_XC=CIO_XC+SHIFT_X/CIO_LENGTH 
+        if (period_x.eq.1) cio_xc = cio_xc + shift_x0/cio_length
+        CIO_YC=CIO_YC+SHIFT_Y/CIO_LENGTH 
+        if (period_y.eq.1) cio_yc = cio_yc + shift_y0/cio_length
+        CIO_ZC=CIO_ZC+SHIFT_Z/CIO_LENGTH 
+        if (period_z.eq.1) cio_zc = cio_zc + shift_z0/cio_length
 
         WRITE(*,*)
         WRITE(*,*) 'After domain decomposition...'

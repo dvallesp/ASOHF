@@ -21,7 +21,7 @@ Input domain (in input length units; x1,x2,y1,y2,z1,z2) -------------->
 ***********************************************************************
 *       Domain decompose                                              *
 ***********************************************************************
-Keep only particles inside a given domain (=0, no; =1, yes) ---------->
+Keep only particles inside a given domain (=0, no; =1, yes, =2, auto) >
 0
 Domain to keep particles (in input length units; x1,x2,y1,y2,z1,z2) -->
 0.,0.,0.,0.,0.,0.
