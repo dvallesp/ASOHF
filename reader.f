@@ -68,7 +68,7 @@
 
        if (conta.ne.n_dm.or.sum(npart_esp(0:n_esp-1)).ne.n_dm) then
         write(*,*) 'wrong sorting, cannot continue',conta,n_dm
-        stop
+        stop 1
        end if
 
        allocate(scr(7,n_dm),scrint(1,n_dm))
@@ -113,7 +113,7 @@
          write(*,*) 'warning: ir_kern_stars > n_esp-1',
      &              ir_kern_stars,n_esp-1
          write(*,*) 'fix n_esp to ir_kern_stars+1, at least'
-         stop
+         stop 1
         end if
 
         npart_esp(ir_kern_stars)=npart_esp(ir_kern_stars)+n_st
@@ -266,7 +266,7 @@ c       stop
 
        if (conta.ne.n_dm.or.sum(npart_esp(0:n_esp-1)).ne.n_dm) then
         write(*,*) 'wrong sorting, cannot continue',conta,n_dm
-        stop
+        stop 1
        end if
 
        allocate(scr(7,n_dm),scrint(1,n_dm))
@@ -311,7 +311,7 @@ c       stop
          write(*,*) 'warning: ir_kern_stars > n_esp-1',
      &              ir_kern_stars,n_esp-1
          write(*,*) 'fix n_esp to ir_kern_stars+1, at least'
-         stop
+         stop 1
         end if
 
 
@@ -489,7 +489,7 @@ c       stop
 
        if (conta.ne.n_dm.or.sum(npart_esp(0:n_esp-1)).ne.n_dm) then
         write(*,*) 'wrong sorting, cannot continue',conta,n_dm
-        stop
+        stop 1
        end if
 
        allocate(scr(7,n_dm),scrint(1,n_dm))
@@ -534,7 +534,7 @@ c       stop
          write(*,*) 'warning: ir_kern_stars > n_esp-1',
      &              ir_kern_stars,n_esp-1
          write(*,*) 'fix n_esp to ir_kern_stars+1, at least'
-         stop
+         stop 1
         end if
 
 

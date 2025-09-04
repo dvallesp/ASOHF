@@ -1481,7 +1481,7 @@ C     &         VX(I)*UV,VY(I)*UV,VZ(I)*UV
 
        IF (J.EQ.IDX_VIR+1) THEN
         WRITE(*,*) 'NOT PRE-FOUND VIRIAL RADIUS!'
-        STOP
+        STOP 1
        END IF
 
        IDX_VIR=J

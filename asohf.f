@@ -191,7 +191,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        IF (NL.GT.NLEVELS) THEN
         WRITE(*,*) 'Fatal ERROR: NLEVELS too small in parameters file',
      &             NL,NLEVELS
-        STOP
+        STOP 1
        END IF
        READ(1,*) !PARCHLIM(=0 no limit patches/level, =1 do limit) --------------------->
        READ(1,*) PARCHLIM
@@ -308,7 +308,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        WRITE(*,*) 'ASOHF reading GIZMO/GADGET/AREPO hdf5 FILES...'
 #else 
        WRITE(*,*) 'Not valid READER option!!'
-       STOP
+       STOP 1
 #endif
 
        IF(VAR.EQ.1) WRITE(*,*) 'Analysing only DM'
@@ -432,7 +432,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
            WRITE(*,*) 'WARNING: IR_KERN_STARS > N_ESP-1',
      &                IR_KERN_STARS,N_ESP-1
            WRITE(*,*) 'Fix N_ESP to IR_KERN_STARS+1, at least'
-           STOP
+           STOP 1
           END IF
           NPART_ESP(IR_KERN_STARS)=NPART_ESP(IR_KERN_STARS)+N_ST
           WRITE(*,*) 'Stars: Of species',IR_KERN_STARS,

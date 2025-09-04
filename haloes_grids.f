@@ -400,7 +400,7 @@ c       INTEGER R_II
 
         IF (II.NE.KK_ENTERO) THEN
          WRITE(*,*) 'WARNING: bad allocation of DDD', II, KK_ENTERO
-         STOP
+         STOP 1
         END IF
 
         CALL SORT_CELLS(KK_ENTERO,DDD,DDDX,DDDY,DDDZ)
@@ -419,7 +419,7 @@ c       INTEGER R_II
 c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
           IF(NCLUS.GT.MAXNCLUS) THEN
            WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
-           STOP
+           STOP 1
           END IF
 
           XCEN=RADX(ICEN(1))
@@ -485,7 +485,7 @@ c         WRITE(*,*) U1(ICEN(1),ICEN(2),ICEN(3))
             ELSE
              WRITE(*,*) 'WARNING: growing not converged', r_int, r_ext,
      &                                                    bound
-             STOP
+             STOP 1
             END IF
            END IF
 
@@ -844,7 +844,7 @@ c         END DO
 
           IF(NCLUS.GT.MAXNCLUS) THEN
            WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
-           STOP
+           STOP 1
           END IF
 
 c           WRITE(*,*) CLUSRX(NCLUS),NX1,NX2,RADX(NX1),RADX(NX2)
@@ -885,7 +885,7 @@ c           END DO
              WRITE(*,*) 'WARNING: growing not converged', r_int, r_ext,
      &                   boundir,iter_grow,delta/rote,kk_entero,
      &                   xcen,ycen,zcen
-             STOP
+             STOP 1
             END IF
            END IF
 

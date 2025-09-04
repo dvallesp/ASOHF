@@ -274,7 +274,7 @@
      &                        UV,UM,HUBBLE_LITTLEH)
 #else
          WRITE(*,*) 'ERROR: reader not defined'
-         STOP
+         STOP 1
 #endif
 
        N_PARTICLES=N_DM+N_ST
@@ -468,7 +468,7 @@
 
        IF (II.NE.PARTI) THEN
         WRITE(*,*) 'ERROR in domain decompose, II.NE.PARTI',II,PARTI
-        STOP
+        STOP 1
        END IF
 
        N_DM=PARTI-PARTIST

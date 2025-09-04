@@ -115,7 +115,7 @@
       !WRITE(*,*) 'ORIPA LOT DONE!',MINORIPA,MAXORIPA
 
 c      IF (FLAG_WDM.EQ.1) THEN
-       ALLOCATE(PARTICLES_PROC(N_ST,NUM_PROC),
+       ALLOCATE(PARTICLES_PROC(100*N_ST,NUM_PROC),
      &          HALOES_PROC(3,NCLUS),
      &          PROC_NPARTICLES(NUM_PROC))
        PROC_NPARTICLES(1:NUM_PROC)=0
@@ -192,7 +192,7 @@ C       WRITE(*,*) 'HALO, NUM STARS:',I,MAX_NUM_PART_LOCAL,LOWP1,LOWP2
 
        IF (JJ.NE.MAX_NUM_PART_LOCAL) THEN
         WRITE(*,*) 'Wrong allocation of stars',JJ,MAX_NUM_PART_LOCAL
-        STOP
+        STOP 1
        END IF
 
        IF (JJ.LT.MIN_NUM_PART_ST) THEN
@@ -228,7 +228,7 @@ C       WRITE(*,*) 'HALO, NUM STARS:',I,MAX_NUM_PART_LOCAL,LOWP1,LOWP2
        END DO
        IF (JJ.NE.NPART_HALO) THEN
         WRITE(*,*) 'Problem with halo',I,JJ,NPART_HALO
-        STOP
+        STOP 1
        END IF
 c       WRITE(*,*) I,MINVAL(DISTA(1:NPART_HALO)),
 c     &            MAXVAL(DISTA(1:NPART_HALO)),RCLUS
@@ -621,7 +621,7 @@ c       IF (FLAG_WDM.EQ.1) THEN
          write(*,*) 'Please consider increasing the number of particles'
          write(*,*) ' per processor in the allocation of PARTICLES_PROC'
          write(*,*) ' in stars.f, then recompile the code.'
-         stop
+         stop 1
         end if
 
         DO J=1,KONTA2

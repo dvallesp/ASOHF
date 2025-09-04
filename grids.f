@@ -1668,7 +1668,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
              WRITE(*,*) 'increase BUF in INTERPOLATE_DENSITY_KERNEL',
      &                  ipatch,nbaspart,ix,jy,kz,i1,i2,j1,j2,k1,k2,
      &                  n1,n2,n3
-             STOP
+             STOP 1
             END IF
             NBASPART=SUM(SCRINT(I1:I2,J1:J2,K1:K2))
           END DO
@@ -1918,7 +1918,7 @@ C        WRITE(*,*) LVAL(I,IPARE)
        IF (MAXVAL(NVECI(1:NPATCH(IR))).GT.NPALEV2) THEN
          WRITE(*,*) 'ERROR: gvecino ST second dimension too large',
      &     MAXVAL(NVECI(1:NPATCH(IR)))
-         STOP
+         STOP 1
        END IF
 
 

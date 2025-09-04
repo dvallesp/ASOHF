@@ -457,7 +457,7 @@ c     &             DISTHOST/PROFILES(NBINS,1,IHOSTHALO),MHOST
 
         IF(NCLUS.GT.MAXNCLUS) THEN
          WRITE(*,*) 'WARNING: NCLUS>MAXNCLUS!!!',NCLUS,MAXNCLUS
-         STOP
+         STOP 1
         END IF
 
 *       tentative reach of the base grid
@@ -1771,7 +1771,7 @@ C        write(*,*) '****************'
      &                 1,MAX_NUM_PART,USELESS_INT)
         IF (KONTA2.NE.KONTA) THEN
          WRITE(*,*) 'ERROR: KONTA!=KONTA2',KONTA,KONTA2
-         STOP
+         STOP 1
         END IF
 C        write(*,*) konta,'particles inside'
         CONTADM(KONTA+1:PARTI)=1
