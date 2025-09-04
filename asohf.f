@@ -599,6 +599,10 @@ c       WRITE(*,*) '***************************'
 
         LOW1=SUM(NHALLEV(0:IR-1))+1
         LOW2=SUM(NHALLEV(0:IR))
+
+        if (nhallev(ir).eq.0) cycle
+        !write(*,*) 'at level ',IR,' after resort', low1,low2
+
         WRITE(*,*)'... Masses: MIN, MAX and MEAN=',
      &             MINVAL(MASA(LOW1:LOW2))*UM,
      &             MAXVAL(MASA(LOW1:LOW2))*UM,
