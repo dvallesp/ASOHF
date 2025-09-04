@@ -137,7 +137,7 @@ c      END IF
 !$OMP+                   U2DM,U3DM,U4DM,N_DM,UM,UV,FLAG_WDM,
 !$OMP+                   PROC_NPARTICLES,HALOES_PROC,PARTICLES_PROC,
 !$OMP+                   ORIPA,PI,STPAR_MAX_DIST,DENS_CUT,
-!$OMP+                   STPAR_FACT_INC,STPAR_MAX_R_COM),
+!$OMP+                   STPAR_FACT_INC,STPAR_MAX_R_COM,N_ST),
 !$OMP+            PRIVATE(I,CX,CY,CZ,RCLUS,RCLUS2,LOWP1,LOWP2,
 !$OMP+                    MAX_NUM_PART_LOCAL,J,LIPST,JJ,NDM_HALO,
 !$OMP+                    NST_HALO,NPART_HALO,LIP,CONTADM,DISTA,DISTAST,
@@ -610,6 +610,20 @@ c       IF (FLAG_WDM.EQ.1) THEN
         IPART_PROC=PROC_NPARTICLES(ID_PROC)
         HALOES_PROC(1,I)=ID_PROC
         HALOES_PROC(2,I)=IPART_PROC+1
+
+        ! check that we won't go out of bounds
+        if (ipart_proc + konta2 .gt. n_st) then 
+         write(*,*) 'Too many stellar particles in proc ', id_proc
+         write(*,*) 'Halos processed:', nclus_st
+         write(*,*) 'Particles in this halo:', konta2
+         write(*,*) 'Max particles per proc:', n_st
+         write(*,*) 'This is often the result of rare merger configs.'
+         write(*,*) 'Please consider increasing the number of particles'
+         write(*,*) ' per processor in the allocation of PARTICLES_PROC'
+         write(*,*) ' in stars.f, then recompile the code.'
+         stop
+        end if
+
         DO J=1,KONTA2
          JJ=LIPST(J)
          IPART_PROC=IPART_PROC+1
