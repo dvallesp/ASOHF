@@ -34,7 +34,7 @@
       INTEGER MAX_NUM_PART_LOCAL,WELL_ALLOCATED,MINORIPA,MAXORIPA
       INTEGER NPART_HALO,BASINT,KONTA,KONTA2,FAC,CONTAERR,IX,JY,I1,I2
       INTEGER COUNT_1,COUNT_2,KONTA2PREV,NCLUS_ST,J_HALFMASS,NUMPARTBINS
-      INTEGER IDX_CUT,IDX_CUT_ST,N1,N2,II
+      INTEGER IDX_CUT,IDX_CUT_ST,N1,N2,II,MAXALOC_PROC
       REAL XLDOM,CX,CY,CZ,RCLUS,RCLUS2,XP,YP,ZP,CMX,CMY,CMZ
       REAL VCMX,VCMY,VCMZ,BASMAS,REF_MIN,REF_MAX,BASVECCM(3),BASVCM(3)
       REAL RHALFMASS,MHALFMASS,XPEAK,YPEAK,ZPEAK,VVV2,INERTIA4(3,3)
@@ -115,7 +115,8 @@
       !WRITE(*,*) 'ORIPA LOT DONE!',MINORIPA,MAXORIPA
 
 c      IF (FLAG_WDM.EQ.1) THEN
-       ALLOCATE(PARTICLES_PROC(100*N_ST,NUM_PROC),
+       MAXALOC_PROC=N_ST
+       ALLOCATE(PARTICLES_PROC(MAXALOC_PROC,NUM_PROC),
      &          HALOES_PROC(3,NCLUS),
      &          PROC_NPARTICLES(NUM_PROC))
        PROC_NPARTICLES(1:NUM_PROC)=0
@@ -137,7 +138,7 @@ c      END IF
 !$OMP+                   U2DM,U3DM,U4DM,N_DM,UM,UV,FLAG_WDM,
 !$OMP+                   PROC_NPARTICLES,HALOES_PROC,PARTICLES_PROC,
 !$OMP+                   ORIPA,PI,STPAR_MAX_DIST,DENS_CUT,
-!$OMP+                   STPAR_FACT_INC,STPAR_MAX_R_COM,N_ST),
+!$OMP+                   STPAR_FACT_INC,STPAR_MAX_R_COM,MAXALOC_PROC),
 !$OMP+            PRIVATE(I,CX,CY,CZ,RCLUS,RCLUS2,LOWP1,LOWP2,
 !$OMP+                    MAX_NUM_PART_LOCAL,J,LIPST,JJ,NDM_HALO,
 !$OMP+                    NST_HALO,NPART_HALO,LIP,CONTADM,DISTA,DISTAST,
@@ -612,14 +613,15 @@ c       IF (FLAG_WDM.EQ.1) THEN
         HALOES_PROC(2,I)=IPART_PROC+1
 
         ! check that we won't go out of bounds
-        if (ipart_proc + konta2 .gt. n_st) then 
+        if (ipart_proc + konta2 .gt. maxaloc_proc) then 
          write(*,*) 'Too many stellar particles in proc ', id_proc
          write(*,*) 'Halos processed:', nclus_st
          write(*,*) 'Particles in this halo:', konta2
-         write(*,*) 'Max particles per proc:', n_st
+         write(*,*) 'Starting index was:', ipart_proc
+         write(*,*) 'Max particles per proc:', maxaloc_proc
          write(*,*) 'This is often the result of rare merger configs.'
-         write(*,*) 'Please consider increasing the number of particles'
-         write(*,*) ' per processor in the allocation of PARTICLES_PROC'
+         write(*,*) 'Please consider increasing MAXALOC_PROC'
+         write(*,*) ' in the allocation of PARTICLES_PROC'
          write(*,*) ' in stars.f, then recompile the code.'
          stop 1
         end if
