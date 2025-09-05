@@ -659,7 +659,7 @@ c       WRITE(*,*) '***************************'
      &       PATCHCLUS,PROFILES,VELOCITY_DISPERSION,KINETIC_E,
      &       POTENTIAL_E,DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,
      &       FLAG_WDM,ZETA,MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM,
-     &       LOW1,LOW2)
+     &       LOW1,LOW2,fdm)
 
 *       General CHECKING
         !WRITE(*,*)'HALOES WITHOUT MASS=',COUNT(MASA(LOW1:LOW2).LE.0.0)

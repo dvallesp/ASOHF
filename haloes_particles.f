@@ -583,7 +583,7 @@ c     &              IX,JY,KZ,FLAG_ITER
      &      CLUSRYCM,CLUSRZCM,MEAN_VR,INERTIA_TENSOR,NPATCH,PATCHCLUS,
      &      PROFILES,VELOCITY_DISPERSION,KINETIC_E,POTENTIAL_E,
      &      DO_COMPUTE_ENERGIES,INDCS_PARTICLES_PER_HALO,FLAG_WDM,ZETA,
-     &      MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM,LOWH1,LOWH2)
+     &      MIN_NUM_PART,NDMPART_X,VAR,MAX_PART_DSUM,LOWH1,LOWH2,fdm)
 **********************************************************************
 *      Refines halo identification with DM particles
 **********************************************************************
@@ -621,6 +621,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        REAL*4 ZETA
        INTEGER MIN_NUM_PART,NDMPART_X(0:NMAX),VAR,MAX_PART_DSUM
        INTEGER LOWH1,LOWH2
+       real fdm
 
        REAL*4 PI,ACHE,T0,RE0
        COMMON /DOS/ACHE,T0,RE0
@@ -674,7 +675,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        KONTA1=0
        KONTA2=0
 
-       MINOVERDENS=MIN(200.0,CONTRASTEC)
+       MINOVERDENS=MIN(200.0,CONTRASTEC*fdm)
 
 c       DO I=0,NL
 c       WRITE(*,*)'Halos at level ', I,' =',
@@ -703,7 +704,7 @@ c       WRITE(*,*)'=================================='
        END IF
 
        MAX_NUM_PART=MIN(INT(MAX(1.05*MAX_NUM_PART,
-     &                   MAX_NUM_PART*(CONTRASTEC/MINOVERDENS)**(1.0))),
+     &      MAX_NUM_PART*(CONTRASTEC*fdm/MINOVERDENS)**(1.0))),
      &                  PARTI)
 
 !$OMP  PARALLEL DO SHARED(LOWH1,LOWH2,REALCLUS,PATCHCLUS,NPATCH,
@@ -718,7 +719,7 @@ c       WRITE(*,*)'=================================='
 !$OMP+           VELOCITY_DISPERSION,GCONS,KINETIC_E,POTENTIAL_E,
 !$OMP+           DO_COMPUTE_ENERGIES,PARTICLES_PROC,HALOES_PROC,
 !$OMP+           PROC_NPARTICLES,FLAG_WDM,ZETA,XLDOM,NDMPART_X,VAR,
-!$OMP+           PARTI,MAX_PART_DSUM),
+!$OMP+           PARTI,MAX_PART_DSUM,fdm),
 !$OMP+   PRIVATE(I,INERTIA,REF_MIN,REF_MAX,KK_ENTERO,MASADM,KONTA,
 !$OMP+           BASMAS,DIS,VCM,VVV2,VR,LIP,CONCEN,RS,KONTA2,BAS,IR,J,
 !$OMP+           AADM,KK1,KK2,CONTADM,CMX,CMY,CMZ,VCMX,VCMY,VCMZ,MASA2,
@@ -868,7 +869,7 @@ c        WRITE(*,*) 'Recentering shift', i, bas, bas/radio(i)
         DMPCLUS(I)=KONTA
 
         CALL FIND_IDX_VIR(DISTA,LIP,MAX_NUM_PART,ROTE,RETE,PI,
-     &                    CONTRASTEC,IDX_VIR)
+     &                    CONTRASTEC*fdm,IDX_VIR)
 c        WRITE(*,*) '*',sqrt((cmx-cx)**2+(cmy-cy)**2+(cmz-cz)**2)
 c        write(*,*) '**',vcmx,vcmy,vcmz,vcm
 
@@ -999,7 +1000,7 @@ c        write(*,*) '--'
           END IF
 
           IF (FLAG2500C.EQ.0) THEN
-           IF (DELTA2.LE.2500.0/OMEGAZ) THEN
+           IF (DELTA2.LE.2500.0/OMEGAZ*fdm) THEN
             M2500C(I)=DELTA2*VOL*ROTE*UM
             R2500C(I)=DISTA(J)
             FLAG2500C=1
@@ -1011,7 +1012,7 @@ c        write(*,*) '--'
           END IF
 
           IF (FLAG500C.EQ.0) THEN
-           IF (DELTA2.LE.500.0/OMEGAZ) THEN
+           IF (DELTA2.LE.500.0/OMEGAZ*fdm) THEN
             M500C(I)=DELTA2*VOL*ROTE*UM
             R500C(I)=DISTA(J)
             FLAG500C=1
@@ -1023,7 +1024,7 @@ c        write(*,*) '--'
           END IF
 
           IF (FLAG200C.EQ.0) THEN
-           IF (DELTA2.LE.200.0/OMEGAZ) THEN
+           IF (DELTA2.LE.200.0/OMEGAZ*fdm) THEN
             M200C(I)=DELTA2*VOL*ROTE*UM
             R200C(I)=DISTA(J)
             FLAG200C=1
@@ -1035,7 +1036,7 @@ c        write(*,*) '--'
           END IF
 
           IF (FLAG2500M.EQ.0) THEN
-           IF (DELTA2.LE.2500.0) THEN
+           IF (DELTA2.LE.2500.0*fdm) THEN
             M2500M(I)=DELTA2*VOL*ROTE*UM
             R2500M(I)=DISTA(J)
             FLAG2500M=1
@@ -1047,7 +1048,7 @@ c        write(*,*) '--'
           END IF
 
           IF (FLAG500M.EQ.0) THEN
-           IF (DELTA2.LE.500.0) THEN
+           IF (DELTA2.LE.500.0*fdm) THEN
             M500M(I)=DELTA2*VOL*ROTE*UM
             R500M(I)=DISTA(J)
             FLAG500M=1
@@ -1059,7 +1060,7 @@ c        write(*,*) '--'
           END IF
 
           IF (FLAG200M.EQ.0) THEN
-           IF (DELTA2.LE.200.0) THEN
+           IF (DELTA2.LE.200.0*fdm) THEN
             M200M(I)=DELTA2*VOL*ROTE*UM
             R200M(I)=DISTA(J)
             FLAG200M=1
@@ -1073,7 +1074,7 @@ c        write(*,*) '--'
           ! STOPPING CONDITIONS
           ! 1. Below virial overdensity
           IF (FLAGVIR.EQ.0) THEN
-           IF (DELTA2.LE.CONTRASTEC.AND.J.GT.INT(0.1*KONTA2)) THEN
+           IF (DELTA2.LE.CONTRASTEC*fdm.AND.J.GT.INT(0.1*KONTA2)) THEN
             SALIDA=1 ! this means we've found the virial radius
                      ! but we don't exit straightaway because we still
                      ! want to find 200m
@@ -1086,7 +1087,7 @@ c        write(*,*) '--'
             BASVZ=BASVZ-(MASAP(JJ)/NORMA)*U4DM(JJ)
 
             MASA(I)=BAS8*NORMA*UM
-            VOL=(NORMA*BAS8)/(CONTRASTEC*ROTE)
+            VOL=(NORMA*BAS8)/(CONTRASTEC*fdm*ROTE)
             RADIO(I)=(((3*VOL)/(4*PI))**(1.0/3.0))/RETE
             !WRITE(*,*) DISTA(J-1),RADIO(I),DISTA(J)
 
@@ -1149,7 +1150,7 @@ c         WRITE(*,*) '---'
           BASVZ=BASVZ!-(MASAP(JJ)/NORMA)*U4DM(JJ)
 
           MASA(I)=BAS8*NORMA*UM
-          VOL=(NORMA*BAS8)/(CONTRASTEC*ROTE)
+          VOL=(NORMA*BAS8)/(CONTRASTEC*fdm*ROTE)
           RADIO(I)=(((3*VOL)/(4*PI))**(1.0/3.0))/RETE
           !WRITE(*,*) DISTA(J-1),RADIO(I),DISTA(J)
 
@@ -1167,7 +1168,7 @@ c         WRITE(*,*) '---'
 
           IF (FLAG200M.EQ.0) THEN
            M200M(I)=MASA(I)
-           R200M(I)=RADIO(I)*(CONTRASTEC/200.0)**(1.0/3.0)
+           R200M(I)=RADIO(I)*(CONTRASTEC/200.0)**(1.0/3.0) ! here i don't multipy by fdm since it is a quotient of overdensities
           END IF
 
 c          WRITE(*,*) 'POSSIBLE PROBLEM WITH HALO',I,DELTA2,CMX,CMY,CMZ,
