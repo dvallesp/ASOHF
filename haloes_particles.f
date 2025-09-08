@@ -675,7 +675,7 @@ c     &              IX,JY,KZ,FLAG_ITER
        KONTA1=0
        KONTA2=0
 
-       MINOVERDENS=MIN(200.0,CONTRASTEC*fdm)
+       MINOVERDENS=MIN(200.0,CONTRASTEC)*fdm
 
 c       DO I=0,NL
 c       WRITE(*,*)'Halos at level ', I,' =',
