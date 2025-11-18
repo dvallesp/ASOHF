@@ -67,6 +67,8 @@
        read(11) npp,mass_arr,time8,zeta8,caca,boxsize8,omega_m8,
      &          omega_lambda8,hubble_param8
 
+       zeta=zeta8
+
        !write(*,*) npp
        !write(*,*) mass_arr
        !write(*,*) 'redshift:', zeta8
@@ -91,6 +93,7 @@
 
        if (mass_arr(2).gt.0.0) then
         ! no DM particle masses written explicitlym they are in the header
+        write(*,*) 'dm masses from the header!'
         igas0m=igas0
         igas1m=igas1 
         idm0m=-1
@@ -100,6 +103,7 @@
         ibh0m=ist1m+1
         ibh1m=ist1m+npp(6)
        else
+        write(*,*) 'dm masses from the file content!'
         igas0m=igas0
         igas1m=igas1
         idm0m=idm0
@@ -119,7 +123,7 @@
 
 *      read the particle positions ************************************
        read(11) blocklabel,blocksize
-       !write(*,*) 'found block ', blocklabel, ' with length', blocksize
+       write(*,*) 'found block ', blocklabel, ' with length', blocksize
        allocate(scr42(3,ntot))
        read(11) ((scr42(j,i),j=1,3),i=1,ntot) ! all particles
        !write(*,*) '-x-', minval(scr42(1,:)), maxval(scr42(1,:))
@@ -136,7 +140,7 @@
 
 *      read the particle velocities************************************
        read(11) blocklabel,blocksize
-       !write(*,*) 'found block ', blocklabel, ' with length', blocksize
+       write(*,*) 'found block ', blocklabel, ' with length', blocksize
        read(11) ((scr42(j,i),j=1,3),i=1,ntot) ! all particles
        !write(*,*) '-vx-', minval(scr42(1,:)), maxval(scr42(1,:))
        !write(*,*) '-vy-', minval(scr42(2,:)), maxval(scr42(2,:))
@@ -153,7 +157,7 @@
 
 *      read the particle ids****************************************
        read(11) blocklabel,blocksize
-       !write(*,*) 'found block ', blocklabel, ' with length', blocksize
+       write(*,*) 'found block ', blocklabel, ' with length', blocksize
        allocate(scrint1(ntot))
        read(11) (scrint1(i),i=1,ntot) ! all particles
        !write(*,*) '-id-', minval(scrint1(:)), maxval(scrint1(:))
@@ -174,7 +178,7 @@
 
 *      read the particle masses****************************************
        read(11) blocklabel,blocksize
-       !write(*,*) 'found block ', blocklabel, ' with length', blocksize
+       write(*,*) 'found block ', blocklabel, ' with length', blocksize
        allocate(scr41(ntot))
        if (idm0m.gt.0) then
         read(11) (scr41(i),i=1,ntot) ! all particles
@@ -282,8 +286,6 @@
       write(*,*) 'unique ids (min,max):',
      &   minval(oripa(1:n_dm+n_st)),maxval(oripa(1:n_dm+n_st))
       write(*,*)
-
-      zeta=zeta8
 
       return
       end
