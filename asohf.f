@@ -142,10 +142,12 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        CHARACTER*5 ITER_STRING
        character*200 postfix,enzofolderprefix,enzoprefix
+       character*200 enzoparamspostfix
 #if reader == 3 
        common /POSTFIX/ postfix
 #elif reader == 4
-       common /POSTFIX/ postfix,enzofolderprefix,enzoprefix
+       common /POSTFIX/ postfix,enzofolderprefix,enzoprefix,
+     &                  enzoparamspostfix
 #endif
 
 **************************************************************
@@ -267,6 +269,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,'(A)') enzoprefix
        READ(1,*) !ENZO reader: filename postfix (blank if none)------------------------->
        READ(1,'(A)') postfix
+       READ(1,*) !ENZO reader: parameters file postfix (blank if none)
+       READ(1,'(A)') enzoparamspostfix
        CLOSE(1)
 
        N_PARTICLES=N_DM

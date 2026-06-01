@@ -91,6 +91,8 @@ ENZO reader: folder prefix ------------------------------------------->
 DD
 ENZO reader: filename prefix ----------------------------------------->
 time_
-ENZO reader: filename postfix (blank if none)------------------------->
+ENZO reader: filename postfix (blank if none) ------------------------>
 .cpu0000
+ENZO reader: parameters file postfix (blank if none) ----------------->
+
 ======= End of asohf.dat file =========================================

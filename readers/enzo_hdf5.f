@@ -47,8 +47,13 @@
        character*4 iter_string
 
        character*200 postfix,enzofolderprefix,enzoprefix
-       common /POSTFIX/ postfix,enzofolderprefix,enzoprefix
-       character*200 filename
+       character*200 enzoparamspostfix
+       common /POSTFIX/ postfix,enzofolderprefix,enzoprefix,
+     &                  enzoparamspostfix
+       character*200 filename,filename_params
+
+       character(len=512) :: line
+       character(len=128)  :: key
        
        ! HDF5 variables
        integer(HID_T) :: file_id, dset_id, dtype_id, space_id, attr_id
@@ -89,23 +94,23 @@
       write(*,*) 'Number of DM particles in iter=',dims1d
       n_dm = dims1d(1)
 
-      stop
-
-       ! get the datatype and its precision (assume it's the same for all)
+      ! get the datatype and its precision (assume it's the same for all)
       call h5dget_type_f(dset_id, dtype_id, ierr)
       call h5tget_precision_f(dtype_id, precision, ierr)  ! bits
       call h5sclose_f(space_id, ierr)
       call h5dclose_f(dset_id, ierr)
 
       if (var.eq.2) then 
-       call h5dopen_f(file_id, "/PartType4/Coordinates", dset_id, ierr)
-       call h5dget_space_f(dset_id, space_id, ierr)
-       call h5sget_simple_extent_dims_f(space_id, dims2d, maxdims2d, 
-     &                                 ierr)
-       write(*,*) 'Number of stellar particles in iter=',dims2d
-       n_st = dims2d(2)
-       call h5sclose_f(space_id, ierr)
-       call h5dclose_f(dset_id, ierr)
+C       call h5dopen_f(file_id, "/PartType4/Coordinates", dset_id, ierr)
+C       call h5dget_space_f(dset_id, space_id, ierr)
+C       call h5sget_simple_extent_dims_f(space_id, dims2d, maxdims2d, 
+C     &                                 ierr)
+C       write(*,*) 'Number of stellar particles in iter=',dims2d
+C       n_st = dims2d(2)
+C       call h5sclose_f(space_id, ierr)
+C       call h5dclose_f(dset_id, ierr)
+        write(*,*) 'WARNING: reading stars not implemented yet'
+        stop
       else 
        n_st = 0
       end if
@@ -122,23 +127,25 @@
        stop
       end if
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!   TO DO: should we add parttype 2 and 3 ??
-!!!!   This may increase a lot the number of particles read, most of them being outside the domain
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       ! Obtain the redshift of the snapshot
-      ! Redshift is an attribute of the header group, with name 'Redshift'
-      call h5gopen_f(file_id, '/Header', dset_id, ierr)
-      call h5aopen_f(dset_id, 'Redshift', attr_id, ierr)
-      redshift_ptr = c_loc(redshift)
-      call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, redshift_ptr, ierr)
-      zeta = redshift
-      ! Print the result
-      print *, 'Redshift = ', zeta
-      ! Close everything
-      call h5aclose_f(attr_id, ierr)
-      call h5gclose_f(dset_id, ierr)
+      filename_params = './simulation/' // trim(enzofolderprefix) //
+     &       trim(ITER_STRING) // '/' // trim(enzoprefix) // 
+     &       trim(ITER_STRING) // trim(enzoparamspostfix)
+      open(10,file=trim(filename_params),status='old',action='read')
+      do 
+        read(10,'(A)',iostat=ierr) line
+        if (ierr /= 0) exit
+        if (index(line, 'CosmologyCurrentRedshift') > 0) then
+          j = index(line, '=') + 1
+          read(line(j:),*) zeta
+          exit
+        end if
+      end do
+      close(10)
+      write(*,*) 'Redshift: zeta=', zeta
+
+      ! zeta = ...
+      stop
 
 
 *     2nd read DM (for now only PartType1)
