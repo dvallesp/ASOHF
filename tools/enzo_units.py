@@ -79,6 +79,11 @@ time_unit_isu = 1 / np.sqrt(4 * np.pi * units.G_isu * rhoB0 * (1 + zini)**3)
 velocity_unit_isu = length_unit_isu / time_unit_isu
 velocity_unit_kms = velocity_unit_isu / 1000.
 
+print('Hubble constant (h):', h)
+print('Omega matter:', omega_m)
+print('Fraction of dark matter', (omega_m-omega_b)/omega_m)
+
+
 print('Mass unit (Msun):', um)
 print('Length unit (Mpc):', ul)
 print('Velocity unit (km/s):', velocity_unit_kms)
