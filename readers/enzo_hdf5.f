@@ -1,3 +1,134 @@
+      module hdf5_readers
+      use hdf5
+      implicit none
+      contains 
+
+      subroutine read1d_32(group_id, name, x, n, ierr)
+
+        use hdf5
+        implicit none
+
+        integer(HID_T), intent(in) :: group_id
+        character(len=*), intent(in) :: name
+        integer, intent(out) :: ierr
+
+        real(4), allocatable, intent(out) :: x(:)
+        integer, intent(out) :: n
+
+        integer(HID_T) :: dset_id, space_id
+        integer(HSIZE_T) :: dims(1)
+
+        call h5dopen_f(group_id, name, dset_id, ierr)
+        if (ierr /= 0) return
+
+        call h5dget_space_f(dset_id, space_id, ierr)
+        call h5sget_simple_extent_dims_f(space_id, dims, dims, ierr)
+
+        n = dims(1)
+        allocate(x(n))
+
+        call h5dread_f(dset_id, H5T_NATIVE_REAL, x, dims, ierr)
+
+        call h5sclose_f(space_id, ierr)
+        call h5dclose_f(dset_id, ierr)
+
+      end subroutine read1d_32
+
+      subroutine read1d_64(group_id, name, x, n, ierr)
+
+        use hdf5
+        implicit none
+
+        integer(HID_T), intent(in) :: group_id
+        character(len=*), intent(in) :: name
+        integer, intent(out) :: ierr
+        integer, intent(out) :: n
+
+        real(8), allocatable, intent(out) :: x(:)
+
+        integer(HID_T) :: dset_id, space_id
+        integer(HSIZE_T) :: dims(1)
+
+        call h5dopen_f(group_id, name, dset_id, ierr)
+        if (ierr /= 0) return
+
+        call h5dget_space_f(dset_id, space_id, ierr)
+        call h5sget_simple_extent_dims_f(space_id, dims, dims, ierr)
+
+        n = dims(1)
+        allocate(x(n))
+
+        call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, x, dims, ierr)
+
+        call h5sclose_f(space_id, ierr)
+        call h5dclose_f(dset_id, ierr)
+
+      end subroutine read1d_64
+
+      subroutine readint1d_32(group_id, name, x, n, ierr)
+
+        use hdf5
+        implicit none
+
+        integer(HID_T), intent(in) :: group_id
+        character(len=*), intent(in) :: name
+        integer, intent(out) :: ierr
+
+        integer(4), allocatable, intent(out) :: x(:)
+        integer, intent(out) :: n
+
+        integer(HID_T) :: dset_id, space_id
+        integer(HSIZE_T) :: dims(1)
+
+        call h5dopen_f(group_id, name, dset_id, ierr)
+        if (ierr /= 0) return
+
+        call h5dget_space_f(dset_id, space_id, ierr)
+        call h5sget_simple_extent_dims_f(space_id, dims, dims, ierr)
+
+        n = dims(1)
+        allocate(x(n))
+
+        call h5dread_f(dset_id, H5T_NATIVE_INTEGER, x, dims, ierr)
+
+        call h5sclose_f(space_id, ierr)
+        call h5dclose_f(dset_id, ierr)
+
+      end subroutine readint1d_32
+
+      subroutine readint1d_64(group_id, name, x, n, ierr)
+
+        use hdf5
+        implicit none
+
+        integer(HID_T), intent(in) :: group_id
+        character(len=*), intent(in) :: name
+        integer, intent(out) :: ierr
+        integer, intent(out) :: n
+
+        integer(8), allocatable, intent(out) :: x(:)
+
+        integer(HID_T) :: dset_id, space_id
+        integer(HSIZE_T) :: dims(1)
+
+        call h5dopen_f(group_id, name, dset_id, ierr)
+        if (ierr /= 0) return
+
+        call h5dget_space_f(dset_id, space_id, ierr)
+        call h5sget_simple_extent_dims_f(space_id, dims, dims, ierr)
+
+        n = dims(1)
+        allocate(x(n))
+
+        call h5dread_f(dset_id, H5T_NATIVE_INTEGER, x, dims, ierr)
+
+        call h5sclose_f(space_id, ierr)
+        call h5dclose_f(dset_id, ierr)
+
+      end subroutine readint1d_64
+
+      end module hdf5_readers
+
 *********************************************************************
        subroutine read_enzo_hdf5(iter,nx,ny,nz,t,zeta,
      &             u2dm,u3dm,u4dm,masap,rxpa,rypa,rzpa,oripa,
@@ -7,6 +138,7 @@
 *********************************************************************
 
        use hdf5
+       use hdf5_readers
        use iso_c_binding
        implicit none
 
@@ -32,12 +164,14 @@
      &                 cio_yc,cio_zc
        real fact_mass,fact_speed,fact_length
 
-       integer i,j
+       integer i,j,n
 
 *     io variables
        real*4,allocatable::scr41(:)
        real*4,allocatable::scr42(:,:)
-       integer*4,allocatable::scrint1(:)
+       integer*4,allocatable::scrint41(:)
+       integer*8,allocatable::scrint81(:)
+       integer*4,allocatable::scrint1(:) !delete!
        real*8,allocatable::scr81(:)
        real*8,allocatable::scr82(:,:)
        
@@ -127,6 +261,9 @@ C       call h5dclose_f(dset_id, ierr)
        stop
       end if
 
+      call h5gclose_f(group_id, ierr)
+      call h5fclose_f(file_id, ierr)
+
       ! Obtain the redshift of the snapshot
       filename_params = './simulation/' // trim(enzofolderprefix) //
      &       trim(ITER_STRING) // '/' // trim(enzoprefix) // 
@@ -144,168 +281,133 @@ C       call h5dclose_f(dset_id, ierr)
       close(10)
       write(*,*) 'Redshift: zeta=', zeta
 
-      ! zeta = ...
-      stop
+*     2nd read DM (for now only first grid)
+      call h5open_f(ierr)
+      call h5fopen_f(filename, H5F_ACC_RDONLY_F, file_id, ierr)
+      call h5gopen_f(file_id, "/Grid00000001", group_id, ierr)
 
+      if (precision == 32) then 
+        call read1d_32(group_id, "particle_position_x", scr41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        rxpa(1:n_dm)=scr41(1:n_dm)
 
-*     2nd read DM (for now only PartType1)
-       if (precision == 32) then
-         call h5dopen_f(file_id, "/PartType1/Coordinates", dset_id, 
-     &                  ierr)
-         allocate(scr42(3,n_dm))
-         dims2d(1) = 3
-         dims2d(2) = n_dm
-         call h5dread_f(dset_id, H5T_NATIVE_REAL, scr42, dims2d, ierr)
-         rxpa(1:n_dm)=scr42(1,1:n_dm)
-         rypa(1:n_dm)=scr42(2,1:n_dm)
-         rzpa(1:n_dm)=scr42(3,1:n_dm)
-         call h5dclose_f(dset_id, ierr)
-         
-         call h5dopen_f(file_id, "/PartType1/Velocities", dset_id, 
-     &                  ierr)
-         call h5dread_f(dset_id, H5T_NATIVE_REAL, scr42, dims2d, ierr)
-         u2dm(1:n_dm)=scr42(1,1:n_dm)
-         u3dm(1:n_dm)=scr42(2,1:n_dm)     
-         u4dm(1:n_dm)=scr42(3,1:n_dm)
-         call h5dclose_f(dset_id, ierr)
-         deallocate(scr42)
+        call read1d_32(group_id, "particle_position_y", scr41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        rypa(1:n_dm)=scr41(1:n_dm)
 
-         allocate(scr41(n_dm))
-         dims1d(1) = n_dm
-         call h5dopen_f(file_id, "/PartType1/Masses", dset_id, ierr)
-         call h5dread_f(dset_id, H5T_NATIVE_REAL, scr41, dims1d, ierr)
-         masap(1:n_dm)=scr41(1:n_dm)
-         call h5dclose_f(dset_id, ierr)
-         deallocate(scr41)
+        call read1d_32(group_id, "particle_position_z", scr41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        rzpa(1:n_dm)=scr41(1:n_dm)
 
-         allocate(scrint1(n_dm))
-         call h5dopen_f(file_id, "/PartType1/ParticleIDs",
-     &               dset_id, ierr)
-         call h5dread_f(dset_id, H5T_NATIVE_INTEGER, scrint1, dims1d,
-     &               ierr)  
-         oripa(1:n_dm)=scrint1(1:n_dm)
-         call h5dclose_f(dset_id, ierr)
-         deallocate(scrint1)
+        call read1d_32(group_id, "particle_velocity_x", scr41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        u2dm(1:n_dm)=scr41(1:n_dm)
 
-       else if (precision == 64) then
-         call h5dopen_f(file_id, "/PartType1/Coordinates", dset_id, 
-     &                  ierr)
-         allocate(scr82(3,n_dm))
-         dims2d(1) = 3
-         dims2d(2) = n_dm
-         call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, scr82, dims2d, 
-     &                  ierr)
-         rxpa(1:n_dm)=scr82(1,1:n_dm)
-         rypa(1:n_dm)=scr82(2,1:n_dm)
-         rzpa(1:n_dm)=scr82(3,1:n_dm)
-         call h5dclose_f(dset_id, ierr)
+        call read1d_32(group_id, "particle_velocity_y", scr41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        u3dm(1:n_dm)=scr41(1:n_dm)
 
-         call h5dopen_f(file_id, "/PartType1/Velocities", dset_id, 
-     &                  ierr)
-         call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, scr82, dims2d, 
-     &                  ierr)
-         u2dm(1:n_dm)=scr82(1,1:n_dm)
-         u3dm(1:n_dm)=scr82(2,1:n_dm)     
-         u4dm(1:n_dm)=scr82(3,1:n_dm)
-         call h5dclose_f(dset_id, ierr)
-         deallocate(scr82)
+        call read1d_32(group_id, "particle_velocity_z", scr41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        u4dm(1:n_dm)=scr41(1:n_dm)
 
-         allocate(scr81(n_dm))
-         dims1d(1) = n_dm
-         call h5dopen_f(file_id, "/PartType1/Masses", dset_id, ierr)
-         call h5dread_f(dset_id, H5T_NATIVE_DOUBLE, scr81, dims1d, 
-     &                  ierr)
-         masap(1:n_dm)=scr81(1:n_dm)
-         call h5dclose_f(dset_id, ierr)
-         deallocate(scr81)
+        call read1d_32(group_id, "particle_mass", scr41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        masap(1:n_dm)=scr41(1:n_dm)
 
-         allocate(scrint1(n_dm))
-         call h5dopen_f(file_id, "/PartType1/ParticleIDs",
-     &               dset_id, ierr)
-         call h5dread_f(dset_id, H5T_NATIVE_INTEGER, scrint1, dims1d,
-     &               ierr)
-         oripa(1:n_dm)=scrint1(1:n_dm)
-         call h5dclose_f(dset_id, ierr)
-         deallocate(scrint1)
-       end if
+        call readint1d_32(group_id, "particle_id", scrint41, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        oripa(1:n_dm)=scrint41(1:n_dm)
+        deallocate(scr41, scrint41)
+
+      else if (precision == 64) then 
+
+        call read1d_64(group_id, "particle_position_x", scr81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        rxpa(1:n_dm)=scr81(1:n_dm)
+
+        call read1d_64(group_id, "particle_position_y", scr81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        rypa(1:n_dm)=scr81(1:n_dm)
+
+        call read1d_64(group_id, "particle_position_z", scr81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        rzpa(1:n_dm)=scr81(1:n_dm)
+
+        call read1d_64(group_id, "particle_velocity_x", scr81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        u2dm(1:n_dm)=scr81(1:n_dm)
+
+        call read1d_64(group_id, "particle_velocity_y", scr81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        u3dm(1:n_dm)=scr81(1:n_dm)
+
+        call read1d_64(group_id, "particle_velocity_z", scr81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        u4dm(1:n_dm)=scr81(1:n_dm)
+
+        call read1d_64(group_id, "particle_mass", scr81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        masap(1:n_dm)=scr81(1:n_dm)
+
+        call readint1d_64(group_id, "particle_index", scrint81, n, ierr)
+        if (n.ne.n_dm) then
+         write(*,*) 'Error: number of particles read != n_dm'
+         stop
+        end if
+        oripa(1:n_dm)=scrint81(1:n_dm)
+        deallocate(scr81, scrint81)
+      end if
 
 *      3rd read stars (if necessary)
        if (var.eq.2.and. n_st.gt.0) then
-        if (precision == 32) then
-          call h5dopen_f(file_id, "/PartType4/Coordinates", dset_id, 
-     &                  ierr)
-          allocate(scr42(3,n_st))
-          dims2d(1) = 3
-          dims2d(2) = n_st
-          call h5dread_f(dset_id, H5T_NATIVE_REAL, scr42, dims2d, ierr)
-          rxpa(n_dm+1:n_dm+n_st)=scr42(1,1:n_st)
-          rypa(n_dm+1:n_dm+n_st)=scr42(2,1:n_st)
-          rzpa(n_dm+1:n_dm+n_st)=scr42(3,1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          
-          call h5dopen_f(file_id, "/PartType4/Velocities", dset_id, 
-     &                  ierr)
-          call h5dread_f(dset_id, H5T_NATIVE_REAL, scr42, dims2d, ierr)
-          u2dm(n_dm+1:n_dm+n_st)=scr42(1,1:n_st)
-          u3dm(n_dm+1:n_dm+n_st)=scr42(1,1:n_st)     
-          u4dm(n_dm+1:n_dm+n_st)=scr42(1,1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          deallocate(scr42)
- 
-          allocate(scr41(n_st))
-          dims1d(1) = n_st
-          call h5dopen_f(file_id, "/PartType4/Masses", dset_id, ierr)
-          call h5dread_f(dset_id, H5T_NATIVE_REAL, scr41, dims1d, ierr)
-          masap(n_dm+1:n_dm+n_st)=scr41(1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          deallocate(scr41)
- 
-          allocate(scrint1(n_st))
-          call h5dopen_f(file_id, "/PartType4/ParticleIDs",
-     &                dset_id, ierr)
-          call h5dread_f(dset_id, H5T_NATIVE_INTEGER, scrint1, dims1d,
-     &                ierr)  
-          oripa(n_dm+1:n_dm+n_st)=scrint1(1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          deallocate(scrint1)
-        else if (precision == 64) then
-          call h5dopen_f(file_id, "/PartType4/Coordinates", dset_id, 
-     &                  ierr)
-          allocate(scr82(3,n_st))
-          dims2d(1) = 3
-          dims2d(2) = n_st
-          call h5dread_f(dset_id, H5T_NATIVE_REAL, scr82, dims2d, ierr)
-          rxpa(n_dm+1:n_dm+n_st)=scr82(1,1:n_st)
-          rypa(n_dm+1:n_dm+n_st)=scr82(2,1:n_st)
-          rzpa(n_dm+1:n_dm+n_st)=scr82(3,1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          
-          call h5dopen_f(file_id, "/PartType4/Velocities", dset_id, 
-     &                  ierr)
-          call h5dread_f(dset_id, H5T_NATIVE_REAL, scr82, dims2d, ierr)
-          u2dm(n_dm+1:n_dm+n_st)=scr82(1,1:n_st)
-          u3dm(n_dm+1:n_dm+n_st)=scr82(1,1:n_st)     
-          u4dm(n_dm+1:n_dm+n_st)=scr82(1,1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          deallocate(scr82)
- 
-          allocate(scr81(n_st))
-          dims1d(1) = n_st
-          call h5dopen_f(file_id, "/PartType4/Masses", dset_id, ierr)
-          call h5dread_f(dset_id, H5T_NATIVE_REAL, scr81, dims1d, ierr)
-          masap(n_dm+1:n_dm+n_st)=scr81(1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          deallocate(scr81)
- 
-          allocate(scrint1(n_st))
-          call h5dopen_f(file_id, "/PartType4/ParticleIDs",
-     &                dset_id, ierr)
-          call h5dread_f(dset_id, H5T_NATIVE_INTEGER, scrint1, dims1d,
-     &                ierr)  
-          oripa(n_dm+1:n_dm+n_st)=scrint1(1:n_st)
-          call h5dclose_f(dset_id, ierr)
-          deallocate(scrint1)
-        end if
+        write(*,*) 'WARNING: reading stars not implemented yet'
+        stop
        end if
          
        write(*,*)
