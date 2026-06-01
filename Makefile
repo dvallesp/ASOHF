@@ -14,6 +14,8 @@ $(info READER=$(READER))
 HDF5 = 0 
 ifeq ($(READER),3)
   HDF5=1
+else ifeq ($(READER),4)
+  HDF5=1
 endif
 $(info HDF5=$(HDF5))
 
@@ -60,7 +62,7 @@ info:
 	@echo "                    are two examples, but you might need " 
 	@echo "                    to modify them for your own machine(s)."
 	@echo "   In particular, you might need to change the paths to the "
-	@echo "     hdf5 library, if you are using it (e.g. READER=3)."
+	@echo "     hdf5 library, if you are using it (e.g. READER=3 or 4)."
 	@echo ""
 	@echo "- READER (optional, default: 1): which code to read the"
 	@echo "                    outputs from. Options:"
@@ -68,4 +70,5 @@ info:
 	@echo "       1: MASCLET reader (default)"
 	@echo "       2: Gadget unformatted reader"
 	@echo "       3: Gizmo/Gadget/Arepo HDF5 reader"
+	@echo "       4: ENZO HDF5 reader"
 	@echo ""

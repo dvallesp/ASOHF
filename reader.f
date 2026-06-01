@@ -14,6 +14,10 @@
 #include "readers/gizmo_hdf5.f"
 #endif
 
+#if reader == 4
+#include "readers/enzo_hdf5.f"
+#endif
+
 *********************************************************************
        subroutine sort_dm_particles(n_dm,npart_esp,n_st,ir_kern_stars)
 *********************************************************************

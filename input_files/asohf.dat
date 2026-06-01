@@ -83,8 +83,14 @@ Cut stellar halo at a maximum (>0, physical; <0, comoving) radius of
  (kpc) --------------------------------------------------------------->
 200.0
 ***********************************************************************
-*       Only for READER=3 (ASOHF like stand-alone) block              *
+*       Special info for certain readers                              *
 ***********************************************************************
-Input file postfix (leave blank line if none) ------------------------>
+GIZMO/GADGET reader: Input file postfix (leave blank line if none) --->
 _NewMDCLUSTER_0001.hdf5
+ENZO reader: folder prefix ------------------------------------------->
+DD
+ENZO reader: filename prefix ----------------------------------------->
+time_
+ENZO reader: filename postfix (blank if none)------------------------->
+.cpu0000
 ======= End of asohf.dat file =========================================

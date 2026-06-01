@@ -141,8 +141,12 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        INTEGER CR0AMR11(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        CHARACTER*5 ITER_STRING
-       character*200 postfix
+       character*200 postfix,enzofolderprefix,enzoprefix
+#if reader == 3 
        common /POSTFIX/ postfix
+#elif reader == 4
+       common /POSTFIX/ postfix,enzofolderprefix,enzoprefix
+#endif
 
 **************************************************************
 *      OPENING FILES
@@ -257,7 +261,12 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) !***********************************************************************
        READ(1,*) !Input file postfix (leave blank line if none) ------------------------>
        READ(1,'(A)') postfix
-
+       READ(1,*) !ENZO reader: folder prefix ------------------------------------------->
+       READ(1,'(A)') enzofolderprefix
+       READ(1,*) !ENZO reader: filename prefix ----------------------------------------->
+       READ(1,'(A)') enzoprefix
+       READ(1,*) !ENZO reader: filename postfix (blank if none)------------------------->
+       READ(1,'(A)') postfix
        CLOSE(1)
 
        N_PARTICLES=N_DM
@@ -306,6 +315,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        WRITE(*,*) 'ASOHF reading GADGET UNFORMATTED FILES...'
 #elif reader == 3
        WRITE(*,*) 'ASOHF reading GIZMO/GADGET/AREPO hdf5 FILES...'
+#elif reader == 4
+       WRITE(*,*) 'ASOHF reading ENZO hdf5 FILES...'
 #else 
        WRITE(*,*) 'Not valid READER option!!'
        STOP 1
