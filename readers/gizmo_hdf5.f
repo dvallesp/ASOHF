@@ -3,7 +3,7 @@
      &             u2dm,u3dm,u4dm,masap,rxpa,rypa,rzpa,oripa,
      &             n_dm,var,n_st,uv,um,hubble_littleh)
 *********************************************************************
-*      reads data from gadget unformatted inputs
+*      reads data from gadget or gizmo hdf5 inputs
 *********************************************************************
 
        use hdf5
