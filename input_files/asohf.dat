@@ -3,21 +3,21 @@
 ***********************************************************************
 *       General parameters block                                      *
 ***********************************************************************
-Files: first, last, every -------------------------------------------->
-0,0,50
+Files: first, last, every, files per snapshot (ENZO) ----------------->
+15,15,50,32
 Cells per direction (NX,NY,NZ) --------------------------------------->
 128,128,128
 Hubble constant (h), omega matter, fraction of DM to total mass ------>
-0.678,0.31,0.845
+0.6766,0.3111,0.84249437
 Max box sidelength (in input length units) --------------------------->
-40.0
+1.0
 Output flags: grid_asohf,density,haloes_grids,subs_grids,subs_part --->
 0,0,0,0,0
 Input units: MASS (Msun; <0 for Msun/h), LENGTH (cMpc; <0 for cMpc/h),
  SPEED (km/s), ALPHA (v_input = a^alpha dx/dt; 1 is peculiar vel.) --->
-9.1717e18,1.0,299792.458,1.0
+7.605945e+09, 7.389891e+01, 3.432625e+04, 1.0
 Input domain (in input length units; x1,x2,y1,y2,z1,z2) -------------->
--20.0,20.0,-20.0,20.0,-20.0,20.0
+0.,1.,0.,1.,0.,1.
 ***********************************************************************
 *       Domain decompose                                              *
 ***********************************************************************
@@ -29,7 +29,7 @@ Domain to keep particles (in input length units; x1,x2,y1,y2,z1,z2) -->
 *       Mesh building parameters block                                *
 ***********************************************************************
 Levels for the mesh (stand-alone) ------------------------------------>
-4
+6
 PARCHLIM(=0 no limit patches/level, =1 do limit) --------------------->
 0
 Max num of patches per level(needs PARCHLIM>0; 1 limit per level) ---->
@@ -55,13 +55,13 @@ Particle especies (0=there are different mass particles, 1=equal mass
 *       Halo finding parameters block                                 *
 ***********************************************************************
 Max. reach around halos (cMpc), excluded cells in boundaries --------->
-4.0,1
+8.0,1
 Minimum fraction of shared volume to merge (in grid search) ---------->
 0.6
 FLAG_WDM (=1 write DM particles, =0 no) ------------------------------>
 1
 Search for substructure (=1 yes, =0 no) ------------------------------>
-0
+1
 Compute energies (=1 yes, =0 no), max num of part. for direct sum ---->
 0,4000
 Minimum number of particles per halo --------------------------------->
@@ -88,11 +88,11 @@ Cut stellar halo at a maximum (>0, physical; <0, comoving) radius of
 GIZMO/GADGET reader: Input file postfix (leave blank line if none) --->
 _NewMDCLUSTER_0001.hdf5
 ENZO reader: folder prefix ------------------------------------------->
-DD
+RD
 ENZO reader: filename prefix ----------------------------------------->
-time_
-ENZO reader: filename postfix (blank if none) ------------------------>
-.cpu0000
+RedshiftOutput
+ENZO reader: filename postfix (blank if none, don't include the cpu) ->
+
 ENZO reader: parameters file postfix (blank if none) ----------------->
 
 ======= End of asohf.dat file =========================================

@@ -67,7 +67,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
        INTEGER SOLAP(NAMRX,NAMRY,NAMRZ,NPALEV)
 
-       INTEGER FIRST,LAST,EVERY,NFILE,NFILE2,IFI2
+       INTEGER FIRST,LAST,EVERY,NFILE,NFILE2,IFI2,FILESPERSNAP
        INTEGER N1,N2,N3,VAR,KONTA2,MAX_NUM_PART
        INTEGER NCLUS
        INTEGER*4 DATE(3), TIME(3)
@@ -166,8 +166,8 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) !***********************************************************************
        READ(1,*) !*       General parameters block                                      *
        READ(1,*) !***********************************************************************
-       READ(1,*) !Files: first, last, every -------------------------------------------->
-       READ(1,*) FIRST,LAST,EVERY
+       READ(1,*) !Files: first, last, every, files per snapshot (ENZO) ----------------->
+       READ(1,*) FIRST,LAST,EVERY,FILESPERSNAP
        READ(1,*) !Cells per direction (NX,NY,NZ) --------------------------------------->
        READ(1,*) NX,NY,NZ
        READ(1,*) !Hubble constant (h), omega matter, fraction of DM to total mass ------>
@@ -263,7 +263,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
        READ(1,*) !***********************************************************************
        READ(1,*) !Input file postfix (leave blank line if none) ------------------------>
        READ(1,'(A)') postfix
-       READ(1,*) !ENZO reader: folder prefix ------------------------------------------->
+       READ(1,*) !ENZO reader: filename postfix (blank if none, don't include the cpu) ->
        READ(1,'(A)') enzofolderprefix
        READ(1,*) !ENZO reader: filename prefix ----------------------------------------->
        READ(1,'(A)') enzoprefix
@@ -430,7 +430,7 @@ c       REAL*4 POT1(NAMRX,NAMRY,NAMRZ,NPALEV)
 
 *       Reading external list of particles (either Masclet particles
 *       or a general list of particles, depending on READER parameter)
-        CALL READ_AND_ALLOC_PARTICLES(ITER,NX,NY,
+        CALL READ_AND_ALLOC_PARTICLES(ITER,FILESPERSNAP,NX,NY,
      &       NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,HUBBLE_LITTLEH,
      &       LADO0,LADO)
 

@@ -193,7 +193,7 @@
       END
 
 ************************************************************************
-      SUBROUTINE READ_AND_ALLOC_PARTICLES(ITER,NX,
+      SUBROUTINE READ_AND_ALLOC_PARTICLES(ITER,FILESPERSNAP,NX,
      &           NY,NZ,T,ZETA,N_DM,VAR,N_ST,N_PARTICLES,UV,UM,
      &           HUBBLE_LITTLEH,LADO0,LADO)
 ************************************************************************
@@ -201,7 +201,7 @@
        IMPLICIT NONE
        INCLUDE 'input_files/asohf_parameters.dat'
 
-       INTEGER ITER,NX,NY,NZ
+       INTEGER ITER,NX,NY,NZ,FILESPERSNAP
        REAL T,ZETA
        INTEGER N_DM,VAR,N_ST,N_PARTICLES
        REAL UV,UM,HUBBLE_LITTLEH,LADO0,LADO
@@ -277,7 +277,8 @@
      &                        U2DM_R,U3DM_R,U4DM_R,MASAP_R,
      &                        RXPA_R,RYPA_R,RZPA_R,ORIPA_R,
      &                        N_DM,VAR,N_ST,
-     &                        UV,UM,HUBBLE_LITTLEH)
+     &                        UV,UM,HUBBLE_LITTLEH,
+     &                        FILESPERSNAP)
 #else
          WRITE(*,*) 'ERROR: reader not defined'
          STOP 1
